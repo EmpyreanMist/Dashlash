@@ -1,7 +1,7 @@
 # PHASEBREAK — Master Feature Catalog
 
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
-> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `bcb7191`; Fas 6.75 väntar på manuell kontroll och commit.
+> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `41e6258`; Fas 6.8 Unit Frames är implementerad och väntar på spelarens manuella godkännande.
 
 ## Så används dokumentet
 
@@ -225,19 +225,25 @@ Nuvarande status:
 - [ ] Raid markers.
 - [ ] Priority-target scoring.
 
-### NAMEPLATE-01 — Unit readability 🟨
+### NAMEPLATE-01 — Unit readability 🛠
 
-- [x] Player frame.
-- [x] Target frame.
-- [x] Enemy nameplates.
+- [x] Modulär dark-fantasy Player Frame med porträttplats, namn, level, HP, Energy och class-resource-pips.
+- [x] Modulär hostile Target Frame med porträttplats, namn, level, HP, cast bar, rank och statusplatser.
+- [x] Högerklick för att låsa upp/låsa Player/Target Frame; vänsterdrag flyttar och sparar positionen lokalt.
+- [x] Enemy world nameplates via en separat `WorldNameplateUI`, förberedd för fortsatt in-world-utbyggnad.
 - [x] Selection ring.
-- [ ] Cast bars.
+- [x] Cast bar kopplad till nuvarande enemy windup via ett litet presentation-interface.
+- [x] Rare/elite/boss-indikator och bossdetektering.
+- [x] Interruptible cast styling.
 - [ ] Buff/debuff icons.
-- [ ] Elite/boss frames.
 - [ ] Threat/aggro indicator.
-- [ ] Interruptible cast styling.
+- [ ] Status stacks, durations, dispel type och tooltips.
 - [ ] Nameplate stacking och occlusion.
 - [ ] Friendly/player nameplates för multiplayer.
+- [ ] Target-of-target, focus, party, raid och separat boss frame.
+- [ ] HUD edit mode med reset, snap/grid, scale och namngivna layoutprofiler.
+- [ ] Portrait provider för riktiga render textures eller porträtt-sprites.
+- [ ] Färgblindhetsprofiler och alternativa friendly/hostile-paletter.
 
 ---
 
@@ -1020,8 +1026,10 @@ Krav för riktig MMO:
 
 ### UI-01 — Nuvarande HUD 🟨
 
-- [x] Player och target frame.
-- [x] Nameplates.
+- [x] Prefab-baserade Player och Target Frames med separerad data-binding och återanvändbara bar-komponenter.
+- [x] Dark-fantasy/void visual language: obsidianpanel, cyan/violett player-accent och crimson/orange hostile-accent.
+- [x] Frame-positioner kan flyttas, kantbegränsas och sparas utan att påverka camera/targeting-input.
+- [x] Nameplates och selection state.
 - [x] Energy och action bar.
 - [x] XP/level.
 - [x] Floating damage.
@@ -1029,6 +1037,9 @@ Krav för riktig MMO:
 - [x] Build snapshot.
 - [x] Gameplay navigation icons.
 - [ ] Final responsive layout och visual language.
+- [ ] Gemensam HUD layout-versionering och migrering av sparade positioner.
+- [ ] HUD-skala, safe-area-stöd och färdiga profiler för 16:9, ultrawide och handhållet.
+- [ ] Riktiga portrait assets, frame sprites, statusikoner och nio-slice ornament.
 
 ### UI-02 — Menyer 🟨/⬜
 

@@ -20,14 +20,14 @@ namespace Phasebreak.Gameplay
         [Header("Nameplates")]
         [SerializeField, Min(1f)] private float nameplateRange = 35f;
 
-        private readonly Dictionary<Targetable, NameplateView> nameplates =
-            new Dictionary<Targetable, NameplateView>();
+        private readonly Dictionary<Targetable, WorldNameplateUI> nameplates =
+            new Dictionary<Targetable, WorldNameplateUI>();
         private readonly List<FloatingDamageView> floatingDamage = new List<FloatingDamageView>();
         private RectTransform canvasRect;
         private RectTransform nameplateLayer;
         private RectTransform combatTextLayer;
-        private UnitFrame playerFrame;
-        private UnitFrame targetFrame;
+        private PlayerFrameUI playerFrame;
+        private TargetFrameUI targetFrame;
         private AbilitySlotView[] abilitySlots;
         private RectTransform resourceFill;
         private TextMeshProUGUI resourceLabel;
@@ -115,12 +115,12 @@ namespace Phasebreak.Gameplay
                 RefreshNameplates();
             }
 
-            playerFrame?.Update(player);
             Targetable currentTarget = targeting != null ? targeting.CurrentTarget : null;
-            UpdateTargetFrame(currentTarget);
+            if (targetFrame != null && targetFrame.Target != currentTarget)
+                targetFrame.Bind(currentTarget);
 
-            foreach (NameplateView view in nameplates.Values)
-                UpdateNameplate(view, currentTarget);
+            foreach (WorldNameplateUI view in nameplates.Values)
+                view.Refresh(worldCamera, player, currentTarget, canvasRect, nameplateRange);
             UpdateActionBar();
             UpdateProgressionBar();
             UpdateLevelUpBanner();
@@ -132,13 +132,7 @@ namespace Phasebreak.Gameplay
                 abilityFeedback.gameObject.SetActive(Time.unscaledTime < abilityFeedbackUntil);
         }
 
-        private void HandleTargetChanged(Targetable currentTarget) => UpdateTargetFrame(currentTarget);
-
-        private void UpdateTargetFrame(Targetable currentTarget)
-        {
-            targetFrame?.SetVisible(currentTarget != null);
-            targetFrame?.Update(currentTarget);
-        }
+        private void HandleTargetChanged(Targetable currentTarget) => targetFrame?.Bind(currentTarget);
 
         private void BuildCanvas()
         {
@@ -158,11 +152,12 @@ namespace Phasebreak.Gameplay
             nameplateLayer = CreateRect("Nameplates", canvasRect);
             Stretch(nameplateLayer);
 
-            playerFrame = CreateUnitFrame("PlayerFrame", canvasRect, new Vector2(0f, 0f),
-                new Vector2(32f, 32f), new Vector2(310f, 82f), PlayerHealthColor);
-            targetFrame = CreateUnitFrame("TargetFrame", canvasRect, new Vector2(0.5f, 1f),
-                new Vector2(0f, -42f), new Vector2(330f, 86f), EnemyHealthColor);
-            targetFrame.SetVisible(false);
+            playerFrame = InstantiateFrame<PlayerFrameUI>("UI/PlayerFrame", "Player Frame", canvasRect,
+                new Vector2(0f, 1f), new Vector2(30f, -30f));
+            playerFrame?.Bind(player, combat, progression);
+            targetFrame = InstantiateFrame<TargetFrameUI>("UI/TargetFrame", "Target Frame", canvasRect,
+                new Vector2(0f, 1f), new Vector2(446f, -30f));
+            targetFrame?.Bind(null);
             CreateActionBar();
             CreateProgressionDisplay();
             CreateBuildDisplay();
@@ -193,8 +188,8 @@ namespace Phasebreak.Gameplay
         private void CreateDungeonDisplay()
         {
             dungeonPanel = CreateRect("Dungeon Status", canvasRect);
-            dungeonPanel.anchorMin = dungeonPanel.anchorMax = dungeonPanel.pivot = new Vector2(0f, 1f);
-            dungeonPanel.anchoredPosition = new Vector2(28f, -28f);
+            dungeonPanel.anchorMin = dungeonPanel.anchorMax = dungeonPanel.pivot = new Vector2(1f, 1f);
+            dungeonPanel.anchoredPosition = new Vector2(-28f, -28f);
             dungeonPanel.sizeDelta = new Vector2(390f, 126f);
             AddImage(dungeonPanel, PanelColor);
 
@@ -573,13 +568,13 @@ namespace Phasebreak.Gameplay
 
             foreach (Targetable targetable in stale)
             {
-                if (nameplates.TryGetValue(targetable, out NameplateView view) && view.Root != null)
+                if (nameplates.TryGetValue(targetable, out WorldNameplateUI view) && view.Root != null)
                     Destroy(view.Root.gameObject);
                 nameplates.Remove(targetable);
             }
         }
 
-        private NameplateView CreateNameplate(Targetable targetable)
+        private WorldNameplateUI CreateNameplate(Targetable targetable)
         {
             RectTransform root = CreateRect($"{targetable.DisplayName} Nameplate", nameplateLayer);
             root.anchorMin = root.anchorMax = root.pivot = new Vector2(0.5f, 0.5f);
@@ -607,69 +602,34 @@ namespace Phasebreak.Gameplay
             labelRect.offsetMin = new Vector2(6f, 18f);
             labelRect.offsetMax = new Vector2(-6f, -2f);
 
-            return new NameplateView(targetable, root, panel, fill, fillImage, label);
+            WorldNameplateUI result = root.gameObject.AddComponent<WorldNameplateUI>();
+            result.Configure(targetable, panel, fill, fillImage, label, PanelColor, EnemyHealthColor,
+                new Color(.22f, .12f, .035f, .96f), SelectedColor);
+            return result;
         }
 
-        private void UpdateNameplate(NameplateView view, Targetable currentTarget)
+        private static T InstantiateFrame<T>(string resourcePath, string instanceName, RectTransform parent,
+            Vector2 anchor, Vector2 position) where T : Component
         {
-            Targetable targetable = view.Target;
-            if (targetable == null || worldCamera == null || player == null)
+            GameObject prefab = Resources.Load<GameObject>(resourcePath);
+            if (prefab == null)
             {
-                view.SetVisible(false);
-                return;
+                Debug.LogError($"Missing HUD frame prefab at Resources/{resourcePath}.");
+                return null;
             }
-
-            Vector3 viewport = worldCamera.WorldToViewportPoint(targetable.NameplateWorldPosition);
-            float distance = Vector3.Distance(player.transform.position, targetable.transform.position);
-            bool visible = targetable.IsAlive && viewport.z > 0f && distance <= nameplateRange &&
-                           viewport.x > -0.05f && viewport.x < 1.05f && viewport.y > -0.05f && viewport.y < 1.05f;
-            view.SetVisible(visible);
-            if (!visible)
-                return;
-
-            Vector3 screenPoint = worldCamera.WorldToScreenPoint(targetable.NameplateWorldPosition);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, null,
-                out Vector2 localPoint);
-            view.Root.anchoredPosition = localPoint;
-            bool selected = targetable == currentTarget;
-            view.Root.localScale = selected ? Vector3.one * 1.08f : Vector3.one;
-            view.Panel.color = selected ? new Color(0.22f, 0.12f, 0.035f, 0.96f) : PanelColor;
-            view.FillImage.color = selected ? SelectedColor : EnemyHealthColor;
-            view.Label.text = $"{targetable.DisplayName}  •  Lv {targetable.Level}";
-            SetFill(view.Fill, GetHealthFraction(targetable));
-        }
-
-        private static UnitFrame CreateUnitFrame(string name, RectTransform parent, Vector2 anchor,
-            Vector2 position, Vector2 size, Color healthColor)
-        {
-            RectTransform root = CreateRect(name, parent);
+            GameObject instance = Instantiate(prefab, parent, false);
+            instance.name = instanceName;
+            RectTransform root = instance.GetComponent<RectTransform>();
+            if (root == null)
+            {
+                Debug.LogError($"HUD frame prefab {resourcePath} has no RectTransform.");
+                Destroy(instance);
+                return null;
+            }
             root.anchorMin = root.anchorMax = anchor;
             root.pivot = anchor;
             root.anchoredPosition = position;
-            root.sizeDelta = size;
-            AddImage(root, PanelColor);
-
-            TextMeshProUGUI label = AddText("Label", root, 20f, TextAlignmentOptions.Left);
-            label.fontStyle = FontStyles.Bold;
-            label.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = new Vector2(14f, 5f);
-            label.rectTransform.offsetMax = new Vector2(-14f, -6f);
-
-            RectTransform bar = CreateRect("Health", root);
-            bar.anchorMin = new Vector2(0f, 0f);
-            bar.anchorMax = new Vector2(1f, 0f);
-            bar.pivot = new Vector2(0.5f, 0f);
-            bar.offsetMin = new Vector2(10f, 10f);
-            bar.offsetMax = new Vector2(-10f, 34f);
-            AddImage(bar, BarBackgroundColor);
-
-            RectTransform fill = CreateRect("Fill", bar);
-            fill.anchorMin = Vector2.zero;
-            fill.anchorMax = Vector2.one;
-            fill.offsetMin = fill.offsetMax = Vector2.zero;
-            AddImage(fill, healthColor);
-            return new UnitFrame(root, label, fill);
+            return instance.GetComponent<T>();
         }
 
         private static RectTransform CreateRect(string name, Transform parent)
@@ -829,56 +789,5 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private sealed class UnitFrame
-        {
-            private readonly RectTransform root;
-            private readonly TextMeshProUGUI label;
-            private readonly RectTransform fill;
-
-            public UnitFrame(RectTransform root, TextMeshProUGUI label, RectTransform fill)
-            {
-                this.root = root;
-                this.label = label;
-                this.fill = fill;
-            }
-
-            public void SetVisible(bool visible) => root.gameObject.SetActive(visible);
-
-            public void Update(Targetable targetable)
-            {
-                if (targetable == null)
-                    return;
-                label.text = $"{targetable.DisplayName}  •  Lv {targetable.Level}    " +
-                             $"{targetable.CurrentHealth}/{targetable.MaxHealth}";
-                SetFill(fill, GetHealthFraction(targetable));
-            }
-        }
-
-        private sealed class NameplateView
-        {
-            public readonly Targetable Target;
-            public readonly RectTransform Root;
-            public readonly UnityEngine.UI.Image Panel;
-            public readonly RectTransform Fill;
-            public readonly UnityEngine.UI.Image FillImage;
-            public readonly TextMeshProUGUI Label;
-
-            public NameplateView(Targetable target, RectTransform root, UnityEngine.UI.Image panel,
-                RectTransform fill, UnityEngine.UI.Image fillImage, TextMeshProUGUI label)
-            {
-                Target = target;
-                Root = root;
-                Panel = panel;
-                Fill = fill;
-                FillImage = fillImage;
-                Label = label;
-            }
-
-            public void SetVisible(bool visible)
-            {
-                if (Root.gameObject.activeSelf != visible)
-                    Root.gameObject.SetActive(visible);
-            }
-        }
     }
 }

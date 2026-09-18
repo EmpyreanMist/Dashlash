@@ -15,7 +15,7 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Phase 5 — Rift Crypt dungeon loop, encounters, boss, checkpoint and reward chest.
 - Phase 6 — player-controlled inventory/equipment, comparison tooltips, build summary, persistent specialization, data-driven items/sets/abilities and build-changing effects.
 - Phase 6.5 — bag-style inventory, separate character sheet, HUD menu navigation and per-corpse right-click looting.
-- Phase 6.75 — five-slot combat bar, ability-driven Phase Dash, target-based Rift Charge, procedural combat presentation and the first equipment visuals. Pending player approval.
+- Phase 6.75 — five-slot combat bar, ability-driven Phase Dash, target-based Rift Charge, procedural combat presentation and the first equipment visuals.
 
 ## Phase 6 content
 
@@ -47,6 +47,15 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Combat exposes start/impact/complete/failure events so animation, audio, trails, HUD feedback and future networking do not own damage logic.
 - The Quaternius character currently uses replaceable procedural attack/hit/death poses over the locomotion controller. Authored clips and a proper upper-body Animator layer remain production work.
 - Equipped test weapon and chest visuals are driven by the existing equipment state. Weapons draw into the hands during abilities and return to back/hip sheath anchors afterward.
+
+## Phase 6.8 — Unit Frames (pending player approval)
+
+- New prefab-based dark-fantasy Player and Target Frames replace the former text-heavy unit panels.
+- Player data includes portrait placeholder, name, level, health, Energy and class-resource/charge pips.
+- Target data includes portrait placeholder, health, rank/boss marker, real enemy-windup cast bar and reserved status/debuff slots.
+- Right-click either frame to toggle move mode; left-drag while unlocked and right-click again to lock. Positions persist locally and remain clamped to the HUD canvas.
+- Frame visuals, data binding and reusable health/resource/cast components are separated. Enemy world nameplates now use their own component as a foundation for later floating-nameplate work.
+- Production portrait art, status-effect binding, target-of-target and full HUD layout profiles remain future work.
 
 ## Recommended next milestone — Phase 7
 

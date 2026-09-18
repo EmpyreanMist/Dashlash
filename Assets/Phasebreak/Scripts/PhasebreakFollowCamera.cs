@@ -97,15 +97,25 @@ namespace Phasebreak.Gameplay
         {
             LeftClickReleasedThisFrame = false;
             RightClickStartedThisFrame = false;
-            if (rightMouseAction.WasPressedThisFrame())
-            {
-                RightClickStartedThisFrame = true;
-                RightClickPosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
-            }
             if (PhasebreakInventoryHud.IsMajorMenuOpen)
             {
                 SetPointerCaptured(false);
                 return;
+            }
+            bool framePointerInput = IsLeftMouseHeld || IsRightMouseHeld ||
+                                     leftMouseAction.WasReleasedThisFrame() || rightMouseAction.WasReleasedThisFrame();
+            if (HudFrameDragHandle.IsDraggingAny ||
+                (framePointerInput && HudFrameDragHandle.IsPointerOverFrame()))
+            {
+                leftClickCandidate = false;
+                leftDragging = false;
+                SetPointerCaptured(false);
+                return;
+            }
+            if (rightMouseAction.WasPressedThisFrame())
+            {
+                RightClickStartedThisFrame = true;
+                RightClickPosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
             }
             Vector2 lookDelta = lookAction.ReadValue<Vector2>();
 

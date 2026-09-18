@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Phasebreak.Gameplay
 {
     [RequireComponent(typeof(CharacterController))]
-    public sealed class MeleeEnemy : MonoBehaviour, ICombatTarget
+    public sealed class MeleeEnemy : MonoBehaviour, ICombatTarget, ICombatCastSource
     {
         private enum EnemyState { Idle, Chase, Windup, Active, Recovery, Stagger, Dead }
 
@@ -59,6 +59,11 @@ namespace Phasebreak.Gameplay
         public bool IsAlive => state != EnemyState.Dead;
         public string StateName => state.ToString();
         public int AttackCount { get; private set; }
+        public bool IsCasting => state == EnemyState.Windup;
+        public string CastName => "Savage Strike";
+        public float CastProgress => !IsCasting || windupDuration <= 0f
+            ? 0f : 1f - Mathf.Clamp01(stateRemaining / windupDuration);
+        public bool IsCastInterruptible => true;
 
         public void SetRespawnEnabled(bool enabled) => respawnEnabled = enabled;
 

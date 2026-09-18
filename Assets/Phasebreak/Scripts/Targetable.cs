@@ -11,6 +11,14 @@ namespace Phasebreak.Gameplay
         Hostile
     }
 
+    public enum UnitRank
+    {
+        Normal,
+        Rare,
+        Elite,
+        Boss
+    }
+
     [DisallowMultipleComponent]
     public sealed class Targetable : MonoBehaviour
     {
@@ -20,6 +28,7 @@ namespace Phasebreak.Gameplay
         [SerializeField] private string displayName;
         [SerializeField, Min(1)] private int level = 1;
         [SerializeField] private TargetFaction faction = TargetFaction.Hostile;
+        [SerializeField] private UnitRank rank = UnitRank.Normal;
         [SerializeField, Min(0f)] private float nameplateHeight = 2.25f;
 
         [Header("Selection")]
@@ -36,6 +45,7 @@ namespace Phasebreak.Gameplay
         public string DisplayName => string.IsNullOrWhiteSpace(displayName) ? gameObject.name : displayName;
         public int Level => level;
         public TargetFaction Faction => faction;
+        public UnitRank Rank => rank;
         public Vector3 NameplateWorldPosition => transform.position + Vector3.up * nameplateHeight;
         public bool IsHostile => faction == TargetFaction.Hostile;
         public bool IsAlive => enemy != null ? enemy.IsAlive : playerHealth == null || playerHealth.IsAlive;
@@ -50,6 +60,8 @@ namespace Phasebreak.Gameplay
         }
 
         public void SetLevel(int newLevel) => level = Mathf.Max(1, newLevel);
+
+        public void SetRank(UnitRank newRank) => rank = newRank;
 
         public void SetSelected(bool selected)
         {
