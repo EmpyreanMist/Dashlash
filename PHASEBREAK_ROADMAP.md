@@ -12,6 +12,7 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Phase 4 — combat resource, soft auto-targeting and initial loot hooks.
 - Phase 5 — Rift Crypt dungeon loop, encounters, boss, checkpoint and reward chest.
 - Phase 6 — player-controlled inventory/equipment, comparison tooltips, build summary, persistent specialization, data-driven items/sets/abilities and build-changing effects.
+- Phase 6.5 — bag-style inventory, separate character sheet, HUD menu navigation and per-corpse right-click looting.
 
 ## Phase 6 content
 
@@ -22,6 +23,16 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Implemented effects: crit Energy recovery, Phase Lunge cooldown/extra charge, Crushing Blow cleave, teleport-kill recovery and boss damage.
 - Level 3 specialization choice: Berserker, Bulwark or Riftblade.
 - Inventory, equipped items and specialization persist locally through `PlayerPrefs` JSON using stable item IDs.
+
+## Phase 6.5 controls and flow
+
+- `B` — Inventory bag.
+- `C` — Character, equipment, final stats, specialization, active sets and build modifiers.
+- `T` — Talents placeholder; the full talent tree is intentionally deferred.
+- `Escape` — close the active gameplay menu.
+- Right mouse button on a corpse — open that corpse's private loot container.
+- Corpses stop combat participation immediately, retain their own generated drops and remain for 60 seconds by default. Items or Take All transfer through the existing inventory/save path.
+- Item definitions now accept an optional Sprite icon; slot glyphs provide dependency-free placeholders until final item art exists.
 
 ## Recommended next milestone — Phase 7
 

@@ -293,7 +293,7 @@ namespace Phasebreak.Gameplay
             if (buildLabel == null || build == null)
                 return;
 
-            buildLabel.text = "<b>BUILD SNAPSHOT</b>\n" + build.GetBuildSummary() + "\n\n<color=#87DBFF>B / I  Open Inventory</color>";
+            buildLabel.text = "<b>BUILD SNAPSHOT</b>\n" + build.GetBuildSummary();
         }
 
         private void HandleLootAcquired(PhasebreakItemDefinition item)
@@ -306,7 +306,7 @@ namespace Phasebreak.Gameplay
                 ItemRarity.Rare => "#4BA3FF",
                 _ => "#E7E7E7"
             };
-            lootToast.text = $"LOOT SECURED  <color={color}>{item.displayName}</color>  •  Open with B / I";
+            lootToast.text = $"LOOT SECURED  <color={color}>{item.displayName}</color>";
             lootToastStartedAt = Time.unscaledTime;
             lootToast.gameObject.SetActive(true);
         }

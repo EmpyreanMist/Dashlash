@@ -56,6 +56,8 @@ namespace Phasebreak.Gameplay
         public bool MoveForwardRequested => IsLeftMouseHeld && IsRightMouseHeld;
         public bool LeftClickReleasedThisFrame { get; private set; }
         public Vector2 LeftClickPosition { get; private set; }
+        public bool RightClickStartedThisFrame { get; private set; }
+        public Vector2 RightClickPosition { get; private set; }
         public Vector3 PlanarForward => Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
         public Vector3 PlanarRight => Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
 
@@ -94,6 +96,17 @@ namespace Phasebreak.Gameplay
         private void Update()
         {
             LeftClickReleasedThisFrame = false;
+            RightClickStartedThisFrame = false;
+            if (rightMouseAction.WasPressedThisFrame())
+            {
+                RightClickStartedThisFrame = true;
+                RightClickPosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+            }
+            if (PhasebreakInventoryHud.IsMajorMenuOpen)
+            {
+                SetPointerCaptured(false);
+                return;
+            }
             Vector2 lookDelta = lookAction.ReadValue<Vector2>();
 
             if (leftMouseAction.WasPressedThisFrame())

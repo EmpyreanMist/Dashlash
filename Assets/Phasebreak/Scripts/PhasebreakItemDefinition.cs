@@ -54,6 +54,8 @@ namespace Phasebreak.Gameplay
         public string id;
         public string displayName;
         [TextArea] public string description;
+        [Tooltip("Optional item artwork. UI uses a generated slot glyph when empty.")]
+        public Sprite icon;
         public EquipmentSlot slot;
         public ItemRarity rarity;
         [Min(1)] public int itemLevel = 1;

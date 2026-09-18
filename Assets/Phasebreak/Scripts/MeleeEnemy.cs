@@ -15,7 +15,6 @@ namespace Phasebreak.Gameplay
         [Header("Vitals")]
         [SerializeField, Min(1)] private int maxHealth = 30;
         [SerializeField, Min(0f)] private float staggerDuration = 0.18f;
-        [SerializeField, Min(0f)] private float respawnDelay = 3.5f;
         [SerializeField, Min(0)] private int experienceReward = 12;
         [SerializeField] private bool respawnEnabled = true;
 
@@ -150,6 +149,7 @@ namespace Phasebreak.Gameplay
 
         public void ResetEnemy()
         {
+            GetComponent<CorpseLootContainer>()?.ClearForReset();
             if (reactionRoutine != null)
             {
                 StopCoroutine(reactionRoutine);
@@ -272,8 +272,12 @@ namespace Phasebreak.Gameplay
             {
                 defeatRewardGranted = true;
                 CombatEvents.RaiseEnemyDefeated(experienceReward, gameObject.name, transform.position);
+                PlayerBuildSystem build = FindAnyObjectByType<PlayerBuildSystem>();
+                CorpseLootContainer corpse = GetComponent<CorpseLootContainer>() ?? gameObject.AddComponent<CorpseLootContainer>();
+                corpse.Initialize(this, build != null ? build.GenerateCorpseLoot() : null);
             }
             knockbackVelocity = Vector3.zero;
+            controller.enabled = false;
             if (reactionRoutine != null)
                 StopCoroutine(reactionRoutine);
             reactionRoutine = StartCoroutine(DeathReaction(hitDirection));
@@ -301,21 +305,12 @@ namespace Phasebreak.Gameplay
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
                 transform.rotation = Quaternion.Slerp(startRotation, endRotation, t);
-                transform.localScale = Vector3.Lerp(startScale, startScale * 0.15f, t * t);
+                transform.localScale = Vector3.Lerp(startScale, startScale * 0.72f, t * t);
                 yield return null;
             }
 
-            controller.enabled = false;
-            foreach (Renderer item in renderers)
-                item.enabled = false;
-            if (!respawnEnabled)
-            {
-                reactionRoutine = null;
-                yield break;
-            }
-            yield return new WaitForSecondsRealtime(respawnDelay);
+            ClearColor();
             reactionRoutine = null;
-            ResetEnemy();
         }
 
         private void SetColor(Color color)

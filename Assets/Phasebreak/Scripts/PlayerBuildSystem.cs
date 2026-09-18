@@ -45,8 +45,6 @@ namespace Phasebreak.Gameplay
             foreach (PhasebreakItemDefinition item in itemCatalog) if (item != null && !string.IsNullOrWhiteSpace(item.id)) byId[item.id] = item;
             LoadOrSeed(); Recalculate();
         }
-        private void OnEnable() => CombatEvents.EnemyDefeatedDetailed += OnDefeated;
-        private void OnDisable() => CombatEvents.EnemyDefeatedDetailed -= OnDefeated;
         public PhasebreakItemDefinition GetEquipped(EquipmentSlot slot) => equipped.GetValueOrDefault(slot);
 
         public bool Equip(PhasebreakItemDefinition item)
@@ -71,6 +69,21 @@ namespace Phasebreak.Gameplay
             if (!byId.TryGetValue(id, out PhasebreakItemDefinition item)) return false;
             inventory.Add(item); Save(); LootAcquired?.Invoke(item); BuildChanged?.Invoke(); return true;
         }
+        public bool AddToInventory(PhasebreakItemDefinition item)
+        {
+            if (item == null || !byId.ContainsKey(item.id)) return false;
+            inventory.Add(item); Save(); LootAcquired?.Invoke(item); BuildChanged?.Invoke(); return true;
+        }
+        public List<PhasebreakItemDefinition> GenerateCorpseLoot()
+        {
+            List<PhasebreakItemDefinition> drops = new(); enemiesDefeated++;
+            if (itemCatalog == null || itemCatalog.Length == 0 ||
+                (enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return drops;
+            drops.Add(itemCatalog[(enemiesDefeated - 1) % itemCatalog.Length]);
+            if (enemiesDefeated % 5 == 0 && itemCatalog.Length > 1)
+                drops.Add(itemCatalog[enemiesDefeated % itemCatalog.Length]);
+            return drops;
+        }
         public int GetTagCount(ItemTag tag) => equipped.Values.Count(i => i != null && (i.tags & tag) != 0);
         public string GetBuildSummary()
         {
@@ -81,13 +94,6 @@ namespace Phasebreak.Gameplay
             float passiveCrit = progression != null ? progression.CriticalChanceBonus : 0f;
             string passive = progression != null && progression.HasKeenEdge ? progression.PassiveName : "Locked";
             return $"LEVEL  {(progression != null ? progression.Level : 1)}   PASSIVE  {passive}\nSPECIALIZATION  {spec}\n\nFINAL POWER  x{levelPower * PowerMultiplier:0.00}\nFINAL BONUS HEALTH  +{levelHealth + BonusHealth}\nDEFENSE  {Defense:P0}\nCRIT  +{passiveCrit + CriticalChanceBonus:P0}\nCRIT DAMAGE  +{CriticalDamageBonus:P0}\nATTACK SPEED  +{AttackSpeedMultiplier - 1f:P0}\nMOBILITY  +{MovementSpeedMultiplier - 1f:P0}\nBOSS DAMAGE  +{BossDamageMultiplier - 1f:P0}\n\nACTIVE SETS\n{(sets.Length == 0 ? "None" : sets)}";
-        }
-        private void OnDefeated(EnemyDefeatedEvent e)
-        {
-            enemiesDefeated++;
-            if (itemCatalog.Length == 0 || (enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return;
-            PhasebreakItemDefinition item = itemCatalog[(enemiesDefeated - 1) % itemCatalog.Length];
-            inventory.Add(item); Save(); LootAcquired?.Invoke(item); BuildChanged?.Invoke();
         }
         private EquipmentSlot ResolveSlot(PhasebreakItemDefinition item)
         {
