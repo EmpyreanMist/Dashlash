@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0e7b0b302cee744e9e8d079d68049b4, type: 3}
+  m_Name: phase-lunge
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
+  id: phase-lunge
+  displayName: Phase Lunge
+  key: 3
+  damage: 6
+  range: 7
+  cooldown: 8
+  resourceCost: 20
+  criticalBonus: 0.05
+  impulse: 8.5
+  windup: 0.08

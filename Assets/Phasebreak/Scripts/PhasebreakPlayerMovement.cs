@@ -10,12 +10,14 @@ namespace Phasebreak.Gameplay
     {
         [Header("References")]
         [SerializeField] private Transform cameraTransform;
+        [SerializeField] private PhasebreakFollowCamera followCamera;
 
         [Header("Movement")]
         [SerializeField, Min(0f)] private float moveSpeed = 8f;
         [SerializeField, Min(0.01f)] private float acceleration = 42f;
         [SerializeField, Min(0.01f)] private float deceleration = 52f;
         [SerializeField, Min(0.01f)] private float rotationSmoothTime = 0.065f;
+        [SerializeField, Min(1f)] private float keyboardTurnSpeed = 180f;
         [SerializeField] private float gravity = -28f;
 
         [Header("Jump")]
@@ -35,7 +37,9 @@ namespace Phasebreak.Gameplay
         [SerializeField] private bool levelAirDash = true;
 
         private CharacterController controller;
+        private PlayerBuildSystem build;
         private InputAction moveAction;
+        private InputAction strafeAction;
         private InputAction dashAction;
         private InputAction jumpAction;
         private Vector3 planarVelocity;
@@ -115,8 +119,11 @@ namespace Phasebreak.Gameplay
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
+            build = GetComponent<PlayerBuildSystem>();
             if (cameraTransform == null && Camera.main != null)
                 cameraTransform = Camera.main.transform;
+            if (followCamera == null && cameraTransform != null)
+                followCamera = cameraTransform.GetComponent<PhasebreakFollowCamera>();
 
             moveAction = new InputAction("Move", InputActionType.Value);
             moveAction.AddCompositeBinding("2DVector")
@@ -124,6 +131,11 @@ namespace Phasebreak.Gameplay
                 .With("Down", "<Keyboard>/s")
                 .With("Left", "<Keyboard>/a")
                 .With("Right", "<Keyboard>/d");
+
+            strafeAction = new InputAction("Strafe", InputActionType.Value);
+            strafeAction.AddCompositeBinding("1DAxis")
+                .With("Negative", "<Keyboard>/q")
+                .With("Positive", "<Keyboard>/e");
 
             dashAction = new InputAction("Dash", InputActionType.Button, "<Keyboard>/leftShift");
             jumpAction = new InputAction("Jump", InputActionType.Button, "<Keyboard>/space");
@@ -133,6 +145,7 @@ namespace Phasebreak.Gameplay
         private void OnEnable()
         {
             moveAction.Enable();
+            strafeAction.Enable();
             dashAction.Enable();
             jumpAction.Enable();
         }
@@ -140,6 +153,7 @@ namespace Phasebreak.Gameplay
         private void OnDisable()
         {
             moveAction.Disable();
+            strafeAction.Disable();
             dashAction.Disable();
             jumpAction.Disable();
         }
@@ -147,6 +161,7 @@ namespace Phasebreak.Gameplay
         private void OnDestroy()
         {
             moveAction.Dispose();
+            strafeAction.Dispose();
             dashAction.Dispose();
             jumpAction.Dispose();
         }
@@ -154,7 +169,13 @@ namespace Phasebreak.Gameplay
         private void Update()
         {
             Vector2 input = Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
-            desiredMoveDirection = GetCameraRelativeDirection(input);
+            float strafeInput = strafeAction.ReadValue<float>();
+            bool mouseSteering = followCamera != null && followCamera.IsRightMouseHeld;
+            if (!mouseSteering && Mathf.Abs(input.x) > 0.001f)
+                transform.Rotate(0f, input.x * keyboardTurnSpeed * Time.deltaTime, 0f);
+
+            desiredMoveDirection = GetMovementDirection(input, strafeInput, mouseSteering);
+            float inputMagnitude = GetMovementMagnitude(input, strafeInput, mouseSteering);
             bool grounded = controller.isGrounded;
 
             if (grounded)
@@ -179,25 +200,42 @@ namespace Phasebreak.Gameplay
             if (isDashing)
                 UpdateDash();
             else
-                UpdateMovement(input.magnitude, grounded);
+                UpdateMovement(inputMagnitude, grounded);
 
-            UpdateRotation();
+            UpdateRotation(mouseSteering);
         }
 
-        private Vector3 GetCameraRelativeDirection(Vector2 input)
+        private Vector3 GetMovementDirection(Vector2 input, float strafeInput, bool mouseSteering)
         {
-            Vector3 forward = cameraTransform != null ? cameraTransform.forward : Vector3.forward;
-            Vector3 right = cameraTransform != null ? cameraTransform.right : Vector3.right;
-            forward.y = 0f;
-            right.y = 0f;
-            forward.Normalize();
-            right.Normalize();
-            return Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
+            float forwardInput = input.y;
+            float lateralInput = strafeInput;
+            if (mouseSteering)
+            {
+                lateralInput = Mathf.Clamp(input.x + strafeInput, -1f, 1f);
+                if (followCamera.MoveForwardRequested)
+                    forwardInput = Mathf.Max(1f, forwardInput);
+
+                return Vector3.ClampMagnitude(
+                    followCamera.PlanarForward * forwardInput + followCamera.PlanarRight * lateralInput, 1f);
+            }
+
+            return Vector3.ClampMagnitude(
+                transform.forward * forwardInput + transform.right * lateralInput, 1f);
+        }
+
+        private float GetMovementMagnitude(Vector2 input, float strafeInput, bool mouseSteering)
+        {
+            float forwardInput = input.y;
+            float lateralInput = mouseSteering ? Mathf.Clamp(input.x + strafeInput, -1f, 1f) : strafeInput;
+            if (mouseSteering && followCamera.MoveForwardRequested)
+                forwardInput = Mathf.Max(1f, forwardInput);
+            return Mathf.Clamp01(new Vector2(lateralInput, forwardInput).magnitude);
         }
 
         private void UpdateMovement(float inputMagnitude, bool grounded)
         {
-            Vector3 targetVelocity = desiredMoveDirection * (moveSpeed * inputMagnitude);
+            float buildSpeed = build != null ? build.MovementSpeedMultiplier : 1f;
+            Vector3 targetVelocity = desiredMoveDirection * (moveSpeed * buildSpeed * inputMagnitude);
             float rate = targetVelocity.sqrMagnitude > planarVelocity.sqrMagnitude ? acceleration : deceleration;
             if (!grounded)
                 rate *= airControl;
@@ -274,9 +312,13 @@ namespace Phasebreak.Gameplay
             verticalVelocity += gravity * multiplier * Time.deltaTime;
         }
 
-        private void UpdateRotation()
+        private void UpdateRotation(bool mouseSteering)
         {
-            Vector3 facing = isDashing ? dashDirection : desiredMoveDirection;
+            Vector3 facing = isDashing
+                ? dashDirection
+                : mouseSteering && followCamera != null
+                    ? followCamera.PlanarForward
+                    : Vector3.zero;
             if (facing.sqrMagnitude < 0.001f)
                 return;
 

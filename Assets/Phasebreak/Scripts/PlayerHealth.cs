@@ -17,14 +17,17 @@ namespace Phasebreak.Gameplay
         [SerializeField, Min(0f)] private float cameraImpulse = 0.24f;
 
         private PhasebreakPlayerMovement movement;
+        private PlayerBuildSystem build;
         private PhasebreakFollowCamera followCamera;
         private Renderer[] renderers;
         private MaterialPropertyBlock propertyBlock;
         private float invulnerableUntil;
         private Coroutine flashRoutine;
+        private int progressionBonusHealth;
+        private int equipmentBonusHealth;
 
         public int CurrentHealth { get; private set; }
-        public int MaxHealth => maxHealth;
+        public int MaxHealth => maxHealth + progressionBonusHealth + equipmentBonusHealth;
         public bool IsAlive => CurrentHealth > 0;
         public bool IsInvulnerable => Time.time < invulnerableUntil;
         public int HitCount { get; private set; }
@@ -33,10 +36,11 @@ namespace Phasebreak.Gameplay
         private void Awake()
         {
             movement = GetComponent<PhasebreakPlayerMovement>();
+            build = GetComponent<PlayerBuildSystem>();
             followCamera = FindAnyObjectByType<PhasebreakFollowCamera>();
             renderers = GetComponentsInChildren<Renderer>(true);
             propertyBlock = new MaterialPropertyBlock();
-            CurrentHealth = maxHealth;
+            CurrentHealth = MaxHealth;
         }
 
         public bool TakeHit(int damage, Vector3 direction, float knockback)
@@ -45,7 +49,8 @@ namespace Phasebreak.Gameplay
                 return false;
 
             HitCount++;
-            CurrentHealth = Mathf.Max(0, CurrentHealth - Mathf.Max(1, damage));
+            int mitigated = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - (build != null ? Mathf.Clamp(build.Defense, 0f, .75f) : 0f))));
+            CurrentHealth = Mathf.Max(0, CurrentHealth - mitigated);
             invulnerableUntil = Time.time + invulnerabilityDuration;
             movement.AddCombatImpulse(direction.normalized * knockback);
             followCamera?.AddImpulse(cameraImpulse);
@@ -61,7 +66,7 @@ namespace Phasebreak.Gameplay
 
         public void ResetHealth()
         {
-            CurrentHealth = maxHealth;
+            CurrentHealth = MaxHealth;
             invulnerableUntil = Time.time + 0.2f;
             if (flashRoutine != null)
             {
@@ -69,6 +74,22 @@ namespace Phasebreak.Gameplay
                 flashRoutine = null;
             }
             ClearColor();
+        }
+
+        public void ApplyProgressionBonus(int bonusHealth)
+        {
+            int previousMaximum = MaxHealth;
+            progressionBonusHealth = Mathf.Max(0, bonusHealth);
+            int gainedHealth = Mathf.Max(0, MaxHealth - previousMaximum);
+            CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + gainedHealth);
+        }
+
+        public void ApplyEquipmentBonus(int bonusHealth)
+        {
+            int previousMaximum = MaxHealth;
+            equipmentBonusHealth = Mathf.Max(0, bonusHealth);
+            int gainedHealth = Mathf.Max(0, MaxHealth - previousMaximum);
+            CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + gainedHealth);
         }
 
         private IEnumerator Flash()

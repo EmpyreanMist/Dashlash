@@ -1,102 +1,106 @@
+using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Phasebreak.Gameplay
 {
+    public readonly struct AbilityState
+    {
+        public readonly string Name;
+        public readonly string Key;
+        public readonly float CooldownRemaining;
+        public readonly float CooldownDuration;
+        public readonly float ResourceCost;
+        public readonly bool IsUsable;
+
+        public AbilityState(string name, string key, float cooldownRemaining, float cooldownDuration,
+            float resourceCost, bool isUsable)
+        {
+            Name = name;
+            Key = key;
+            CooldownRemaining = cooldownRemaining;
+            CooldownDuration = cooldownDuration;
+            ResourceCost = resourceCost;
+            IsUsable = isUsable;
+        }
+    }
+
+    [DisallowMultipleComponent]
     public sealed class PlayerCombat : MonoBehaviour
     {
-        private enum AttackPhase { Ready, Windup, Active, Recovery }
+        private const int AbilityCountValue = 3;
 
         [Header("References")]
         [SerializeField] private PhasebreakPlayerMovement movement;
         [SerializeField] private PhasebreakFollowCamera followCamera;
+        [SerializeField] private PlayerTargeting targeting;
+        [SerializeField] private PlayerProgression progression;
+        [SerializeField] private PlayerBuildSystem build;
         [SerializeField] private Transform slashVisual;
+        [SerializeField] private CombatAbilityDefinition[] abilityDefinitions;
 
-        [Header("Combo Timing")]
-        [SerializeField, Min(0f)] private float firstWindup = 0.045f;
-        [SerializeField, Min(0f)] private float secondWindup = 0.04f;
-        [SerializeField, Min(0f)] private float finisherWindup = 0.065f;
-        [SerializeField, Min(0.01f)] private float activeDuration = 0.075f;
-        [SerializeField, Min(0f)] private float firstRecovery = 0.105f;
-        [SerializeField, Min(0f)] private float secondRecovery = 0.115f;
-        [SerializeField, Min(0f)] private float finisherRecovery = 0.2f;
-        [SerializeField, Min(0f)] private float inputBufferDuration = 0.22f;
-        [SerializeField, Min(0f)] private float comboGraceDuration = 0.75f;
+        [Header("Combat Stats")]
+        [SerializeField, Range(0f, 1f)] private float criticalChance = 0.2f;
+        [SerializeField, Min(1f)] private float criticalDamageMultiplier = 2f;
+        [SerializeField, Min(0.1f)] private float globalCooldown = 0.8f;
+        [SerializeField, Min(1f)] private float maximumResource = 100f;
+        [SerializeField, Min(0f)] private float resourceRegeneration = 14f;
 
-        [Header("Aerial Attack")]
-        [SerializeField, Min(0f)] private float aerialWindup = 0.035f;
-        [SerializeField, Min(0.01f)] private float aerialActiveDuration = 0.1f;
-        [SerializeField, Min(0f)] private float aerialRecovery = 0.11f;
-        [SerializeField, Min(1f)] private float aerialPowerMultiplier = 1.25f;
+        [Header("1 - Strike")]
+        [SerializeField, Min(1f)] private float strikeDamage = 5f;
+        [SerializeField, Min(0.1f)] private float strikeRange = 2.4f;
+        [SerializeField, Min(0f)] private float strikeCooldown;
+        [SerializeField, Min(0f)] private float strikeCost;
 
-        [Header("Hit Shape")]
-        [SerializeField, Min(0.1f)] private float attackRange = 1.4f;
-        [SerializeField, Min(0.1f)] private float hitRadius = 1.2f;
-        [SerializeField, Range(10f, 180f)] private float attackArc = 130f;
-        [SerializeField] private LayerMask targetLayers = ~0;
+        [Header("2 - Crushing Blow")]
+        [SerializeField, Min(1f)] private float crushingDamage = 10f;
+        [SerializeField, Min(0.1f)] private float crushingRange = 2.65f;
+        [SerializeField, Min(0f)] private float crushingCooldown = 5f;
+        [SerializeField, Min(0f)] private float crushingCost = 30f;
+        [SerializeField, Range(0f, 1f)] private float crushingCriticalBonus = 0.1f;
 
-        [Header("Attack Motion")]
-        [SerializeField, Min(0f)] private float firstLunge = 3.2f;
-        [SerializeField, Min(0f)] private float secondLunge = 4f;
-        [SerializeField, Min(0f)] private float finisherLunge = 6.2f;
-        [SerializeField, Min(0f)] private float aerialLunge = 2.5f;
-
-        [Header("Soft Targeting")]
-        [SerializeField, Min(0f)] private float targetingRadius = 5.5f;
-        [SerializeField, Range(10f, 180f)] private float targetingArc = 100f;
-        [SerializeField, Range(0f, 90f)] private float attackSteeringDegrees = 28f;
+        [Header("3 - Phase Lunge")]
+        [SerializeField, Min(1f)] private float lungeDamage = 6f;
+        [SerializeField, Min(0.1f)] private float lungeRange = 7f;
+        [SerializeField, Min(0f)] private float lungeCooldown = 8f;
+        [SerializeField, Min(0f)] private float lungeCost = 20f;
+        [SerializeField, Min(0f)] private float lungeImpulse = 8.5f;
+        [SerializeField, Range(0f, 1f)] private float lungeCriticalBonus = 0.05f;
 
         [Header("Impact")]
-        [SerializeField, Min(0f)] private float attackPower = 1f;
-        [SerializeField, Min(0f)] private float knockback = 1.05f;
-        [SerializeField, Min(1f)] private float secondHitMultiplier = 1.15f;
-        [SerializeField, Min(1f)] private float finisherMultiplier = 1.85f;
-        [SerializeField, Min(1f)] private float dashAttackMultiplier = 1.35f;
-        [SerializeField, Range(0f, 0.15f)] private float hitStopDuration = 0.04f;
-        [SerializeField, Range(0f, 1f)] private float cameraImpulse = 0.16f;
+        [SerializeField, Min(0f)] private float knockback = 0.75f;
+        [SerializeField, Range(0f, 0.15f)] private float normalHitStop = 0.035f;
+        [SerializeField, Range(0f, 0.2f)] private float criticalHitStop = 0.075f;
+        [SerializeField, Range(0f, 1f)] private float normalCameraImpulse = 0.12f;
+        [SerializeField, Range(0f, 1f)] private float criticalCameraImpulse = 0.3f;
+        [SerializeField] private LayerMask lineOfSightLayers = ~0;
 
-        private readonly Collider[] hitBuffer = new Collider[24];
-        private readonly Collider[] targetingBuffer = new Collider[32];
-        private readonly HashSet<ICombatTarget> hitTargets = new HashSet<ICombatTarget>();
-        private InputAction attackAction;
-        private AttackPhase phase;
-        private float phaseRemaining;
-        private float phaseDuration;
-        private float bufferedUntil = float.NegativeInfinity;
-        private float comboExpiresAt = float.NegativeInfinity;
-        private int comboStep;
-        private int currentAttackStep;
-        private bool currentAttackIsAerial;
-        private bool aerialBridgeUsed;
-        private bool attackStartedFromDash;
-        private bool hitboxFired;
+        [Header("Soft Auto Target")]
+        [SerializeField, Range(10f, 180f)] private float autoTargetCone = 110f;
+
+        private readonly float[] readyAt = new float[AbilityCountValue];
+        private readonly InputAction[] abilityActions = new InputAction[AbilityCountValue];
+        private float globalReadyAt;
+        private float bonusLungeReadyAt;
+        private float currentResource;
+        private Coroutine attackRoutine;
         private Coroutine hitStopRoutine;
-        private Transform softTarget;
 
-        public bool IsAttacking => phase != AttackPhase.Ready;
-        public bool IsAerialAttack => IsAttacking && currentAttackIsAerial;
-        public int ComboStep => comboStep;
-        public Transform SoftTarget => softTarget;
+        public int AbilityCount => AbilityCountValue;
+        public bool IsAttacking => attackRoutine != null;
+        public float CurrentResource => currentResource;
+        public float MaximumResource => maximumResource;
+        public float ResourceFraction => maximumResource <= 0f ? 0f : currentResource / maximumResource;
+        public float CriticalChance => Mathf.Clamp01(criticalChance +
+            (progression != null ? progression.CriticalChanceBonus : 0f) +
+            (build != null ? build.CriticalChanceBonus : 0f));
+        public float CriticalDamageMultiplier => criticalDamageMultiplier +
+            (progression != null ? progression.CriticalDamageBonus : 0f) +
+            (build != null ? build.CriticalDamageBonus : 0f);
 
-        public void QueueAttack() => bufferedUntil = Time.time + inputBufferDuration;
-
-        public void ResetCombat()
-        {
-            phase = AttackPhase.Ready;
-            bufferedUntil = float.NegativeInfinity;
-            comboExpiresAt = float.NegativeInfinity;
-            comboStep = 0;
-            currentAttackStep = 0;
-            currentAttackIsAerial = false;
-            aerialBridgeUsed = false;
-            softTarget = null;
-            hitTargets.Clear();
-            SetSlashVisible(false);
-        }
-
-        public void Configure(PhasebreakPlayerMovement playerMovement, PhasebreakFollowCamera camera, Transform visual)
+        public void Configure(PhasebreakPlayerMovement playerMovement, PhasebreakFollowCamera camera,
+            Transform visual)
         {
             movement = playerMovement;
             followCamera = camera;
@@ -106,286 +110,240 @@ namespace Phasebreak.Gameplay
 
         private void Awake()
         {
-            movement ??= GetComponent<PhasebreakPlayerMovement>();
-            followCamera ??= FindAnyObjectByType<PhasebreakFollowCamera>();
-            attackAction = new InputAction("Slash", InputActionType.Button, "<Mouse>/leftButton");
+            if (movement == null)
+                movement = GetComponent<PhasebreakPlayerMovement>();
+            if (followCamera == null)
+                followCamera = FindAnyObjectByType<PhasebreakFollowCamera>();
+            if (targeting == null)
+                targeting = GetComponent<PlayerTargeting>();
+            if (progression == null)
+                progression = GetComponent<PlayerProgression>();
+            if (build == null)
+                build = GetComponent<PlayerBuildSystem>() ?? gameObject.AddComponent<PlayerBuildSystem>();
+
+            CreateInputActions();
+            currentResource = maximumResource;
+            SetSlashVisible(false);
         }
 
         private void OnEnable()
         {
-            attackAction.Enable();
-            if (movement != null)
-                movement.DashStarted += HandleDashStarted;
+            if (abilityActions[0] == null)
+                CreateInputActions();
+            foreach (InputAction action in abilityActions)
+                action.Enable();
         }
 
         private void OnDisable()
         {
-            attackAction.Disable();
-            if (movement != null)
-                movement.DashStarted -= HandleDashStarted;
+            foreach (InputAction action in abilityActions)
+                action?.Disable();
+            StopCombatRoutines();
+        }
+
+        private void OnDestroy()
+        {
+            foreach (InputAction action in abilityActions)
+                action?.Dispose();
+        }
+
+        private void CreateInputActions()
+        {
+            for (int i = 0; i < abilityActions.Length; i++) abilityActions[i]?.Dispose();
+            abilityActions[0] = new InputAction("Strike", InputActionType.Button, "<Keyboard>/1");
+            abilityActions[1] = new InputAction("Crushing Blow", InputActionType.Button, "<Keyboard>/2");
+            abilityActions[2] = new InputAction("Phase Lunge", InputActionType.Button, "<Keyboard>/3");
+        }
+
+        private void Update()
+        {
+            currentResource = Mathf.MoveTowards(currentResource, maximumResource,
+                resourceRegeneration * Time.deltaTime);
+
+            for (int i = 0; i < abilityActions.Length; i++)
+            {
+                if (abilityActions[i].WasPressedThisFrame())
+                    TryUseAbility(i);
+            }
+        }
+
+        public AbilityState GetAbilityState(int index)
+        {
+            if (index < 0 || index >= AbilityCountValue)
+                return default;
+
+            float abilityRemaining = Mathf.Max(0f, readyAt[index] - Time.time);
+            if (index == 2 && build != null && build.PhaseLungeExtraCharges > 0)
+                abilityRemaining = Mathf.Min(abilityRemaining, Mathf.Max(0f, bonusLungeReadyAt - Time.time));
+            float globalRemaining = Mathf.Max(0f, globalReadyAt - Time.time);
+            bool globalIsLonger = globalRemaining > abilityRemaining;
+            float cooldownDuration = globalIsLonger ? globalCooldown : GetCooldown(index);
+            float cooldownRemaining = globalIsLonger ? globalRemaining : abilityRemaining;
+            return new AbilityState(GetAbilityName(index), (index + 1).ToString(), cooldownRemaining,
+                cooldownDuration, GetCost(index), CanUseAbility(index));
+        }
+
+        public bool TryUseAbility(int index)
+        {
+            if (!CanBeginAbility(index))
+                return false;
+
+            Targetable target = targeting.CurrentTarget;
+            if (target == null || !target.IsHostile || !target.IsAlive ||
+                !IsTargetValid(target, GetRange(index)))
+            {
+                target = targeting.TrySelectNearestInFront(GetRange(index), autoTargetCone);
+            }
+            if (target == null || !IsTargetValid(target, GetRange(index)))
+                return false;
+
+            float damage = GetDamage(index) * (progression != null ? progression.PowerMultiplier : 1f) *
+                           (build != null ? build.PowerMultiplier : 1f);
+            if (build != null && target.GetComponent<RiftWardenBoss>() != null)
+                damage *= build.BossDamageMultiplier;
+            float critChance = Mathf.Clamp01(CriticalChance + GetCriticalBonus(index));
+            bool critical = UnityEngine.Random.value < critChance;
+            if (critical)
+                damage *= CriticalDamageMultiplier;
+
+            currentResource = Mathf.Max(0f, currentResource - GetCost(index));
+            float cooldown = GetCooldown(index);
+            if (index == 2 && build != null && build.PhaseLungeExtraCharges > 0 && Time.time < readyAt[index])
+                bonusLungeReadyAt = Time.time + cooldown;
+            else
+                readyAt[index] = Time.time + cooldown;
+            globalReadyAt = Time.time + globalCooldown / (build != null ? build.AttackSpeedMultiplier : 1f);
+            attackRoutine = StartCoroutine(PerformAbility(index, target, damage, critical));
+            return true;
+        }
+
+        public void ResetCombat()
+        {
+            StopCombatRoutines();
+            Array.Clear(readyAt, 0, readyAt.Length);
+            bonusLungeReadyAt = 0f;
+            globalReadyAt = 0f;
+            currentResource = maximumResource;
+        }
+
+        private bool CanUseAbility(int index)
+        {
+            if (!CanBeginAbility(index))
+                return false;
+
+            Targetable target = targeting.CurrentTarget;
+            return target != null && target.IsHostile && target.IsAlive &&
+                   IsTargetValid(target, GetRange(index));
+        }
+
+        private bool CanBeginAbility(int index) =>
+            index >= 0 && index < AbilityCountValue && !IsAttacking && Time.time >= globalReadyAt &&
+            (Time.time >= readyAt[index] || (index == 2 && build != null && build.PhaseLungeExtraCharges > 0 && Time.time >= bonusLungeReadyAt)) &&
+            currentResource >= GetCost(index) && targeting != null;
+
+        private bool IsTargetValid(Targetable target, float range)
+        {
+            Vector3 origin = transform.position + Vector3.up * 1.1f;
+            Vector3 destination = target.NameplateWorldPosition - Vector3.up * 0.65f;
+            Vector3 direction = destination - origin;
+            float distance = direction.magnitude;
+            if (distance > range || distance < 0.01f)
+                return false;
+
+            RaycastHit[] hits = Physics.RaycastAll(origin, direction / distance, distance + 0.2f,
+                lineOfSightLayers, QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider.transform.IsChildOf(transform))
+                    continue;
+                return hit.collider.GetComponentInParent<Targetable>() == target;
+            }
+            return true;
+        }
+
+        private IEnumerator PerformAbility(int index, Targetable target, float damage, bool critical)
+        {
+            Vector3 toTarget = target.transform.position - transform.position;
+            toTarget.y = 0f;
+            if (toTarget.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+
+            movement?.CancelDashForAttack();
+            float windup = (Ability(index) != null ? Ability(index).windup : index switch { 1 => 0.18f, 2 => 0.08f, _ => 0.1f }) /
+                           (build != null ? build.AttackSpeedMultiplier : 1f);
+            if (index == 2 && toTarget.sqrMagnitude > 0.01f)
+                movement?.AddCombatImpulse(toTarget.normalized * (Ability(index) != null ? Ability(index).impulse : lungeImpulse));
+            else
+                movement?.AddCombatImpulse(transform.forward * (Ability(index) != null ? Ability(index).impulse : index == 1 ? 2.8f : 1.7f));
+
+            yield return new WaitForSeconds(windup);
+            SetSlashVisible(true);
+            if (slashVisual != null)
+                slashVisual.localScale = Vector3.one * (critical ? 1.55f : index == 1 ? 1.3f : 1f);
+
+            if (target != null && target.IsAlive &&
+                Vector3.Distance(transform.position, target.transform.position) <= GetRange(index) + 1f)
+            {
+                ICombatTarget combatTarget = target.GetComponent<ICombatTarget>();
+                if (combatTarget != null)
+                {
+                    Vector3 direction = target.transform.position - transform.position;
+                    direction.y = 0f;
+                    if (direction.sqrMagnitude < 0.01f)
+                        direction = transform.forward;
+                    direction.Normalize();
+                    Vector3 hitPoint = target.transform.position + Vector3.up * 1.15f;
+                    combatTarget.ReceiveHit(new CombatHit(hitPoint, direction, damage,
+                        knockback * (index == 1 ? 1.5f : 1f), index == 2, critical,
+                        GetAbilityName(index)));
+
+                    if (critical && build != null && build.CritEnergyRestore > 0f)
+                        currentResource = Mathf.Min(maximumResource, currentResource + build.CritEnergyRestore);
+                    if (index == 1 && build != null && build.CrushingBlowCleave)
+                        PerformCleave(target, damage * .6f, critical);
+                    if (index == 2 && !target.IsAlive && build != null && build.TeleportKillRecovery > 0f)
+                    {
+                        currentResource = Mathf.Min(maximumResource, currentResource + build.TeleportKillRecovery);
+                        readyAt[2] = bonusLungeReadyAt = Time.time;
+                    }
+
+                    followCamera?.AddImpulse(critical ? criticalCameraImpulse : normalCameraImpulse);
+                    float hitStop = critical ? criticalHitStop : normalHitStop;
+                    if (hitStop > 0f)
+                        hitStopRoutine = StartCoroutine(HitStop(hitStop));
+                }
+            }
+
+            yield return new WaitForSeconds(0.12f);
             SetSlashVisible(false);
+            yield return new WaitForSeconds(index == 1 ? 0.2f : 0.1f);
+            attackRoutine = null;
+        }
+
+        private IEnumerator HitStop(float duration)
+        {
+            float previousScale = Time.timeScale;
+            Time.timeScale = 0f;
+            yield return new WaitForSecondsRealtime(duration);
+            Time.timeScale = previousScale;
+            hitStopRoutine = null;
+        }
+
+        private void StopCombatRoutines()
+        {
+            if (attackRoutine != null)
+            {
+                StopCoroutine(attackRoutine);
+                attackRoutine = null;
+            }
             if (hitStopRoutine != null)
             {
                 StopCoroutine(hitStopRoutine);
                 hitStopRoutine = null;
                 Time.timeScale = 1f;
             }
-        }
-
-        private void OnDestroy() => attackAction.Dispose();
-
-        private void Update()
-        {
-            if (attackAction.WasPressedThisFrame())
-                QueueAttack();
-
-            if (movement != null && movement.IsGrounded)
-                aerialBridgeUsed = false;
-
-            if (phase == AttackPhase.Ready)
-            {
-                if (comboStep > 0 && Time.time > comboExpiresAt)
-                    comboStep = 0;
-                if (Time.time <= bufferedUntil)
-                    BeginBufferedAttack();
-                return;
-            }
-
-            AnimateSlash();
-            phaseRemaining -= Time.deltaTime;
-            if (phaseRemaining > 0f)
-                return;
-
-            switch (phase)
-            {
-                case AttackPhase.Windup:
-                    phase = AttackPhase.Active;
-                    phaseDuration = currentAttackIsAerial ? aerialActiveDuration : activeDuration;
-                    phaseRemaining = phaseDuration;
-                    SetSlashVisible(true);
-                    FireHitbox();
-                    break;
-                case AttackPhase.Active:
-                    phase = AttackPhase.Recovery;
-                    phaseDuration = GetRecoveryDuration();
-                    phaseRemaining = phaseDuration;
-                    SetSlashVisible(false);
-                    break;
-                case AttackPhase.Recovery:
-                    FinishAttack();
-                    break;
-            }
-        }
-
-        private void BeginBufferedAttack()
-        {
-            bool airborne = movement != null && !movement.IsGrounded;
-            if (airborne && !aerialBridgeUsed)
-            {
-                aerialBridgeUsed = true;
-                BeginAttack(0, true);
-                return;
-            }
-
-            int nextStep = comboStep + 1;
-            if (nextStep > 3)
-                nextStep = 1;
-            BeginAttack(nextStep, false);
-        }
-
-        private void BeginAttack(int step, bool aerial)
-        {
-            bufferedUntil = float.NegativeInfinity;
-            currentAttackStep = step;
-            currentAttackIsAerial = aerial;
-            attackStartedFromDash = movement != null && movement.IsDashing;
-            movement?.CancelDashForAttack();
-
-            if (!aerial)
-            {
-                comboStep = step;
-                comboExpiresAt = Time.time + comboGraceDuration;
-            }
-
-            ApplyAttackSteering();
-
-            phase = AttackPhase.Windup;
-            phaseDuration = GetWindupDuration();
-            phaseRemaining = phaseDuration;
-            hitboxFired = false;
-            hitTargets.Clear();
-
-            float lunge = aerial ? aerialLunge : step switch
-            {
-                2 => secondLunge,
-                3 => finisherLunge,
-                _ => firstLunge
-            };
-            movement?.AddCombatImpulse(transform.forward * lunge);
-        }
-
-        private void ApplyAttackSteering()
-        {
-            softTarget = null;
-            if (targetingRadius <= 0f || attackSteeringDegrees <= 0f)
-                return;
-
-            int count = Physics.OverlapSphereNonAlloc(transform.position, targetingRadius, targetingBuffer,
-                targetLayers, QueryTriggerInteraction.Collide);
-            float bestScore = float.PositiveInfinity;
-            Vector3 bestDirection = Vector3.zero;
-
-            for (int i = 0; i < count; i++)
-            {
-                Collider candidate = targetingBuffer[i];
-                if (candidate == null || candidate.transform.IsChildOf(transform))
-                    continue;
-
-                ICombatTarget combatTarget = candidate.GetComponentInParent<ICombatTarget>();
-                Component targetComponent = combatTarget as Component;
-                if (targetComponent == null)
-                    continue;
-                if (combatTarget is MeleeEnemy enemy && !enemy.IsAlive)
-                    continue;
-
-                Vector3 direction = targetComponent.transform.position - transform.position;
-                direction.y = 0f;
-                float distance = direction.magnitude;
-                if (distance < 0.01f)
-                    continue;
-
-                float angle = Vector3.Angle(transform.forward, direction);
-                if (angle > targetingArc * 0.5f)
-                    continue;
-
-                float score = distance + angle * 0.035f;
-                if (score >= bestScore)
-                    continue;
-
-                bestScore = score;
-                bestDirection = direction.normalized;
-                softTarget = targetComponent.transform;
-            }
-
-            if (softTarget == null)
-                return;
-
-            Quaternion targetRotation = Quaternion.LookRotation(bestDirection, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, attackSteeringDegrees);
-        }
-
-        private void FinishAttack()
-        {
-            phase = AttackPhase.Ready;
             SetSlashVisible(false);
-            if (!currentAttackIsAerial && currentAttackStep == 3)
-            {
-                comboStep = 0;
-                comboExpiresAt = float.NegativeInfinity;
-            }
-
-            if (Time.time <= bufferedUntil)
-                BeginBufferedAttack();
-        }
-
-        private void HandleDashStarted()
-        {
-            if (!IsAttacking)
-                return;
-
-            bool finishedCombo = !currentAttackIsAerial && currentAttackStep == 3;
-            bufferedUntil = float.NegativeInfinity;
-            phase = AttackPhase.Ready;
-            SetSlashVisible(false);
-            hitTargets.Clear();
-            if (finishedCombo)
-                comboStep = 0;
-            else
-                comboExpiresAt = Time.time + comboGraceDuration;
-        }
-
-        private float GetWindupDuration()
-        {
-            if (currentAttackIsAerial)
-                return aerialWindup;
-            return currentAttackStep switch { 2 => secondWindup, 3 => finisherWindup, _ => firstWindup };
-        }
-
-        private float GetRecoveryDuration()
-        {
-            if (currentAttackIsAerial)
-                return aerialRecovery;
-            return currentAttackStep switch { 2 => secondRecovery, 3 => finisherRecovery, _ => firstRecovery };
-        }
-
-        private void FireHitbox()
-        {
-            if (hitboxFired)
-                return;
-
-            hitboxFired = true;
-            Vector3 center = transform.position + Vector3.up * 0.75f + transform.forward * attackRange;
-            int count = Physics.OverlapSphereNonAlloc(center, hitRadius, hitBuffer, targetLayers, QueryTriggerInteraction.Collide);
-            float multiplier = currentAttackStep switch { 2 => secondHitMultiplier, 3 => finisherMultiplier, _ => 1f };
-            if (currentAttackIsAerial)
-                multiplier *= aerialPowerMultiplier;
-            if (attackStartedFromDash)
-                multiplier *= dashAttackMultiplier;
-
-            bool connected = false;
-            for (int i = 0; i < count; i++)
-            {
-                Collider candidate = hitBuffer[i];
-                if (candidate == null || candidate.transform.IsChildOf(transform))
-                    continue;
-
-                Vector3 toTarget = candidate.bounds.center - transform.position;
-                toTarget.y = 0f;
-                if (toTarget.sqrMagnitude < 0.001f || Vector3.Angle(transform.forward, toTarget) > attackArc * 0.5f)
-                    continue;
-
-                ICombatTarget target = candidate.GetComponentInParent<ICombatTarget>();
-                if (target == null || !hitTargets.Add(target))
-                    continue;
-
-                Vector3 direction = toTarget.normalized;
-                target.ReceiveHit(new CombatHit(candidate.ClosestPoint(center), direction,
-                    attackPower * multiplier, knockback * multiplier, attackStartedFromDash));
-                connected = true;
-            }
-
-            if (!connected)
-                return;
-
-            followCamera?.AddImpulse(cameraImpulse * multiplier);
-            if (hitStopDuration > 0f)
-            {
-                if (hitStopRoutine != null)
-                    StopCoroutine(hitStopRoutine);
-                hitStopRoutine = StartCoroutine(HitStop());
-            }
-        }
-
-        private IEnumerator HitStop()
-        {
-            float previousScale = Time.timeScale;
-            Time.timeScale = 0f;
-            yield return new WaitForSecondsRealtime(hitStopDuration);
-            Time.timeScale = previousScale;
-            hitStopRoutine = null;
-        }
-
-        private void AnimateSlash()
-        {
-            if (slashVisual == null || phase != AttackPhase.Active || phaseDuration <= 0f)
-                return;
-
-            float progress = 1f - phaseRemaining / phaseDuration;
-            float direction = currentAttackStep == 2 ? -1f : 1f;
-            slashVisual.localRotation = Quaternion.Euler(0f,
-                Mathf.Lerp(-55f * direction, 55f * direction, progress), 0f);
-            float punch = 0.9f + Mathf.Sin(progress * Mathf.PI) * 0.18f;
-            slashVisual.localScale = Vector3.one * punch;
         }
 
         private void SetSlashVisible(bool visible)
@@ -400,16 +358,63 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private void OnDrawGizmosSelected()
+        private void PerformCleave(Targetable primary, float damage, bool critical)
         {
-            Vector3 origin = transform.position + Vector3.up * 0.75f;
-            Vector3 center = origin + transform.forward * attackRange;
-            Gizmos.color = new Color(1f, 0.25f, 0.05f, 0.45f);
-            Gizmos.DrawWireSphere(center, hitRadius);
-            Vector3 left = Quaternion.Euler(0f, -attackArc * 0.5f, 0f) * transform.forward;
-            Vector3 right = Quaternion.Euler(0f, attackArc * 0.5f, 0f) * transform.forward;
-            Gizmos.DrawLine(origin, origin + left * (attackRange + hitRadius));
-            Gizmos.DrawLine(origin, origin + right * (attackRange + hitRadius));
+            foreach (Targetable other in Targetable.ActiveTargets)
+            {
+                if (other == null || other == primary || !other.IsHostile || !other.IsAlive || Vector3.Distance(transform.position, other.transform.position) > GetRange(1) + 1.2f) continue;
+                ICombatTarget victim = other.GetComponent<ICombatTarget>(); if (victim == null) continue;
+                Vector3 direction = (other.transform.position - transform.position).normalized;
+                victim.ReceiveHit(new CombatHit(other.transform.position + Vector3.up, direction, damage, knockback, false, critical, "Crushing Blow: Fracture"));
+            }
         }
+
+        private string GetAbilityName(int index) => Ability(index) != null ? Ability(index).displayName : index switch
+        {
+            1 => "Crushing Blow",
+            2 => "Phase Lunge",
+            _ => "Strike"
+        };
+
+        private float GetDamage(int index) => Ability(index) != null ? Ability(index).damage : index switch
+        {
+            1 => crushingDamage,
+            2 => lungeDamage,
+            _ => strikeDamage
+        };
+
+        private float GetRange(int index) => Ability(index) != null ? Ability(index).range : index switch
+        {
+            1 => crushingRange,
+            2 => lungeRange,
+            _ => strikeRange
+        };
+
+        private float GetCooldown(int index)
+        {
+            float value = Ability(index) != null ? Ability(index).cooldown : index switch
+        {
+            1 => crushingCooldown,
+            2 => lungeCooldown,
+            _ => strikeCooldown
+        };
+            return index == 2 && build != null ? value * build.PhaseLungeCooldownMultiplier : value;
+        }
+
+        private float GetCost(int index) => Ability(index) != null ? Ability(index).resourceCost : index switch
+        {
+            1 => crushingCost,
+            2 => lungeCost,
+            _ => strikeCost
+        };
+
+        private float GetCriticalBonus(int index) => Ability(index) != null ? Ability(index).criticalBonus : index switch
+        {
+            1 => crushingCriticalBonus,
+            2 => lungeCriticalBonus,
+            _ => 0f
+        };
+
+        private CombatAbilityDefinition Ability(int index) => abilityDefinitions != null && index >= 0 && index < abilityDefinitions.Length ? abilityDefinitions[index] : null;
     }
 }

@@ -78,15 +78,16 @@ namespace Phasebreak.Editor
             cameraObject.AddComponent<AudioListener>();
             PhasebreakFollowCamera followCamera = cameraObject.AddComponent<PhasebreakFollowCamera>();
             followCamera.SetTarget(player.transform);
-            followCamera.SetFirstPersonHiddenRenderers(body.GetComponent<Renderer>(), facing.GetComponent<Renderer>());
             SerializedObject movementSettings = new SerializedObject(player.GetComponent<PhasebreakPlayerMovement>());
             movementSettings.FindProperty("cameraTransform").objectReferenceValue = cameraObject.transform;
+            movementSettings.FindProperty("followCamera").objectReferenceValue = followCamera;
             movementSettings.ApplyModifiedPropertiesWithoutUndo();
             SetupCombat(player, followCamera, slashMaterial, dummyMaterial);
             SetupJumpCourse(room, jumpMaterial);
             Material enemyMaterial = CreateMaterial("Assets/Phasebreak/Materials/Enemy.mat", new Color(0.68f, 0.12f, 0.18f));
             Material telegraphMaterial = CreateMaterial("Assets/Phasebreak/Materials/EnemyTelegraph.mat", new Color(1f, 0.12f, 0.04f));
             SetupEnemyCore(player, followCamera, enemyMaterial, telegraphMaterial);
+            SetupTargeting(player, followCamera);
 
             GameObject lightObject = new GameObject("Directional Light");
             lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
@@ -172,6 +173,7 @@ namespace Phasebreak.Editor
             Material enemyMaterial = CreateMaterial("Assets/Phasebreak/Materials/Enemy.mat", new Color(0.68f, 0.12f, 0.18f));
             Material telegraphMaterial = CreateMaterial("Assets/Phasebreak/Materials/EnemyTelegraph.mat", new Color(1f, 0.12f, 0.04f));
             SetupEnemyCore(player, followCamera, enemyMaterial, telegraphMaterial);
+            SetupTargeting(player, followCamera);
             Selection.activeGameObject = player;
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
@@ -245,10 +247,7 @@ namespace Phasebreak.Editor
                 Object.DestroyImmediate(oldArena);
 
             PlayerHealth health = player.GetComponent<PlayerHealth>() ?? player.AddComponent<PlayerHealth>();
-            Renderer bodyRenderer = player.transform.Find("Body")?.GetComponent<Renderer>();
-            Renderer facingRenderer = player.transform.Find("Facing Marker")?.GetComponent<Renderer>();
             followCamera.SetTarget(player.transform);
-            followCamera.SetFirstPersonHiddenRenderers(bodyRenderer, facingRenderer);
 
             GameObject enemyRoot = new GameObject("Combat Enemies");
             MeleeEnemy[] enemies =
@@ -303,7 +302,47 @@ namespace Phasebreak.Editor
 
             MeleeEnemy enemy = enemyObject.AddComponent<MeleeEnemy>();
             enemy.Configure(player, telegraph.transform);
+            Targetable targetable = enemyObject.AddComponent<Targetable>();
+            targetable.Configure(name, TargetFaction.Hostile);
             return enemy;
+        }
+
+        private static void SetupTargeting(GameObject player, PhasebreakFollowCamera followCamera)
+        {
+            Targetable playerTarget = player.GetComponent<Targetable>() ?? player.AddComponent<Targetable>();
+            playerTarget.Configure("Player", TargetFaction.Player);
+            PlayerTargeting targeting = player.GetComponent<PlayerTargeting>() ?? player.AddComponent<PlayerTargeting>();
+            PlayerProgression progression = player.GetComponent<PlayerProgression>() ??
+                                            player.AddComponent<PlayerProgression>();
+            PlayerBuildSystem build = player.GetComponent<PlayerBuildSystem>() ??
+                                      player.AddComponent<PlayerBuildSystem>();
+            PlayerCombat combat = player.GetComponent<PlayerCombat>();
+            Camera worldCamera = followCamera.GetComponent<Camera>();
+            SerializedObject targetingSettings = new SerializedObject(targeting);
+            targetingSettings.FindProperty("worldCamera").objectReferenceValue = worldCamera;
+            targetingSettings.FindProperty("followCamera").objectReferenceValue = followCamera;
+            targetingSettings.ApplyModifiedPropertiesWithoutUndo();
+            if (combat != null)
+            {
+                SerializedObject combatSettings = new SerializedObject(combat);
+                combatSettings.FindProperty("targeting").objectReferenceValue = targeting;
+                combatSettings.FindProperty("progression").objectReferenceValue = progression;
+                combatSettings.FindProperty("build").objectReferenceValue = build;
+                combatSettings.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            GameObject hudObject = GameObject.Find("Phasebreak HUD");
+            if (hudObject == null)
+                hudObject = new GameObject("Phasebreak HUD");
+            PhasebreakHud hud = hudObject.GetComponent<PhasebreakHud>() ?? hudObject.AddComponent<PhasebreakHud>();
+            SerializedObject hudSettings = new SerializedObject(hud);
+            hudSettings.FindProperty("targeting").objectReferenceValue = targeting;
+            hudSettings.FindProperty("player").objectReferenceValue = playerTarget;
+            hudSettings.FindProperty("worldCamera").objectReferenceValue = worldCamera;
+            hudSettings.FindProperty("combat").objectReferenceValue = combat;
+            hudSettings.FindProperty("progression").objectReferenceValue = progression;
+            hudSettings.FindProperty("build").objectReferenceValue = build;
+            hudSettings.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void CreateDummy(string name, Transform parent, Vector3 position, Material material)

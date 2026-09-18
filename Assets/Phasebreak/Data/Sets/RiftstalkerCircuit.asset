@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: RiftstalkerCircuit
+  m_EditorClassIdentifier: Assembly-CSharp:Phasebreak.Gameplay:PhasebreakItemSetDefinition
+  id: set.riftstalker
+  displayName: Riftstalker Circuit
+  fantasy: A cross-slot circuit that turns precision into phase momentum.
+  bonuses:
+  - pieces: 2
+    description: Critical hits return 8 Energy.
+    stats:
+      power: 0
+      maxHealth: 0
+      defense: 0
+      criticalChance: 0
+      criticalDamage: 0
+      attackSpeed: 0
+      movementSpeed: 0
+      bossDamage: 0
+    effects: 1
+    effectValue: 8
+  - pieces: 3
+    description: Phase Lunge recharges 25% faster.
+    stats:
+      power: 0
+      maxHealth: 0
+      defense: 0
+      criticalChance: 0
+      criticalDamage: 0
+      attackSpeed: 0
+      movementSpeed: 0
+      bossDamage: 0
+    effects: 2
+    effectValue: 0.25
+  - pieces: 4
+    description: Crushing Blow fractures nearby enemies.
+    stats:
+      power: 0
+      maxHealth: 0
+      defense: 0
+      criticalChance: 0
+      criticalDamage: 0
+      attackSpeed: 0
+      movementSpeed: 0
+      bossDamage: 0
+    effects: 8
+    effectValue: 0
+  - pieces: 6
+    description: Teleport kills restore Energy and Phase Lunge.
+    stats:
+      power: 0
+      maxHealth: 0
+      defense: 0
+      criticalChance: 0
+      criticalDamage: 0
+      attackSpeed: 0
+      movementSpeed: 0
+      bossDamage: 0
+    effects: 16
+    effectValue: 30

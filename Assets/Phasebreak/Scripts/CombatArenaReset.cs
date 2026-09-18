@@ -54,6 +54,11 @@ namespace Phasebreak.Gameplay
             resetAction.Disable();
             if (playerHealth != null)
                 playerHealth.Died -= HandlePlayerDied;
+            if (pendingReset != null)
+            {
+                StopCoroutine(pendingReset);
+                pendingReset = null;
+            }
         }
 
         private void OnDestroy() => resetAction.Dispose();

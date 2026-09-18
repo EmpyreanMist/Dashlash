@@ -37,6 +37,8 @@ namespace Phasebreak.Gameplay
                 Initialize();
 
             HitCount++;
+            CombatEvents.RaiseDamageNumber(hit.Point + Vector3.up * 0.35f,
+                Mathf.Max(1, Mathf.RoundToInt(hit.Power)), hit.IsCritical, hit.AbilityName);
             if (reactionRoutine != null)
                 StopCoroutine(reactionRoutine);
             reactionRoutine = StartCoroutine(React(hit));

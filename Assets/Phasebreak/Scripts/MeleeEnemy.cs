@@ -13,8 +13,11 @@ namespace Phasebreak.Gameplay
         [SerializeField] private Transform telegraphVisual;
 
         [Header("Vitals")]
-        [SerializeField, Min(1)] private int maxHealth = 4;
+        [SerializeField, Min(1)] private int maxHealth = 30;
         [SerializeField, Min(0f)] private float staggerDuration = 0.18f;
+        [SerializeField, Min(0f)] private float respawnDelay = 3.5f;
+        [SerializeField, Min(0)] private int experienceReward = 12;
+        [SerializeField] private bool respawnEnabled = true;
 
         [Header("Movement")]
         [SerializeField, Min(0f)] private float awarenessRange = 10f;
@@ -49,12 +52,16 @@ namespace Phasebreak.Gameplay
         private Vector3 spawnScale;
         private Vector3 telegraphBaseScale = Vector3.one;
         private bool attackFired;
+        private bool defeatRewardGranted;
         private Coroutine reactionRoutine;
 
         public int CurrentHealth { get; private set; }
+        public int MaxHealth => maxHealth;
         public bool IsAlive => state != EnemyState.Dead;
         public string StateName => state.ToString();
         public int AttackCount { get; private set; }
+
+        public void SetRespawnEnabled(bool enabled) => respawnEnabled = enabled;
 
         public void Configure(Transform newTarget, Transform telegraph)
         {
@@ -124,8 +131,12 @@ namespace Phasebreak.Gameplay
             if (!IsAlive)
                 return;
 
-            CurrentHealth = Mathf.Max(0, CurrentHealth - Mathf.Max(1, Mathf.RoundToInt(hit.Power)));
+            int damage = Mathf.Max(1, Mathf.RoundToInt(hit.Power));
+            int appliedDamage = Mathf.Min(CurrentHealth, damage);
+            CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
             knockbackVelocity = hit.Direction.normalized * (hit.Knockback * knockbackScale);
+            CombatEvents.RaiseDamageNumber(hit.Point + Vector3.up * 0.35f, appliedDamage,
+                hit.IsCritical, hit.AbilityName);
 
             if (reactionRoutine != null)
                 StopCoroutine(reactionRoutine);
@@ -153,6 +164,7 @@ namespace Phasebreak.Gameplay
             controller.enabled = true;
             CurrentHealth = maxHealth;
             AttackCount = 0;
+            defeatRewardGranted = false;
             verticalVelocity = -2f;
             knockbackVelocity = Vector3.zero;
             SetState(EnemyState.Idle, 0f);
@@ -256,6 +268,11 @@ namespace Phasebreak.Gameplay
         private void Die(Vector3 hitDirection)
         {
             SetState(EnemyState.Dead, 0f);
+            if (!defeatRewardGranted)
+            {
+                defeatRewardGranted = true;
+                CombatEvents.RaiseEnemyDefeated(experienceReward, gameObject.name, transform.position);
+            }
             knockbackVelocity = Vector3.zero;
             if (reactionRoutine != null)
                 StopCoroutine(reactionRoutine);
@@ -291,7 +308,14 @@ namespace Phasebreak.Gameplay
             controller.enabled = false;
             foreach (Renderer item in renderers)
                 item.enabled = false;
+            if (!respawnEnabled)
+            {
+                reactionRoutine = null;
+                yield break;
+            }
+            yield return new WaitForSecondsRealtime(respawnDelay);
             reactionRoutine = null;
+            ResetEnemy();
         }
 
         private void SetColor(Color color)

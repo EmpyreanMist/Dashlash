@@ -9,14 +9,19 @@ namespace Phasebreak.Gameplay
         public readonly float Power;
         public readonly float Knockback;
         public readonly bool DashEnhanced;
+        public readonly bool IsCritical;
+        public readonly string AbilityName;
 
-        public CombatHit(Vector3 point, Vector3 direction, float power, float knockback, bool dashEnhanced)
+        public CombatHit(Vector3 point, Vector3 direction, float power, float knockback, bool dashEnhanced,
+            bool isCritical = false, string abilityName = null)
         {
             Point = point;
             Direction = direction;
             Power = power;
             Knockback = knockback;
             DashEnhanced = dashEnhanced;
+            IsCritical = isCritical;
+            AbilityName = abilityName;
         }
     }
 
