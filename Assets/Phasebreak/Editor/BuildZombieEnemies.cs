@@ -20,15 +20,70 @@ namespace Phasebreak.Editor
         private const string PrefabPath = Root + "/SZombieEnemy.prefab";
         private const string PopulationName = "Zombie Population";
 
-        private static readonly Vector3[] SpawnPositions =
+        private readonly struct SpawnPoint
         {
-            new(-18f, 0f, -24f), new(-11f, 0f, -19f),
-            new(17f, 0f, -23f), new(25f, 0f, -15f),
-            new(-27f, 0f, 4f), new(-20f, 0f, 13f),
-            new(19f, 0f, 9f), new(28f, 0f, 19f)
-        };
+            public SpawnPoint(string zone, float x, float z, float rotation)
+            {
+                Zone = zone;
+                Position = new Vector2(x, z);
+                Rotation = rotation;
+            }
 
-        private static readonly float[] SpawnRotations = { 18f, 142f, -35f, 205f, 78f, -112f, 164f, 248f };
+            public string Zone { get; }
+            public Vector2 Position { get; }
+            public float Rotation { get; }
+        }
+
+        // Keeps the player start and settlement interiors quiet while distributing reusable
+        // encounter pockets through the full 420 x 420 metre starter realm.
+        private static readonly SpawnPoint[] SpawnPoints =
+        {
+            new("Northwest Ruins", -126f, 104f, 18f),
+            new("Northwest Ruins", -116f, 96f, 142f),
+            new("Northwest Ruins", -105f, 112f, -35f),
+
+            new("Southeast Ruins", 126f, -92f, 205f),
+            new("Southeast Ruins", 116f, -101f, 78f),
+            new("Southeast Ruins", 105f, -88f, -112f),
+
+            new("Southern Watch", -87f, -109f, 164f),
+            new("Southern Watch", -76f, -102f, 248f),
+            new("Southern Watch", -69f, -116f, 34f),
+
+            new("Eastern Fields", 78f, -104f, 198f),
+            new("Eastern Fields", 88f, -113f, 312f),
+            new("Eastern Fields", 96f, -98f, 104f),
+
+            new("Western Road", -142f, 8f, 92f),
+            new("Western Road", -134f, -3f, 226f),
+            new("Eastern Road", 145f, 12f, 270f),
+            new("Eastern Road", 136f, 23f, 148f),
+
+            new("Northern Wilds", -22f, 138f, 12f),
+            new("Northern Wilds", 0f, 151f, 126f),
+            new("Northern Wilds", 21f, 140f, 238f),
+            new("Northern Wilds", 5f, 123f, 321f),
+
+            new("Northeast Wilds", 121f, 122f, 42f),
+            new("Northeast Wilds", 140f, 111f, 176f),
+            new("Northeast Wilds", 157f, 132f, 286f),
+            new("Northeast Wilds", 151f, 88f, 338f),
+
+            new("Southwest Wilds", -151f, -136f, 28f),
+            new("Southwest Wilds", -132f, -151f, 154f),
+            new("Southwest Wilds", -110f, -137f, 263f),
+            new("Southwest Wilds", -155f, -110f, 315f),
+
+            new("Southern Wilds", -21f, -154f, 61f),
+            new("Southern Wilds", 1f, -143f, 187f),
+            new("Southern Wilds", 23f, -151f, 294f),
+            new("Southern Wilds", 8f, -124f, 352f),
+
+            new("Western Forest", -168f, 58f, 73f),
+            new("Western Forest", -151f, 72f, 211f),
+            new("Central East", 58f, -44f, 119f),
+            new("Central East", 70f, -34f, 251f)
+        };
 
         [MenuItem("Phasebreak/Build Zombie Enemy Population")]
         public static void Build()
@@ -41,7 +96,7 @@ namespace Phasebreak.Editor
             InstallPopulation(prefab);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("PHASEBREAK_ZOMBIES_BUILT: reusable zombie prefab and eight-enemy starting population installed.");
+            Debug.Log($"PHASEBREAK_ZOMBIES_BUILT: reusable zombie prefab and {SpawnPoints.Length}-enemy world population installed.");
         }
 
         private static void ConfigureImports()
@@ -111,8 +166,11 @@ namespace Phasebreak.Editor
 
         private static AnimatorController BuildAnimatorController()
         {
-            AssetDatabase.DeleteAsset(ControllerPath);
-            AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+            AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (controller != null)
+                return controller;
+
+            controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
             controller.AddParameter("Speed", AnimatorControllerParameterType.Float);
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
             AnimationClip idle = LoadClip(
@@ -195,7 +253,7 @@ namespace Phasebreak.Editor
                 targetSettings.ApplyModifiedPropertiesWithoutUndo();
 
                 EnemyVisualAnimator visualAnimator = root.AddComponent<EnemyVisualAnimator>();
-                visualAnimator.Configure(enemy, controller, animator, visual.transform);
+                visualAnimator.Configure(enemy, controller, animator, visual.transform, animatorController);
                 return PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             }
             finally
@@ -240,15 +298,30 @@ namespace Phasebreak.Editor
             if (oldPopulation != null)
                 Undo.DestroyObjectImmediate(oldPopulation);
 
+            GameObject realmRoot = GameObject.Find("Medieval Starter Realm");
             GameObject population = new(PopulationName);
+            if (realmRoot != null)
+                population.transform.SetParent(realmRoot.transform, false);
             Undo.RegisterCreatedObjectUndo(population, "Create zombie population");
             PlayerHealth playerHealth = Object.FindAnyObjectByType<PlayerHealth>();
+            Collider terrainCollider = GameObject.Find("Realm Terrain")?.GetComponent<Collider>();
             List<MeleeEnemy> enemies = new();
-            for (int i = 0; i < SpawnPositions.Length; i++)
+            Dictionary<string, Transform> zoneRoots = new();
+            for (int i = 0; i < SpawnPoints.Length; i++)
             {
-                GameObject instance = PrefabUtility.InstantiatePrefab(prefab, population.transform) as GameObject;
+                SpawnPoint spawn = SpawnPoints[i];
+                if (!zoneRoots.TryGetValue(spawn.Zone, out Transform zoneRoot))
+                {
+                    GameObject zone = new(spawn.Zone);
+                    zone.transform.SetParent(population.transform, false);
+                    zoneRoot = zone.transform;
+                    zoneRoots.Add(spawn.Zone, zoneRoot);
+                }
+
+                GameObject instance = PrefabUtility.InstantiatePrefab(prefab, zoneRoot) as GameObject;
                 instance.name = $"Risen Zombie {i + 1:00}";
-                instance.transform.SetPositionAndRotation(SpawnPositions[i], Quaternion.Euler(0f, SpawnRotations[i], 0f));
+                Vector3 position = GroundPosition(spawn.Position, terrainCollider);
+                instance.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, spawn.Rotation, 0f));
                 MeleeEnemy enemy = instance.GetComponent<MeleeEnemy>();
                 enemy.Configure(playerHealth != null ? playerHealth.transform : null,
                     instance.transform.Find("Attack Telegraph"));
@@ -260,6 +333,14 @@ namespace Phasebreak.Editor
                 resetter.Configure(playerHealth.transform, playerHealth, enemies.ToArray());
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
+        }
+
+        private static Vector3 GroundPosition(Vector2 position, Collider terrainCollider)
+        {
+            Vector3 origin = new(position.x, 100f, position.y);
+            if (terrainCollider != null && terrainCollider.Raycast(new Ray(origin, Vector3.down), out RaycastHit hit, 250f))
+                return hit.point + Vector3.up * .02f;
+            return new Vector3(position.x, 0f, position.y);
         }
     }
 }

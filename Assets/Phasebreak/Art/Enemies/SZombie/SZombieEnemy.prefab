@@ -220,6 +220,7 @@ MonoBehaviour:
   characterController: {fileID: 8319425413027535408}
   animator: {fileID: 2721499857037030545}
   visualRoot: {fileID: 8296925085202788075}
+  animatorController: {fileID: 9100000, guid: 49ce171eb5ef3694fb98eb8bf35e5ea9, type: 2}
   poseBlendSpeed: 10
 --- !u!1001 &8407692852824852736
 PrefabInstance:

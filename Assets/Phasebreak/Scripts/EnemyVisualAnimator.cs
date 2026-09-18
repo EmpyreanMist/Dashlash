@@ -11,6 +11,7 @@ namespace Phasebreak.Gameplay
         [SerializeField] private CharacterController characterController;
         [SerializeField] private Animator animator;
         [SerializeField] private Transform visualRoot;
+        [SerializeField] private RuntimeAnimatorController animatorController;
         [SerializeField, Min(0.01f)] private float poseBlendSpeed = 10f;
 
         private Transform spine;
@@ -25,12 +26,13 @@ namespace Phasebreak.Gameplay
         public Animator Animator => animator;
 
         public void Configure(MeleeEnemy owner, CharacterController controller, Animator visualAnimator,
-            Transform modelRoot)
+            Transform modelRoot, RuntimeAnimatorController fallbackController)
         {
             enemy = owner;
             characterController = controller;
             animator = visualAnimator;
             visualRoot = modelRoot;
+            animatorController = fallbackController;
         }
 
         private void Awake()
@@ -48,6 +50,8 @@ namespace Phasebreak.Gameplay
             }
             if (animator != null)
             {
+                if (animator.runtimeAnimatorController == null && animatorController != null)
+                    animator.runtimeAnimatorController = animatorController;
                 animator.applyRootMotion = false;
                 spine = animator.GetBoneTransform(HumanBodyBones.Spine);
                 chest = animator.GetBoneTransform(HumanBodyBones.Chest);
@@ -62,8 +66,11 @@ namespace Phasebreak.Gameplay
                 return;
             Vector3 velocity = characterController != null ? characterController.velocity : Vector3.zero;
             float planarSpeed = new Vector2(velocity.x, velocity.z).magnitude;
-            animator.SetFloat(SpeedId, enemy.IsMoving ? planarSpeed : 0f, .1f, Time.deltaTime);
-            animator.speed = enemy.IsDead ? 0f : 1f;
+            if (animator.runtimeAnimatorController != null)
+            {
+                animator.SetFloat(SpeedId, enemy.IsMoving ? planarSpeed : 0f, .1f, Time.deltaTime);
+                animator.speed = enemy.IsDead ? 0f : 1f;
+            }
 
             float attackTarget = enemy.IsCasting ? -Mathf.Lerp(.15f, 1f, enemy.CastProgress) :
                 enemy.IsAttackActive ? 1f : 0f;

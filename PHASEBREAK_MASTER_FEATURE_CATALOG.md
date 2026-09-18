@@ -885,7 +885,7 @@ Kandidater:
 - [x] Corpse state.
 - [x] Immediate death event för waves/XP.
 - [x] Vanliga melee-träffar skadar spelaren utan automatisk knockback.
-- [x] Första importerade monsterutseendet: `Risen Zombie`, återanvändbar prefab med Humanoid-rigg, idle/chase/attack/hit/death-presentation och åtta startzonsinstanser.
+- [x] Första importerade monsterutseendet: `Risen Zombie`, återanvändbar prefab med Humanoid-rigg, idle/chase/attack/hit/death-presentation och 36 markanpassade instanser i namngivna encounter-fickor över startregionen.
 - [x] Leash och återgång till spawn med full heal efter disengage.
 - [ ] Byt procedural zombie-attack/hit/death mot authored clips när ett animationspaket finns; käll-FBX:en innehåller endast rig/bind pose.
 
@@ -1574,7 +1574,7 @@ Guardrails att välja:
 
 - [x] Snabbare zoom, större startzon, första riktiga monsterutseendet och player no-knockback.
   - Zoom, 420 × 420-startregion och no-knockback är implementerade och Play Mode-verifierade.
-  - Sexton `Risen Zombie`-instanser använder samma prefab och AI-bas och är placerade vid ruiner och regionens ytterkanter; targeting, chase, attack, damage, stagger, death, XP, corpse loot, leash/return och arena reset är verifierade.
+  - 36 `Risen Zombie`-instanser använder samma prefab och AI-bas och är markanpassade i grupper vid ruiner, vägar, skogar, fält och regionens ytterkanter; targeting, chase, attack, damage, stagger, death, XP, corpse loot, leash/return och arena reset är verifierade.
   - Authored zombie-animationer saknas i källpaketet och är dokumenterade som framtida ersättning för fallback-presentationen.
 
 ### Rekommenderat härnäst

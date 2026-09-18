@@ -73,7 +73,7 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Camera zoom is normalized across common mouse-wheel input scales, moves 3.5 world units per notch and supports a 0.05–18 range so the camera can pass into the player model while retaining camera collision.
 - The prototype arena has been replaced visually by a 420 × 420 metre medieval starter realm built from the CC0 Quaternius Medieval Village MegaKit Standard. It includes rolling terrain, roads, three settlement clusters, three ruins, woodland, field stones and the existing Rift Crypt connection.
 - Ordinary melee-enemy hits retain flash, animation event and camera feedback but no longer displace the player. Explicit special/boss knockback remains supported.
-- `Risen Zombie` is the first imported production-style monster visual. One reusable prefab powers sixteen spaced and rotated instances around ruins and outer-region encounter pockets.
+- `Risen Zombie` is the first imported production-style monster visual. One reusable prefab powers 36 ground-aligned, individually rotated instances grouped around ruins, roads, forests, fields and outer-region encounter pockets; the player start and settlement interiors remain quiet.
 - Zombie AI supports idle, aggro, chase, readable windup/attack/recovery, stagger, immediate death, corpse loot, leash and return-to-spawn with health reset.
 - The supplied zombie FBX contains a Humanoid rig but no authored action clips beyond its bind/T-pose. Existing compatible idle/run clips and a procedural presentation layer currently provide locomotion, melee, hit and death feedback; authored zombie clips remain a future art upgrade.
 
