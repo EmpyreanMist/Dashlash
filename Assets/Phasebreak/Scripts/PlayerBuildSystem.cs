@@ -122,7 +122,12 @@ namespace Phasebreak.Gameplay
         }
         private IEnumerable<string> ActiveSetLines()
         {
-            foreach (IGrouping<PhasebreakItemSetDefinition, PhasebreakItemDefinition> group in equipped.Values.Where(i => i != null && i.itemSet != null).GroupBy(i => i.itemSet)) yield return $"{group.Key.displayName}  {group.Count()}/6";
+            foreach (IGrouping<PhasebreakItemSetDefinition, PhasebreakItemDefinition> group in equipped.Values.Where(i => i != null && i.itemSet != null).GroupBy(i => i.itemSet))
+            {
+                int maximum = (group.Key.bonuses ?? Array.Empty<SetBonusDefinition>()).Select(bonus => bonus.pieces).DefaultIfEmpty(0).Max();
+                int count = maximum > 0 ? Mathf.Min(group.Count(), maximum) : group.Count();
+                yield return $"{group.Key.displayName}  {count}/{maximum}";
+            }
         }
         private void Changed() { Recalculate(); Save(); BuildChanged?.Invoke(); }
         private void LoadOrSeed()

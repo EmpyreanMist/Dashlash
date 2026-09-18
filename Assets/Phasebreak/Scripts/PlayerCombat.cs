@@ -15,9 +15,10 @@ namespace Phasebreak.Gameplay
         public readonly bool IsUsable;
         public readonly int Charges;
         public readonly int MaximumCharges;
+        public readonly Sprite Icon;
 
         public AbilityState(string name, string key, float cooldownRemaining, float cooldownDuration,
-            float resourceCost, bool isUsable, int charges, int maximumCharges)
+            float resourceCost, bool isUsable, int charges, int maximumCharges, Sprite icon)
         {
             Name = name;
             Key = key;
@@ -27,6 +28,7 @@ namespace Phasebreak.Gameplay
             IsUsable = isUsable;
             Charges = charges;
             MaximumCharges = maximumCharges;
+            Icon = icon;
         }
     }
 
@@ -197,7 +199,7 @@ namespace Phasebreak.Gameplay
             return new AbilityState(GetAbilityName(index), GetKey(index),
                 globalIsLonger ? globalRemaining : abilityRemaining,
                 globalIsLonger ? globalCooldown : GetCooldown(index), GetCost(index),
-                CanUseAbility(index), charges[index], maximumCharges);
+                CanUseAbility(index), charges[index], maximumCharges, GetAbilityIcon(index));
         }
 
         public bool TryUseAbility(int index)
@@ -546,6 +548,11 @@ namespace Phasebreak.Gameplay
         {
             1 => "Crushing Blow", 2 => "Phase Lunge", 3 => "Phase Dash", 4 => "Rift Charge", _ => "Strike"
         };
+        private Sprite GetAbilityIcon(int index)
+        {
+            Sprite icon = Ability(index)?.icon;
+            return icon != null ? icon : PhasebreakIconCatalog.Current?.fallbackAbility;
+        }
         private string GetKey(int index) => !string.IsNullOrWhiteSpace(Ability(index)?.key)
             ? Ability(index).key : (index + 1).ToString();
         private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null

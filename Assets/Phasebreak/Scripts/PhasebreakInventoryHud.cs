@@ -50,6 +50,7 @@ namespace Phasebreak.Gameplay
         private Button selectedEquipButton;
         private TextMeshProUGUI characterSummary;
         private TextMeshProUGUI characterTitle;
+        private Image passiveIcon;
         private TextMeshProUGUI lootTitle;
         private TextMeshProUGUI navTooltip;
         private PhasebreakItemTooltipUI itemTooltip;
@@ -214,6 +215,9 @@ namespace Phasebreak.Gameplay
             RectTransform analysis = Section("Build Analysis", characterPanel, new Vector2(.66f, .055f), new Vector2(.975f, .87f));
             Text("Analysis Header", analysis, "CHARACTER ANALYSIS", 13f, TextAlignmentOptions.Left, new Vector2(.06f, .925f), new Vector2(.94f, .985f), TextMuted);
             characterSummary = Text("Build Summary", analysis, string.Empty, 14f, TextAlignmentOptions.TopLeft, new Vector2(.06f, .13f), new Vector2(.94f, .915f), TextPrimary);
+            RectTransform passiveSurface = FramedIcon("Passive Icon Frame", analysis, new Vector2(.835f, .575f), new Vector2(.925f, .66f), new Color(.36f, .22f, .58f, 1f));
+            passiveIcon = IconImage("Passive Icon", passiveSurface, new Vector2(.08f, .08f), new Vector2(.92f, .92f));
+            passiveIcon.preserveAspect = true;
             AddSpecButtons(analysis);
         }
 
@@ -413,6 +417,8 @@ namespace Phasebreak.Gameplay
             CreateEquipmentSlot(EquipmentSlot.Sigil2, new Vector2(.405f, .035f), true, true);
             CreateEquipmentSlot(EquipmentSlot.Sigil3, new Vector2(.52f, .035f), true, true);
             CreateEquipmentSlot(EquipmentSlot.WildcardArtifact, new Vector2(.635f, .035f), true, true);
+            passiveIcon.sprite = progression != null ? progression.PassiveIcon : PhasebreakIconCatalog.Current?.fallbackBuff;
+            passiveIcon.color = passiveIcon.sprite == null ? Color.clear : progression != null && progression.HasKeenEdge ? Color.white : new Color(.35f, .4f, .48f, .65f);
             characterSummary.text = BuildCharacterSummary();
         }
 
@@ -491,7 +497,9 @@ namespace Phasebreak.Gameplay
             foreach (IGrouping<PhasebreakItemSetDefinition, PhasebreakItemDefinition> group in groups)
             {
                 int count = group.Count();
-                result.Append($"<b>{group.Key.displayName}</b>  <color=#63D9F2>{count}/6</color>\n");
+                int maximum = (group.Key.bonuses ?? Array.Empty<SetBonusDefinition>()).Select(bonus => bonus.pieces).DefaultIfEmpty(0).Max();
+                int displayedCount = maximum > 0 ? Mathf.Min(count, maximum) : count;
+                result.Append($"<b>{group.Key.displayName}</b>  <color=#63D9F2>{displayedCount}/{maximum}</color>\n");
                 foreach (SetBonusDefinition bonus in group.Key.bonuses ?? Array.Empty<SetBonusDefinition>())
                     result.Append($"<color={(count >= bonus.pieces ? "#5EE58C" : "#667487")}>{bonus.pieces}-piece  {bonus.description}</color>\n");
             }
@@ -602,6 +610,13 @@ namespace Phasebreak.Gameplay
             {
                 Specialization captured = spec;
                 Button button = TextButton(spec.ToString(), root, spec.ToString().ToUpperInvariant(), new Vector2(x, .035f), new Vector2(x + .28f, .105f), () => { if (build.ChooseSpecialization(captured)) RefreshCharacter(); }, 10.5f);
+                Image specIcon = IconImage("Specialization Icon", button.transform, new Vector2(.035f, .13f), new Vector2(.23f, .87f));
+                specIcon.sprite = PhasebreakIconCatalog.Current?.GetSpecializationIcon(spec);
+                specIcon.color = specIcon.sprite != null ? Color.white : Color.clear;
+                specIcon.preserveAspect = true;
+                TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null)
+                    label.rectTransform.anchorMin = new Vector2(.24f, 0f);
                 button.interactable = build.Specialization == Specialization.Unchosen;
                 x += .3f;
             }

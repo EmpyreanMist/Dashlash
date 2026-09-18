@@ -54,7 +54,7 @@ namespace Phasebreak.Gameplay
         public string id;
         public string displayName;
         [TextArea] public string description;
-        [Tooltip("Optional item artwork. UI uses a generated slot glyph when empty.")]
+        [Tooltip("Item artwork. UI falls back to a slot-specific icon when this is empty.")]
         public Sprite icon;
         [Tooltip("Optional world-space visual instantiated by EquipmentVisualController.")]
         public GameObject visualPrefab;

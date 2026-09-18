@@ -40,6 +40,7 @@ namespace Phasebreak.Gameplay
         public float CriticalChanceBonus => HasKeenEdge ? passiveCriticalChance : 0f;
         public float CriticalDamageBonus => HasKeenEdge ? passiveCriticalDamage : 0f;
         public string PassiveName => passiveName;
+        public Sprite PassiveIcon => PhasebreakIconCatalog.Current?.GetPassiveIcon(passiveName);
 
         public event Action ProgressChanged;
         public event Action<int, string> LevelGained;

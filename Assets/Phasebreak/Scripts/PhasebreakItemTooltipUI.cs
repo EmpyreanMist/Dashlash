@@ -16,10 +16,12 @@ namespace Phasebreak.Gameplay
         private Image itemIcon;
         private Image comparisonIcon;
         private Outline rootOutline;
+        private PlayerBuildSystem build;
 
         public void Initialize(RectTransform canvas)
         {
             canvasRect = canvas;
+            build = FindAnyObjectByType<PlayerBuildSystem>();
             root = GetComponent<RectTransform>();
             root.anchorMin = root.anchorMax = new Vector2(.5f, .5f);
             root.pivot = new Vector2(0f, 1f);
@@ -121,7 +123,7 @@ namespace Phasebreak.Gameplay
                 comparisonPanel.anchoredPosition = new Vector2(x + root.sizeDelta.x + 10f, y);
         }
 
-        private static string BuildItemText(PhasebreakItemDefinition item, PhasebreakItemDefinition compare, bool equipped, GearComparisonResult comparison)
+        private string BuildItemText(PhasebreakItemDefinition item, PhasebreakItemDefinition compare, bool equipped, GearComparisonResult comparison)
         {
             StringBuilder text = new();
             text.Append($"<indent=86><size=12><color=#7E90A8>{(equipped ? "CURRENTLY EQUIPPED" : "ITEM")}</color></size>\n");
@@ -160,12 +162,41 @@ namespace Phasebreak.Gameplay
             AppendStat(text, "Boss damage", item.stats.bossDamage, compare?.stats.bossDamage ?? 0f, true, compare != null);
 
             if (item.itemSet != null)
-                text.Append($"\n<color=#66D6F1><b>{item.itemSet.displayName}</b></color>\n<color=#8698AE>{item.itemSet.fantasy}</color>\n");
+            {
+                int equippedPieces = CountEquippedSetPieces(item.itemSet);
+                int maximumPieces = 0;
+                foreach (SetBonusDefinition bonus in item.itemSet.bonuses ?? System.Array.Empty<SetBonusDefinition>())
+                    maximumPieces = Mathf.Max(maximumPieces, bonus.pieces);
+                int displayedPieces = maximumPieces > 0 ? Mathf.Min(equippedPieces, maximumPieces) : equippedPieces;
+                text.Append($"\n<color=#66D6F1><b>{item.itemSet.displayName}</b>  {displayedPieces}/{maximumPieces}</color>\n");
+                text.Append($"<color=#8698AE>{item.itemSet.fantasy}</color>\n");
+                foreach (SetBonusDefinition bonus in item.itemSet.bonuses ?? System.Array.Empty<SetBonusDefinition>())
+                {
+                    bool active = equippedPieces >= bonus.pieces;
+                    string color = active ? "#5EE58C" : "#68778A";
+                    string state = active ? "ACTIVE" : "LOCKED";
+                    text.Append($"<color={color}><b>{bonus.pieces}-PIECE · {state}</b>  {bonus.description}</color>\n");
+                }
+            }
             if (item.effects != BuildEffect.None)
-                text.Append($"\n<color=#C59AFF><b>{PrettyFlags(item.effects.ToString())}</b></color>");
+            {
+                string value = item.effectValue > 0f ? $"  {item.effectValue:0.##}" : string.Empty;
+                text.Append($"\n<color=#C59AFF><b>{PrettyFlags(item.effects.ToString())}</b>{value}</color>");
+            }
             if (!string.IsNullOrWhiteSpace(item.description))
                 text.Append($"\n\n<i><color=#AEB8C8>{item.description}</color></i>");
             return text.ToString();
+        }
+
+        private int CountEquippedSetPieces(PhasebreakItemSetDefinition set)
+        {
+            if (set == null || build == null)
+                return 0;
+            int count = 0;
+            foreach (EquipmentSlot slot in System.Enum.GetValues(typeof(EquipmentSlot)))
+                if (build.GetEquipped(slot)?.itemSet == set)
+                    count++;
+            return count;
         }
 
         private static void AppendStat(StringBuilder text, string label, float value, float oldValue, bool percent, bool comparing)

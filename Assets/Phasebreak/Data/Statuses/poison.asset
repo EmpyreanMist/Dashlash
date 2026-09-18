@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d28e74f808458e489fe8a0fd41dcd4c, type: 3}
+  m_Name: poison
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.StatusEffectDefinition
+  id: poison
+  displayName: Poison
+  description: Takes periodic poison damage.
+  kind: 1
+  icon: {fileID: 21300000, guid: 6a1c7c37626c4924b8f5eb38f40e0406, type: 3}
+  defaultDuration: 8
+  maximumStacks: 5

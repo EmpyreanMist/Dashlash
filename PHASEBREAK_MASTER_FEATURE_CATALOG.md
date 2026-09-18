@@ -236,9 +236,10 @@ Nuvarande status:
 - [x] Cast bar kopplad till nuvarande enemy windup via ett litet presentation-interface.
 - [x] Rare/elite/boss-indikator och bossdetektering.
 - [x] Interruptible cast styling.
-- [ ] Buff/debuff icons.
+- [ ] Live buff/debuff icons bound to target gameplay status state.
 - [ ] Threat/aggro indicator.
 - [ ] Status stacks, durations, dispel type och tooltips.
+- [x] Data- och view-grund för statusikon, duration, stacks och hovertext; live statusbinding till Target Frame återstår.
 - [ ] Nameplate stacking och occlusion.
 - [ ] Friendly/player nameplates för multiplayer.
 - [ ] Target-of-target, focus, party, raid och separat boss frame.
@@ -496,9 +497,9 @@ Möjliga nodtyper:
 - [x] Stable item ID.
 - [x] Name, description, slot, rarity och item level.
 - [x] Stats, tags, set och build effects.
-- [x] Optional Sprite icon.
+- [x] Sprite icon; alla 10 nuvarande items har unik importerad ikon.
 - [x] Optional `visualPrefab` för utrustad 3D-representation.
-- [x] Procedurgenererad, slot-specifik silhuettikon när Sprite saknas.
+- [x] Datadriven slot-specifik fallback när Sprite saknas, med procedurgenererad silhuett endast som sista säkerhetsnät.
 
 ### ITEM-02 — Equipment slots ✅
 
@@ -1052,6 +1053,7 @@ Krav för riktig MMO:
 - [x] Dungeon status.
 - [x] Build snapshot.
 - [x] Gameplay navigation icons.
+- [x] Fem unika action-barikoner kopplade från ability-definitionerna med cooldown, charges och usability-feedback ovanpå.
 - [ ] Final responsive layout och visual language.
 - [ ] Gemensam HUD layout-versionering och migrering av sparade positioner.
 - [ ] HUD-skala, safe-area-stöd och färdiga profiler för 16:9, ultrawide och handhållet.
@@ -1079,6 +1081,7 @@ Krav för riktig MMO:
 - [x] Shared inventory/equipment/loot pattern.
 - [x] Side-by-side equipped comparison med grön/röd deltafärg.
 - [x] Kandidat-tooltip och vald item-inspection visar `UPGRADE`, tom slot eller uppskattad positiv build-score-delta.
+- [x] Set-tooltip visar aktuell progress, samtliga 2/3/4/6-trösklar och ACTIVE/LOCKED-status.
 - [ ] Ability tooltips.
 - [ ] Buff/debuff tooltips.
 - [ ] Advanced comparison modifier key.
@@ -1169,21 +1172,21 @@ Krav för riktig MMO:
 
 ### ART-05 — Item visuals 🟨
 
-- [ ] 2D item icon template.
-- [ ] Icons per weapon/armor/core/relic/sigil/artifact.
+- [ ] Slutlig egen 2D item icon template/art bible.
+- [x] Unika importerade ikoner för alla nuvarande weapon/armor/core/relic/sigil/artifact-items.
 - [x] Procedural placeholder-silhuetter per weapon/armor/core/relic/sigil/artifact-kategori.
-- [x] Central icon-resolver använder itemets authored Sprite när den finns och kategorispecifik procedural fallback annars.
+- [x] Central icon-resolver använder itemets authored Sprite, därefter katalogiserad slotspecifik art och sist procedural fallback.
 - [x] Rarity borders, inte bara färgad bakgrund.
-- [ ] Set emblem.
+- [x] Riftstalker Circuit set-emblem.
 - [ ] Tag icons.
 - [ ] Affix icons vid behov.
 - [ ] 3D equipped models.
 - [ ] Ground/corpse loot representation.
-- [ ] Inventory icon atlas.
+- [ ] Inventory Sprite Atlas/batching pass när ikonbiblioteket växer.
 
 Iconalternativ:
 
-- [ ] Handmålade rastericons.
+- [x] Kuraterade rastericons för nuvarande prototypinnehåll; slutlig egen produktionsstil återstår.
 - [ ] Renderade 3D-item thumbnails.
 - [x] Stiliserade silhuetticons som placeholder-system.
 - [ ] Hybrid: 3D render + handmålad finish. **Rekommenderad.**
@@ -1199,9 +1202,10 @@ Iconalternativ:
 - [ ] Nameplate frames.
 - [ ] Map markers.
 - [ ] Cursor set: default, target, loot, interact, invalid.
-- [ ] Status icons.
-- [ ] Ability icons.
-- [ ] Class/spec icons.
+- [x] Fem initiala statusikoner plus generiska buff/debuff/status-fallbacks; live statusbinding återstår.
+- [x] Unika ikoner för Strike, Crushing Blow, Phase Lunge, Phase Dash och Rift Charge.
+- [x] Unika ikoner för Berserker, Bulwark och Riftblade.
+- [x] Keen Edge har en datadriven passive-ikon och visas i Character analysis.
 - [ ] Faction och dungeon emblems.
 
 ### VFX-01 — Combat VFX 🟨

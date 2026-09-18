@@ -8,6 +8,7 @@ namespace Phasebreak.Gameplay
         public string id;
         public string displayName;
         [TextArea] public string fantasy;
+        public Sprite icon;
         public SetBonusDefinition[] bonuses;
     }
 }

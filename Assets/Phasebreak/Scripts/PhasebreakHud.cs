@@ -383,12 +383,23 @@ namespace Phasebreak.Gameplay
                 slot.sizeDelta = new Vector2(108f, 78f);
                 UnityEngine.UI.Image panel = AddImage(slot, new Color(0.08f, 0.12f, 0.19f, 0.98f));
 
+                RectTransform iconRect = CreateRect("Ability Icon", slot);
+                iconRect.anchorMin = Vector2.zero;
+                iconRect.anchorMax = Vector2.one;
+                iconRect.offsetMin = new Vector2(5f, 5f);
+                iconRect.offsetMax = new Vector2(-5f, -5f);
+                UnityEngine.UI.Image abilityIcon = AddImage(iconRect, Color.white);
+                abilityIcon.preserveAspect = true;
+
                 TextMeshProUGUI name = AddText("Name", slot, 16f, TextAlignmentOptions.Center);
                 name.fontStyle = FontStyles.Bold;
-                name.rectTransform.anchorMin = new Vector2(0f, 0.28f);
-                name.rectTransform.anchorMax = Vector2.one;
-                name.rectTransform.offsetMin = new Vector2(5f, 0f);
-                name.rectTransform.offsetMax = new Vector2(-5f, -4f);
+                name.fontSize = 11f;
+                name.outlineWidth = .2f;
+                name.outlineColor = new Color32(0, 0, 0, 255);
+                name.rectTransform.anchorMin = Vector2.zero;
+                name.rectTransform.anchorMax = new Vector2(1f, .3f);
+                name.rectTransform.offsetMin = new Vector2(3f, 2f);
+                name.rectTransform.offsetMax = new Vector2(-3f, 0f);
 
                 TextMeshProUGUI key = AddText("Key", slot, 18f, TextAlignmentOptions.Center);
                 key.fontStyle = FontStyles.Bold;
@@ -419,7 +430,7 @@ namespace Phasebreak.Gameplay
                     TextAlignmentOptions.Center);
                 Stretch(cooldownText.rectTransform);
                 cooldownText.fontStyle = FontStyles.Bold;
-                abilitySlots[i] = new AbilitySlotView(panel, cooldown, name, key, cost, charges, cooldownText);
+                abilitySlots[i] = new AbilitySlotView(panel, abilityIcon, cooldown, name, key, cost, charges, cooldownText);
             }
         }
 
@@ -686,6 +697,7 @@ namespace Phasebreak.Gameplay
             private static readonly Color BlockedColor = new Color(0.12f, 0.075f, 0.085f, 0.98f);
 
             private readonly UnityEngine.UI.Image panel;
+            private readonly UnityEngine.UI.Image icon;
             private readonly RectTransform cooldown;
             private readonly TextMeshProUGUI name;
             private readonly TextMeshProUGUI key;
@@ -693,11 +705,12 @@ namespace Phasebreak.Gameplay
             private readonly TextMeshProUGUI charges;
             private readonly TextMeshProUGUI cooldownText;
 
-            public AbilitySlotView(UnityEngine.UI.Image panel, RectTransform cooldown,
+            public AbilitySlotView(UnityEngine.UI.Image panel, UnityEngine.UI.Image icon, RectTransform cooldown,
                 TextMeshProUGUI name, TextMeshProUGUI key, TextMeshProUGUI cost, TextMeshProUGUI charges,
                 TextMeshProUGUI cooldownText)
             {
                 this.panel = panel;
+                this.icon = icon;
                 this.cooldown = cooldown;
                 this.name = name;
                 this.key = key;
@@ -709,6 +722,8 @@ namespace Phasebreak.Gameplay
             public void UpdateView(AbilityState state)
             {
                 name.text = state.Name;
+                icon.sprite = state.Icon;
+                icon.color = state.Icon == null ? Color.clear : state.IsUsable ? Color.white : new Color(.52f, .52f, .58f, 1f);
                 key.text = state.Key;
                 cost.text = state.ResourceCost > 0f ? Mathf.CeilToInt(state.ResourceCost).ToString() : string.Empty;
                 charges.text = state.MaximumCharges > 1 ? $"x{state.Charges}" : string.Empty;

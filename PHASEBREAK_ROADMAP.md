@@ -35,18 +35,32 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - `Escape` — close the active gameplay menu.
 - Right mouse button on a corpse — open that corpse's private loot container.
 - Corpses stop combat participation immediately, retain their own generated drops and remain for 60 seconds by default. Items or Take All transfer through the existing inventory/save path.
-- Item definitions accept optional Sprite icons; slot-specific procedural silhouettes provide dependency-free placeholders until final item art exists.
+- Item definitions use authored Sprite icons when available. A central icon catalog supplies slot-specific art fallbacks, with procedural silhouettes retained only as the final safety net.
 
 ## Current UI update — inventory and character presentation
 
 - Inventory now uses a nine-column scrollable bag grid, rarity borders, icon-first items, visible empty capacity and category filters for weapons, armor, cores/relics and sigils.
-- Item definitions still accept authored Sprites; missing art falls back to readable procedural weapon, armor, relic, sigil and artifact silhouettes instead of cryptic letter abbreviations.
+- Every current item now has unique authored icon art. Missing art falls back through a data-driven weapon, armor, relic, sigil or artifact icon before the procedural safety net; cryptic letter placeholders are not used.
 - Left-click selects and inspects an item. Right-click or double-click equips it through the existing `PlayerBuildSystem`; the Character screen uses the same pattern to unequip.
 - Hover tooltips are screen-clamped and can show a side-by-side currently-equipped item with green/red stat differences.
 - A reusable loadout-aware evaluator marks genuine upgrades with a restrained green outline in Inventory and Corpse Loot. It compares the complete before/after build, including item stats, item level, gameplay modifiers and set-threshold changes; the bag header reports how many visible items are upgrades.
 - Upgrade tooltips and the selected-item inspection explain whether the candidate fills an empty slot or improves the estimated build score. Existing authored item Sprites remain the first choice, with recognizable slot-specific procedural icons as the fallback.
 - Character now presents all sixteen equipment channels around a Phasebound paper-doll silhouette, with final stats, specialization, passive, active set thresholds and build modifiers in a separate analysis panel.
 - Inventory, equipment calculations, build effects, item sets and local save ownership remain unchanged; this update only replaces and modularizes the runtime presentation layer.
+
+## Current icon integration update
+
+- Source audit: `C:\Users\chris\Pictures\WoW Icon Pack` contains 4,314 PNG files in eight categories; all are 60 × 60, nearly all are opaque RGB images, and 12 exact duplicate groups were detected. Runtime never references this external folder.
+- Only the 41 currently required sprites were copied into `Assets/Phasebreak/Art/UI/Icons`, organized as Items, Abilities, Passives, Statuses, Specializations, Sets and Fallbacks. The original collection was not imported wholesale.
+- All 10 current items and all five abilities (`Strike`, `Crushing Blow`, `Phase Lunge`, `Phase Dash`, `Rift Charge`) have distinct imported UI sprites.
+- The Riftstalker items share a purple/void visual family while retaining unique silhouettes. Riftstalker Circuit also has its own set emblem.
+- The action bar now renders the assigned ability art while preserving keys, costs, charges, cooldown shading and usability feedback.
+- Empty equipment slots use 16 mapped slot fallbacks from a central `PhasebreakIconCatalog`; item, ability, buff and debuff categories also have safe fallbacks.
+- Berserker, Bulwark and Riftblade have separate specialization icons.
+- The existing Keen Edge progression passive has its own icon and is presented in the Character analysis panel.
+- Five initial status definitions demonstrate buff/debuff icon, duration and stack metadata: Crit Surge, Swift Momentum, Poison, Slow and Rift Empowerment. The reusable status-icon view supports duration, stacks and hover text; live combat-status ownership remains Phase 9 work.
+- Item tooltips retain build-aware green/red comparisons and now list current set progress plus every 2/3/4/6-piece threshold with active/locked state.
+- Imported icon textures are configured as 2D/UI Sprites, clamp-wrapped, non-mipmapped and uncompressed at a 128 maximum size for crisp 60 × 60 source art.
 
 ## Phase 6.75 controls and presentation
 
