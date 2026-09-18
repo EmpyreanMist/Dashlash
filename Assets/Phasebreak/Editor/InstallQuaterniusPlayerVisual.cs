@@ -138,6 +138,14 @@ namespace Phasebreak.Editor
 
                 Transform primary = CreateAnchor(rightHand, "Primary Weapon Attachment");
                 Transform secondary = CreateAnchor(leftHand, "Secondary Attachment");
+                Transform back = CreateAnchor(animator.GetBoneTransform(HumanBodyBones.UpperChest),
+                    "Back Sheath Attachment");
+                back.localPosition = new Vector3(0f, 0f, -0.16f);
+                back.localRotation = Quaternion.Euler(0f, 0f, 42f);
+                Transform hip = CreateAnchor(animator.GetBoneTransform(HumanBodyBones.Hips),
+                    "Hip Sheath Attachment");
+                hip.localPosition = new Vector3(-0.18f, -0.04f, 0f);
+                hip.localRotation = Quaternion.Euler(0f, 0f, -12f);
                 var anchors = new[]
                 {
                     Entry(EquipmentVisualSlot.Head, animator, HumanBodyBones.Head, "Head Visual Slot"),
@@ -149,9 +157,13 @@ namespace Phasebreak.Editor
                 };
 
                 EquipmentVisualController equipment = wrapper.AddComponent<EquipmentVisualController>();
-                equipment.Configure(animator, primary, secondary, anchors);
+                equipment.Configure(animator, primary, secondary, back, hip, anchors);
+                wrapper.AddComponent<EquipmentVisualSync>();
+                wrapper.AddComponent<CombatAudioFeedback>();
+                wrapper.AddComponent<AbilityTrailFeedback>();
                 PlayerVisualAnimator visualAnimator = rig.AddComponent<PlayerVisualAnimator>();
                 visualAnimator.Configure(null, null, animator);
+                rig.AddComponent<PlayerCombatPresentation>();
 
                 GameObject prefab = PrefabUtility.SaveAsPrefabAsset(wrapper, PrefabPath);
                 return prefab;

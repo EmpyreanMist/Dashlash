@@ -15,6 +15,7 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Phase 5 — Rift Crypt dungeon loop, encounters, boss, checkpoint and reward chest.
 - Phase 6 — player-controlled inventory/equipment, comparison tooltips, build summary, persistent specialization, data-driven items/sets/abilities and build-changing effects.
 - Phase 6.5 — bag-style inventory, separate character sheet, HUD menu navigation and per-corpse right-click looting.
+- Phase 6.75 — five-slot combat bar, ability-driven Phase Dash, target-based Rift Charge, procedural combat presentation and the first equipment visuals. Pending player approval.
 
 ## Phase 6 content
 
@@ -36,9 +37,20 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Corpses stop combat participation immediately, retain their own generated drops and remain for 60 seconds by default. Items or Take All transfer through the existing inventory/save path.
 - Item definitions now accept an optional Sprite icon; slot glyphs provide dependency-free placeholders until final item art exists.
 
+## Phase 6.75 controls and presentation
+
+- `1` — Strike.
+- `2` — Crushing Blow.
+- `3` — Phase Lunge.
+- `4` — Phase Dash. Two charges; dash is no longer bound directly to Left Shift.
+- `5` — Rift Charge. Requires a hostile target at medium range, rushes to melee range and deals damage.
+- Combat exposes start/impact/complete/failure events so animation, audio, trails, HUD feedback and future networking do not own damage logic.
+- The Quaternius character currently uses replaceable procedural attack/hit/death poses over the locomotion controller. Authored clips and a proper upper-body Animator layer remain production work.
+- Equipped test weapon and chest visuals are driven by the existing equipment state. Weapons draw into the hands during abilities and return to back/hip sheath anchors afterward.
+
 ## Recommended next milestone — Phase 7
 
-Build the first scalable content pipeline: weighted loot tables per dungeon/boss, affix pools with slot/tag rules, item-instance rolls and a small character-sheet test suite. Then add dismantling/crafting so duplicate drops have value before expanding the open world.
+Build the first real combat-content slice: ranged, caster and bruiser enemies; interruptible telegraphs, leash/group aggro and an elite modifier; then turn Rift Crypt into a polished 10–15 minute dungeon with an optional risk room, boss phases and a unique reward. Item-instance loot tables should follow before broad open-world expansion.
 
 ## Multiplayer guardrails
 

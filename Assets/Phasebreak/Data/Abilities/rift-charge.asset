@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f0e7b0b302cee744e9e8d079d68049b4, type: 3}
-  m_Name: strike
+  m_Name: rift-charge
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
-  id: strike
-  displayName: Strike
-  key: 1
-  damage: 5
-  range: 2.4
-  cooldown: 0
-  resourceCost: 0
+  id: rift-charge
+  displayName: Rift Charge
+  key: 5
+  damage: 7
+  range: 14
+  cooldown: 10
+  resourceCost: 15
   criticalBonus: 0
-  impulse: 1.7
-  windup: 0.16
-  recovery: 0.14
-  executionType: 0
+  impulse: 0
+  windup: 0
+  recovery: 0.22
+  executionType: 3
   requiresTarget: 1
   usesGlobalCooldown: 1
-  minimumRange: 0
+  minimumRange: 4
   maximumCharges: 1
   movementDistance: 0
-  movementDuration: 0.16
+  movementDuration: 0.42
   stopDistance: 1.35
   icon: {fileID: 0}

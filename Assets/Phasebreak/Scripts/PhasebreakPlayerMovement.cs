@@ -31,7 +31,6 @@ namespace Phasebreak.Gameplay
         [Header("Dash")]
         [SerializeField, Min(0.1f)] private float dashDistance = 4.5f;
         [SerializeField, Min(0.01f)] private float dashDuration = 0.16f;
-        [SerializeField, Min(0f)] private float dashCooldown = 0.45f;
         [SerializeField] private bool allowAirDash = true;
         [SerializeField, Range(0, 3)] private int airDashesPerJump = 1;
         [SerializeField] private bool levelAirDash = true;
@@ -40,7 +39,6 @@ namespace Phasebreak.Gameplay
         private PlayerBuildSystem build;
         private InputAction moveAction;
         private InputAction strafeAction;
-        private InputAction dashAction;
         private InputAction jumpAction;
         private Vector3 planarVelocity;
         private Vector3 desiredMoveDirection;
@@ -49,17 +47,19 @@ namespace Phasebreak.Gameplay
         private float rotationVelocity;
         private float dashElapsed;
         private float dashDistanceTravelled;
-        private float lastDashStartedAt = float.NegativeInfinity;
+        private float activeDashDistance;
+        private float activeDashDuration;
         private float lastGroundedAt = float.NegativeInfinity;
         private float jumpBufferedUntil = float.NegativeInfinity;
         private int airDashesRemaining;
         private bool dashStartedAirborne;
         private bool isDashing;
+        private bool isAbilityDriven;
 
         public bool IsDashing => isDashing;
+        public bool CanDashNow => !isDashing && !isAbilityDriven && CanDash(controller != null && controller.isGrounded);
         public bool IsGrounded => controller != null && controller.isGrounded;
         public float VerticalSpeed => verticalVelocity;
-        public float DashCooldownRemaining => Mathf.Max(0f, dashCooldown - (Time.time - lastDashStartedAt));
         public event Action DashStarted;
 
         public void QueueJump()
@@ -79,6 +79,11 @@ namespace Phasebreak.Gameplay
 
         public bool TryDash()
         {
+            return TryDash(dashDistance, dashDuration);
+        }
+
+        public bool TryDash(float distance, float duration)
+        {
             if (isDashing)
                 return false;
 
@@ -86,8 +91,30 @@ namespace Phasebreak.Gameplay
             if (!CanDash(grounded))
                 return false;
 
-            BeginDash(grounded);
+            BeginDash(grounded, Mathf.Max(0.1f, distance), Mathf.Max(0.01f, duration));
             return true;
+        }
+
+        public bool BeginAbilityMovement()
+        {
+            if (isDashing || isAbilityDriven)
+                return false;
+            isAbilityDriven = true;
+            planarVelocity = Vector3.zero;
+            return true;
+        }
+
+        public CollisionFlags MoveAbility(Vector3 planarDisplacement)
+        {
+            if (!isAbilityDriven)
+                return CollisionFlags.None;
+            return controller.Move(planarDisplacement + Vector3.up * (-2f * Time.deltaTime));
+        }
+
+        public void EndAbilityMovement()
+        {
+            isAbilityDriven = false;
+            planarVelocity = Vector3.zero;
         }
 
         public bool CancelDashForAttack()
@@ -96,6 +123,7 @@ namespace Phasebreak.Gameplay
                 return false;
 
             isDashing = false;
+            isAbilityDriven = false;
             planarVelocity = dashDirection * moveSpeed * 0.8f;
             return true;
         }
@@ -137,7 +165,6 @@ namespace Phasebreak.Gameplay
                 .With("Negative", "<Keyboard>/q")
                 .With("Positive", "<Keyboard>/e");
 
-            dashAction = new InputAction("Dash", InputActionType.Button, "<Keyboard>/leftShift");
             jumpAction = new InputAction("Jump", InputActionType.Button, "<Keyboard>/space");
             airDashesRemaining = airDashesPerJump;
         }
@@ -146,7 +173,6 @@ namespace Phasebreak.Gameplay
         {
             moveAction.Enable();
             strafeAction.Enable();
-            dashAction.Enable();
             jumpAction.Enable();
         }
 
@@ -154,7 +180,6 @@ namespace Phasebreak.Gameplay
         {
             moveAction.Disable();
             strafeAction.Disable();
-            dashAction.Disable();
             jumpAction.Disable();
         }
 
@@ -162,7 +187,6 @@ namespace Phasebreak.Gameplay
         {
             moveAction.Dispose();
             strafeAction.Dispose();
-            dashAction.Dispose();
             jumpAction.Dispose();
         }
 
@@ -192,10 +216,10 @@ namespace Phasebreak.Gameplay
             if (Time.time <= jumpBufferedUntil)
                 TryJump();
 
-            if (dashAction.WasPressedThisFrame())
-                TryDash();
-
             UpdateVerticalVelocity(grounded);
+
+            if (isAbilityDriven)
+                return;
 
             if (isDashing)
                 UpdateDash();
@@ -245,15 +269,14 @@ namespace Phasebreak.Gameplay
 
         private bool CanDash(bool grounded)
         {
-            if (Time.time < lastDashStartedAt + dashCooldown)
-                return false;
-
             return grounded || (allowAirDash && airDashesRemaining > 0);
         }
 
-        private void BeginDash(bool grounded)
+        private void BeginDash(bool grounded, float distance, float duration)
         {
             isDashing = true;
+            activeDashDistance = distance;
+            activeDashDuration = duration;
             dashStartedAirborne = !grounded;
             if (dashStartedAirborne)
             {
@@ -263,7 +286,6 @@ namespace Phasebreak.Gameplay
             }
             dashElapsed = 0f;
             dashDistanceTravelled = 0f;
-            lastDashStartedAt = Time.time;
             dashDirection = desiredMoveDirection.sqrMagnitude > 0.001f
                 ? desiredMoveDirection.normalized
                 : transform.forward;
@@ -273,10 +295,10 @@ namespace Phasebreak.Gameplay
 
         private void UpdateDash()
         {
-            dashElapsed = Mathf.Min(dashElapsed + Time.deltaTime, dashDuration);
-            float normalizedTime = dashElapsed / dashDuration;
+            dashElapsed = Mathf.Min(dashElapsed + Time.deltaTime, activeDashDuration);
+            float normalizedTime = dashElapsed / activeDashDuration;
             float easedProgress = 1f - Mathf.Pow(1f - normalizedTime, 3f);
-            float targetDistance = dashDistance * easedProgress;
+            float targetDistance = activeDashDistance * easedProgress;
             float frameDistance = targetDistance - dashDistanceTravelled;
             dashDistanceTravelled = targetDistance;
 
@@ -284,7 +306,7 @@ namespace Phasebreak.Gameplay
             float verticalStep = dashStartedAirborne && levelAirDash ? 0f : verticalVelocity * Time.deltaTime;
             controller.Move(dashDirection * frameDistance + Vector3.up * verticalStep);
 
-            if (dashElapsed >= dashDuration)
+            if (dashElapsed >= activeDashDuration)
             {
                 isDashing = false;
                 planarVelocity = dashDirection * moveSpeed * 0.55f;

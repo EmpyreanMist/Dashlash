@@ -13,9 +13,11 @@ namespace Phasebreak.Gameplay
         public readonly float CooldownDuration;
         public readonly float ResourceCost;
         public readonly bool IsUsable;
+        public readonly int Charges;
+        public readonly int MaximumCharges;
 
         public AbilityState(string name, string key, float cooldownRemaining, float cooldownDuration,
-            float resourceCost, bool isUsable)
+            float resourceCost, bool isUsable, int charges, int maximumCharges)
         {
             Name = name;
             Key = key;
@@ -23,13 +25,34 @@ namespace Phasebreak.Gameplay
             CooldownDuration = cooldownDuration;
             ResourceCost = resourceCost;
             IsUsable = isUsable;
+            Charges = charges;
+            MaximumCharges = maximumCharges;
+        }
+    }
+
+    public readonly struct AbilityPresentationEvent
+    {
+        public readonly int Index;
+        public readonly string Name;
+        public readonly AbilityExecutionType Type;
+        public readonly float Duration;
+        public readonly bool Critical;
+
+        public AbilityPresentationEvent(int index, string name, AbilityExecutionType type,
+            float duration, bool critical)
+        {
+            Index = index;
+            Name = name;
+            Type = type;
+            Duration = duration;
+            Critical = critical;
         }
     }
 
     [DisallowMultipleComponent]
     public sealed class PlayerCombat : MonoBehaviour
     {
-        private const int AbilityCountValue = 3;
+        private const int AbilityCountValue = 5;
 
         [Header("References")]
         [SerializeField] private PhasebreakPlayerMovement movement;
@@ -47,20 +70,14 @@ namespace Phasebreak.Gameplay
         [SerializeField, Min(1f)] private float maximumResource = 100f;
         [SerializeField, Min(0f)] private float resourceRegeneration = 14f;
 
-        [Header("1 - Strike")]
+        [Header("Legacy Fallback Values")]
         [SerializeField, Min(1f)] private float strikeDamage = 5f;
         [SerializeField, Min(0.1f)] private float strikeRange = 2.4f;
-        [SerializeField, Min(0f)] private float strikeCooldown;
-        [SerializeField, Min(0f)] private float strikeCost;
-
-        [Header("2 - Crushing Blow")]
         [SerializeField, Min(1f)] private float crushingDamage = 10f;
         [SerializeField, Min(0.1f)] private float crushingRange = 2.65f;
         [SerializeField, Min(0f)] private float crushingCooldown = 5f;
         [SerializeField, Min(0f)] private float crushingCost = 30f;
         [SerializeField, Range(0f, 1f)] private float crushingCriticalBonus = 0.1f;
-
-        [Header("3 - Phase Lunge")]
         [SerializeField, Min(1f)] private float lungeDamage = 6f;
         [SerializeField, Min(0.1f)] private float lungeRange = 7f;
         [SerializeField, Min(0f)] private float lungeCooldown = 8f;
@@ -79,10 +96,10 @@ namespace Phasebreak.Gameplay
         [Header("Soft Auto Target")]
         [SerializeField, Range(10f, 180f)] private float autoTargetCone = 110f;
 
-        private readonly float[] readyAt = new float[AbilityCountValue];
+        private readonly int[] charges = new int[AbilityCountValue];
+        private readonly float[] nextChargeReadyAt = new float[AbilityCountValue];
         private readonly InputAction[] abilityActions = new InputAction[AbilityCountValue];
         private float globalReadyAt;
-        private float bonusLungeReadyAt;
         private float currentResource;
         private Coroutine attackRoutine;
         private Coroutine hitStopRoutine;
@@ -99,6 +116,11 @@ namespace Phasebreak.Gameplay
             (progression != null ? progression.CriticalDamageBonus : 0f) +
             (build != null ? build.CriticalDamageBonus : 0f);
 
+        public event Action<AbilityPresentationEvent> AbilityStarted;
+        public event Action<AbilityPresentationEvent> AbilityImpact;
+        public event Action<AbilityPresentationEvent> AbilityCompleted;
+        public event Action<string> AbilityFailed;
+
         public void Configure(PhasebreakPlayerMovement playerMovement, PhasebreakFollowCamera camera,
             Transform visual)
         {
@@ -110,19 +132,14 @@ namespace Phasebreak.Gameplay
 
         private void Awake()
         {
-            if (movement == null)
-                movement = GetComponent<PhasebreakPlayerMovement>();
-            if (followCamera == null)
-                followCamera = FindAnyObjectByType<PhasebreakFollowCamera>();
-            if (targeting == null)
-                targeting = GetComponent<PlayerTargeting>();
-            if (progression == null)
-                progression = GetComponent<PlayerProgression>();
-            if (build == null)
-                build = GetComponent<PlayerBuildSystem>() ?? gameObject.AddComponent<PlayerBuildSystem>();
-
+            movement ??= GetComponent<PhasebreakPlayerMovement>();
+            followCamera ??= FindAnyObjectByType<PhasebreakFollowCamera>();
+            targeting ??= GetComponent<PlayerTargeting>();
+            progression ??= GetComponent<PlayerProgression>();
+            build ??= GetComponent<PlayerBuildSystem>() ?? gameObject.AddComponent<PlayerBuildSystem>();
             CreateInputActions();
             currentResource = maximumResource;
+            FillCharges();
             SetSlashVisible(false);
         }
 
@@ -149,107 +166,143 @@ namespace Phasebreak.Gameplay
 
         private void CreateInputActions()
         {
-            for (int i = 0; i < abilityActions.Length; i++) abilityActions[i]?.Dispose();
-            abilityActions[0] = new InputAction("Strike", InputActionType.Button, "<Keyboard>/1");
-            abilityActions[1] = new InputAction("Crushing Blow", InputActionType.Button, "<Keyboard>/2");
-            abilityActions[2] = new InputAction("Phase Lunge", InputActionType.Button, "<Keyboard>/3");
+            for (int i = 0; i < abilityActions.Length; i++)
+            {
+                abilityActions[i]?.Dispose();
+                abilityActions[i] = new InputAction(GetAbilityName(i), InputActionType.Button,
+                    $"<Keyboard>/{GetKey(i)}");
+            }
         }
 
         private void Update()
         {
             currentResource = Mathf.MoveTowards(currentResource, maximumResource,
                 resourceRegeneration * Time.deltaTime);
-
+            UpdateCharges();
             for (int i = 0; i < abilityActions.Length; i++)
-            {
                 if (abilityActions[i].WasPressedThisFrame())
                     TryUseAbility(i);
-            }
         }
 
         public AbilityState GetAbilityState(int index)
         {
-            if (index < 0 || index >= AbilityCountValue)
+            if (!IsValidIndex(index))
                 return default;
-
-            float abilityRemaining = Mathf.Max(0f, readyAt[index] - Time.time);
-            if (index == 2 && build != null && build.PhaseLungeExtraCharges > 0)
-                abilityRemaining = Mathf.Min(abilityRemaining, Mathf.Max(0f, bonusLungeReadyAt - Time.time));
-            float globalRemaining = Mathf.Max(0f, globalReadyAt - Time.time);
+            int maximumCharges = GetMaximumCharges(index);
+            float abilityRemaining = charges[index] < maximumCharges
+                ? Mathf.Max(0f, nextChargeReadyAt[index] - Time.time) : 0f;
+            float globalRemaining = UsesGlobalCooldown(index)
+                ? Mathf.Max(0f, globalReadyAt - Time.time) : 0f;
             bool globalIsLonger = globalRemaining > abilityRemaining;
-            float cooldownDuration = globalIsLonger ? globalCooldown : GetCooldown(index);
-            float cooldownRemaining = globalIsLonger ? globalRemaining : abilityRemaining;
-            return new AbilityState(GetAbilityName(index), (index + 1).ToString(), cooldownRemaining,
-                cooldownDuration, GetCost(index), CanUseAbility(index));
+            return new AbilityState(GetAbilityName(index), GetKey(index),
+                globalIsLonger ? globalRemaining : abilityRemaining,
+                globalIsLonger ? globalCooldown : GetCooldown(index), GetCost(index),
+                CanUseAbility(index), charges[index], maximumCharges);
         }
 
         public bool TryUseAbility(int index)
         {
-            if (!CanBeginAbility(index))
+            if (!ValidateCommonRequirements(index, true))
                 return false;
-
-            Targetable target = targeting.CurrentTarget;
-            if (target == null || !target.IsHostile || !target.IsAlive ||
-                !IsTargetValid(target, GetRange(index)))
+            AbilityExecutionType type = GetExecutionType(index);
+            if (type == AbilityExecutionType.PhaseDash)
             {
-                target = targeting.TrySelectNearestInFront(GetRange(index), autoTargetCone);
+                if (movement == null || !movement.CanDashNow)
+                {
+                    Fail("Phase Dash cannot be used right now");
+                    return false;
+                }
+                ConsumeAbility(index);
+                attackRoutine = StartCoroutine(PerformDash(index));
+                return true;
             }
-            if (target == null || !IsTargetValid(target, GetRange(index)))
+
+            Targetable target = ResolveTarget(index);
+            if (target == null)
+            {
+                Fail(type == AbilityExecutionType.Charge ? "No charge target in range" : "No valid target in range");
                 return false;
+            }
 
             float damage = GetDamage(index) * (progression != null ? progression.PowerMultiplier : 1f) *
                            (build != null ? build.PowerMultiplier : 1f);
             if (build != null && target.GetComponent<RiftWardenBoss>() != null)
                 damage *= build.BossDamageMultiplier;
-            float critChance = Mathf.Clamp01(CriticalChance + GetCriticalBonus(index));
-            bool critical = UnityEngine.Random.value < critChance;
+            bool critical = UnityEngine.Random.value < Mathf.Clamp01(CriticalChance + GetCriticalBonus(index));
             if (critical)
                 damage *= CriticalDamageMultiplier;
 
-            currentResource = Mathf.Max(0f, currentResource - GetCost(index));
-            float cooldown = GetCooldown(index);
-            if (index == 2 && build != null && build.PhaseLungeExtraCharges > 0 && Time.time < readyAt[index])
-                bonusLungeReadyAt = Time.time + cooldown;
-            else
-                readyAt[index] = Time.time + cooldown;
-            globalReadyAt = Time.time + globalCooldown / (build != null ? build.AttackSpeedMultiplier : 1f);
-            attackRoutine = StartCoroutine(PerformAbility(index, target, damage, critical));
+            ConsumeAbility(index);
+            attackRoutine = StartCoroutine(type == AbilityExecutionType.Charge
+                ? PerformCharge(index, target, damage, critical)
+                : PerformAttack(index, target, damage, critical));
             return true;
         }
 
         public void ResetCombat()
         {
             StopCombatRoutines();
-            Array.Clear(readyAt, 0, readyAt.Length);
-            bonusLungeReadyAt = 0f;
+            Array.Clear(nextChargeReadyAt, 0, nextChargeReadyAt.Length);
             globalReadyAt = 0f;
             currentResource = maximumResource;
+            FillCharges();
+        }
+
+        private bool ValidateCommonRequirements(int index, bool report)
+        {
+            if (!IsValidIndex(index))
+                return false;
+            if (IsAttacking)
+                return Reject(report, "Another ability is already active");
+            if (UsesGlobalCooldown(index) && Time.time < globalReadyAt)
+                return Reject(report, "Global cooldown");
+            if (charges[index] <= 0)
+                return Reject(report, $"{GetAbilityName(index)} is recharging");
+            if (currentResource < GetCost(index))
+                return Reject(report, "Not enough Energy");
+            return true;
         }
 
         private bool CanUseAbility(int index)
         {
-            if (!CanBeginAbility(index))
+            if (!ValidateCommonRequirements(index, false))
                 return false;
-
-            Targetable target = targeting.CurrentTarget;
-            return target != null && target.IsHostile && target.IsAlive &&
-                   IsTargetValid(target, GetRange(index));
+            if (GetExecutionType(index) == AbilityExecutionType.PhaseDash)
+                return movement != null && movement.CanDashNow;
+            Targetable target = targeting != null ? targeting.CurrentTarget : null;
+            return target != null && IsTargetValid(target, GetMinimumRange(index), GetRange(index));
         }
 
-        private bool CanBeginAbility(int index) =>
-            index >= 0 && index < AbilityCountValue && !IsAttacking && Time.time >= globalReadyAt &&
-            (Time.time >= readyAt[index] || (index == 2 && build != null && build.PhaseLungeExtraCharges > 0 && Time.time >= bonusLungeReadyAt)) &&
-            currentResource >= GetCost(index) && targeting != null;
-
-        private bool IsTargetValid(Targetable target, float range)
+        private bool Reject(bool report, string message)
         {
+            if (report)
+                Fail(message);
+            return false;
+        }
+
+        private void Fail(string message) => AbilityFailed?.Invoke(message);
+
+        private Targetable ResolveTarget(int index)
+        {
+            if (targeting == null)
+                return null;
+            Targetable target = targeting.CurrentTarget;
+            if (target != null && IsTargetValid(target, GetMinimumRange(index), GetRange(index)))
+                return target;
+            target = targeting.TrySelectNearestInFront(GetRange(index), autoTargetCone);
+            return target != null && IsTargetValid(target, GetMinimumRange(index), GetRange(index)) ? target : null;
+        }
+
+        private bool IsTargetValid(Targetable target, float minimumRange, float maximumRange)
+        {
+            if (target == null || !target.IsHostile || !target.IsAlive)
+                return false;
             Vector3 origin = transform.position + Vector3.up * 1.1f;
             Vector3 destination = target.NameplateWorldPosition - Vector3.up * 0.65f;
             Vector3 direction = destination - origin;
             float distance = direction.magnitude;
-            if (distance > range || distance < 0.01f)
+            if (distance > maximumRange || FlatDistance(transform.position, target.transform.position) < minimumRange || distance < 0.01f)
                 return false;
-
             RaycastHit[] hits = Physics.RaycastAll(origin, direction / distance, distance + 0.2f,
                 lineOfSightLayers, QueryTriggerInteraction.Ignore);
             Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
@@ -262,63 +315,133 @@ namespace Phasebreak.Gameplay
             return true;
         }
 
-        private IEnumerator PerformAbility(int index, Targetable target, float damage, bool critical)
+        private IEnumerator PerformDash(int index)
+        {
+            AbilityPresentationEvent presentation = Event(index, GetMovementDuration(index), false);
+            AbilityStarted?.Invoke(presentation);
+            if (!movement.TryDash(GetMovementDistance(index), GetMovementDuration(index)))
+            {
+                RefundCharge(index);
+                AbilityCompleted?.Invoke(presentation);
+                attackRoutine = null;
+                yield break;
+            }
+            while (movement.IsDashing)
+                yield return null;
+            AbilityCompleted?.Invoke(presentation);
+            attackRoutine = null;
+        }
+
+        private IEnumerator PerformCharge(int index, Targetable target, float damage, bool critical)
+        {
+            float duration = GetMovementDuration(index);
+            AbilityPresentationEvent presentation = Event(index, duration + GetRecovery(index), critical);
+            AbilityStarted?.Invoke(presentation);
+            if (movement == null || !movement.BeginAbilityMovement())
+            {
+                RefundCharge(index);
+                AbilityCompleted?.Invoke(presentation);
+                attackRoutine = null;
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < duration && target != null && target.IsAlive)
+            {
+                Vector3 delta = target.transform.position - transform.position;
+                delta.y = 0f;
+                if (delta.magnitude <= GetStopDistance(index))
+                    break;
+                Vector3 direction = delta.normalized;
+                transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
+                float speed = Mathf.Max(8f, GetRange(index) / duration);
+                CollisionFlags flags = movement.MoveAbility(direction * (speed * Time.deltaTime));
+                if ((flags & CollisionFlags.Sides) != 0)
+                    break;
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            movement.EndAbilityMovement();
+
+            if (target != null && target.IsAlive &&
+                FlatDistance(transform.position, target.transform.position) <= GetStopDistance(index) + 1.2f)
+            {
+                ApplyHit(index, target, damage, critical, true);
+                AbilityImpact?.Invoke(presentation);
+            }
+            else
+                Fail("Charge was blocked");
+
+            yield return new WaitForSeconds(GetRecovery(index));
+            AbilityCompleted?.Invoke(presentation);
+            attackRoutine = null;
+        }
+
+        private IEnumerator PerformAttack(int index, Targetable target, float damage, bool critical)
         {
             Vector3 toTarget = target.transform.position - transform.position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
-
             movement?.CancelDashForAttack();
-            float windup = (Ability(index) != null ? Ability(index).windup : index switch { 1 => 0.18f, 2 => 0.08f, _ => 0.1f }) /
-                           (build != null ? build.AttackSpeedMultiplier : 1f);
-            if (index == 2 && toTarget.sqrMagnitude > 0.01f)
-                movement?.AddCombatImpulse(toTarget.normalized * (Ability(index) != null ? Ability(index).impulse : lungeImpulse));
+            float attackSpeed = build != null ? build.AttackSpeedMultiplier : 1f;
+            float windup = GetWindup(index) / attackSpeed;
+            float recovery = GetRecovery(index) / attackSpeed;
+            AbilityPresentationEvent presentation = Event(index, windup + recovery + 0.12f, critical);
+            AbilityStarted?.Invoke(presentation);
+
+            if (GetExecutionType(index) == AbilityExecutionType.PhaseLunge && toTarget.sqrMagnitude > 0.01f)
+                movement?.AddCombatImpulse(toTarget.normalized * GetImpulse(index));
             else
-                movement?.AddCombatImpulse(transform.forward * (Ability(index) != null ? Ability(index).impulse : index == 1 ? 2.8f : 1.7f));
+                movement?.AddCombatImpulse(transform.forward * GetImpulse(index));
 
             yield return new WaitForSeconds(windup);
             SetSlashVisible(true);
             if (slashVisual != null)
                 slashVisual.localScale = Vector3.one * (critical ? 1.55f : index == 1 ? 1.3f : 1f);
-
             if (target != null && target.IsAlive &&
-                Vector3.Distance(transform.position, target.transform.position) <= GetRange(index) + 1f)
+                FlatDistance(transform.position, target.transform.position) <= GetRange(index) + 1f)
             {
-                ICombatTarget combatTarget = target.GetComponent<ICombatTarget>();
-                if (combatTarget != null)
-                {
-                    Vector3 direction = target.transform.position - transform.position;
-                    direction.y = 0f;
-                    if (direction.sqrMagnitude < 0.01f)
-                        direction = transform.forward;
-                    direction.Normalize();
-                    Vector3 hitPoint = target.transform.position + Vector3.up * 1.15f;
-                    combatTarget.ReceiveHit(new CombatHit(hitPoint, direction, damage,
-                        knockback * (index == 1 ? 1.5f : 1f), index == 2, critical,
-                        GetAbilityName(index)));
-
-                    if (critical && build != null && build.CritEnergyRestore > 0f)
-                        currentResource = Mathf.Min(maximumResource, currentResource + build.CritEnergyRestore);
-                    if (index == 1 && build != null && build.CrushingBlowCleave)
-                        PerformCleave(target, damage * .6f, critical);
-                    if (index == 2 && !target.IsAlive && build != null && build.TeleportKillRecovery > 0f)
-                    {
-                        currentResource = Mathf.Min(maximumResource, currentResource + build.TeleportKillRecovery);
-                        readyAt[2] = bonusLungeReadyAt = Time.time;
-                    }
-
-                    followCamera?.AddImpulse(critical ? criticalCameraImpulse : normalCameraImpulse);
-                    float hitStop = critical ? criticalHitStop : normalHitStop;
-                    if (hitStop > 0f)
-                        hitStopRoutine = StartCoroutine(HitStop(hitStop));
-                }
+                ApplyHit(index, target, damage, critical,
+                    GetExecutionType(index) == AbilityExecutionType.PhaseLunge);
+                AbilityImpact?.Invoke(presentation);
             }
-
             yield return new WaitForSeconds(0.12f);
             SetSlashVisible(false);
-            yield return new WaitForSeconds(index == 1 ? 0.2f : 0.1f);
+            yield return new WaitForSeconds(recovery);
+            AbilityCompleted?.Invoke(presentation);
             attackRoutine = null;
+        }
+
+        private void ApplyHit(int index, Targetable target, float damage, bool critical, bool mobilityHit)
+        {
+            ICombatTarget combatTarget = target.GetComponent<ICombatTarget>();
+            if (combatTarget == null)
+                return;
+            Vector3 direction = target.transform.position - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.01f)
+                direction = transform.forward;
+            direction.Normalize();
+            combatTarget.ReceiveHit(new CombatHit(target.transform.position + Vector3.up * 1.15f,
+                direction, damage, knockback * (index == 1 ? 1.5f : 1f), mobilityHit, critical,
+                GetAbilityName(index)));
+
+            if (critical && build != null && build.CritEnergyRestore > 0f)
+                currentResource = Mathf.Min(maximumResource, currentResource + build.CritEnergyRestore);
+            if (index == 1 && build != null && build.CrushingBlowCleave)
+                PerformCleave(target, damage * 0.6f, critical);
+            if (GetExecutionType(index) == AbilityExecutionType.PhaseLunge && !target.IsAlive &&
+                build != null && build.TeleportKillRecovery > 0f)
+            {
+                currentResource = Mathf.Min(maximumResource, currentResource + build.TeleportKillRecovery);
+                charges[index] = GetMaximumCharges(index);
+                nextChargeReadyAt[index] = 0f;
+            }
+            followCamera?.AddImpulse(critical ? criticalCameraImpulse : normalCameraImpulse);
+            float hitStop = critical ? criticalHitStop : normalHitStop;
+            if (hitStop > 0f)
+                hitStopRoutine = StartCoroutine(HitStop(hitStop));
         }
 
         private IEnumerator HitStop(float duration)
@@ -343,6 +466,7 @@ namespace Phasebreak.Gameplay
                 hitStopRoutine = null;
                 Time.timeScale = 1f;
             }
+            movement?.EndAbilityMovement();
             SetSlashVisible(false);
         }
 
@@ -362,59 +486,130 @@ namespace Phasebreak.Gameplay
         {
             foreach (Targetable other in Targetable.ActiveTargets)
             {
-                if (other == null || other == primary || !other.IsHostile || !other.IsAlive || Vector3.Distance(transform.position, other.transform.position) > GetRange(1) + 1.2f) continue;
-                ICombatTarget victim = other.GetComponent<ICombatTarget>(); if (victim == null) continue;
+                if (other == null || other == primary || !other.IsHostile || !other.IsAlive ||
+                    FlatDistance(transform.position, other.transform.position) > GetRange(1) + 1.2f)
+                    continue;
+                ICombatTarget victim = other.GetComponent<ICombatTarget>();
+                if (victim == null)
+                    continue;
                 Vector3 direction = (other.transform.position - transform.position).normalized;
-                victim.ReceiveHit(new CombatHit(other.transform.position + Vector3.up, direction, damage, knockback, false, critical, "Crushing Blow: Fracture"));
+                victim.ReceiveHit(new CombatHit(other.transform.position + Vector3.up, direction, damage,
+                    knockback, false, critical, "Crushing Blow: Fracture"));
             }
         }
 
+        private void FillCharges()
+        {
+            for (int i = 0; i < AbilityCountValue; i++)
+                charges[i] = GetMaximumCharges(i);
+        }
+
+        private void UpdateCharges()
+        {
+            for (int i = 0; i < AbilityCountValue; i++)
+            {
+                int maximum = GetMaximumCharges(i);
+                charges[i] = Mathf.Min(charges[i], maximum);
+                if (charges[i] >= maximum || Time.time < nextChargeReadyAt[i])
+                    continue;
+                charges[i]++;
+                nextChargeReadyAt[i] = charges[i] < maximum ? Time.time + GetCooldown(i) : 0f;
+            }
+        }
+
+        private void ConsumeAbility(int index)
+        {
+            currentResource = Mathf.Max(0f, currentResource - GetCost(index));
+            int maximum = GetMaximumCharges(index);
+            if (charges[index] == maximum)
+                nextChargeReadyAt[index] = Time.time + GetCooldown(index);
+            charges[index] = Mathf.Max(0, charges[index] - 1);
+            if (UsesGlobalCooldown(index))
+                globalReadyAt = Time.time + globalCooldown /
+                    (build != null ? build.AttackSpeedMultiplier : 1f);
+        }
+
+        private void RefundCharge(int index)
+        {
+            charges[index] = Mathf.Min(GetMaximumCharges(index), charges[index] + 1);
+            if (charges[index] >= GetMaximumCharges(index))
+                nextChargeReadyAt[index] = 0f;
+        }
+
+        private AbilityPresentationEvent Event(int index, float duration, bool critical) =>
+            new(index, GetAbilityName(index), GetExecutionType(index), duration, critical);
+        private bool IsValidIndex(int index) => index >= 0 && index < AbilityCountValue;
+        private CombatAbilityDefinition Ability(int index) =>
+            abilityDefinitions != null && index >= 0 && index < abilityDefinitions.Length
+                ? abilityDefinitions[index] : null;
         private string GetAbilityName(int index) => Ability(index) != null ? Ability(index).displayName : index switch
         {
-            1 => "Crushing Blow",
-            2 => "Phase Lunge",
-            _ => "Strike"
+            1 => "Crushing Blow", 2 => "Phase Lunge", 3 => "Phase Dash", 4 => "Rift Charge", _ => "Strike"
         };
-
+        private string GetKey(int index) => !string.IsNullOrWhiteSpace(Ability(index)?.key)
+            ? Ability(index).key : (index + 1).ToString();
+        private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null
+            ? Ability(index).executionType : index switch
+            {
+                2 => AbilityExecutionType.PhaseLunge,
+                3 => AbilityExecutionType.PhaseDash,
+                4 => AbilityExecutionType.Charge,
+                _ => AbilityExecutionType.Melee
+            };
         private float GetDamage(int index) => Ability(index) != null ? Ability(index).damage : index switch
         {
-            1 => crushingDamage,
-            2 => lungeDamage,
-            _ => strikeDamage
+            1 => crushingDamage, 2 => lungeDamage, 3 => 0f, 4 => 7f, _ => strikeDamage
         };
-
         private float GetRange(int index) => Ability(index) != null ? Ability(index).range : index switch
         {
-            1 => crushingRange,
-            2 => lungeRange,
-            _ => strikeRange
+            1 => crushingRange, 2 => lungeRange, 3 => 0f, 4 => 14f, _ => strikeRange
         };
-
+        private float GetMinimumRange(int index) => Ability(index) != null ? Ability(index).minimumRange : index == 4 ? 4f : 0f;
         private float GetCooldown(int index)
         {
             float value = Ability(index) != null ? Ability(index).cooldown : index switch
-        {
-            1 => crushingCooldown,
-            2 => lungeCooldown,
-            _ => strikeCooldown
-        };
+            {
+                1 => crushingCooldown, 2 => lungeCooldown, 3 => 6f, 4 => 10f, _ => 0f
+            };
             return index == 2 && build != null ? value * build.PhaseLungeCooldownMultiplier : value;
         }
-
         private float GetCost(int index) => Ability(index) != null ? Ability(index).resourceCost : index switch
         {
-            1 => crushingCost,
-            2 => lungeCost,
-            _ => strikeCost
+            1 => crushingCost, 2 => lungeCost, 4 => 15f, _ => 0f
         };
-
         private float GetCriticalBonus(int index) => Ability(index) != null ? Ability(index).criticalBonus : index switch
         {
-            1 => crushingCriticalBonus,
-            2 => lungeCriticalBonus,
-            _ => 0f
+            1 => crushingCriticalBonus, 2 => lungeCriticalBonus, _ => 0f
         };
-
-        private CombatAbilityDefinition Ability(int index) => abilityDefinitions != null && index >= 0 && index < abilityDefinitions.Length ? abilityDefinitions[index] : null;
+        private float GetImpulse(int index) => Ability(index) != null ? Ability(index).impulse : index switch
+        {
+            1 => 2.8f, 2 => lungeImpulse, _ => 1.7f
+        };
+        private float GetWindup(int index) => Ability(index) != null ? Ability(index).windup : index switch
+        {
+            1 => 0.28f, 2 => 0.12f, _ => 0.18f
+        };
+        private float GetRecovery(int index) => Ability(index) != null ? Ability(index).recovery : index switch
+        {
+            1 => 0.3f, 2 => 0.16f, 4 => 0.22f, _ => 0.14f
+        };
+        private float GetMovementDuration(int index) => Ability(index) != null ? Ability(index).movementDuration : index == 4 ? 0.42f : 0.16f;
+        private float GetMovementDistance(int index) => Ability(index) != null && Ability(index).movementDistance > 0f
+            ? Ability(index).movementDistance : 4.5f;
+        private float GetStopDistance(int index) => Ability(index) != null ? Ability(index).stopDistance : 1.35f;
+        private int GetMaximumCharges(int index)
+        {
+            int value = Ability(index) != null ? Ability(index).maximumCharges : index == 3 ? 2 : 1;
+            if (index == 2 && build != null)
+                value += build.PhaseLungeExtraCharges;
+            return Mathf.Clamp(value, 1, 3);
+        }
+        private bool UsesGlobalCooldown(int index) => Ability(index) != null
+            ? Ability(index).usesGlobalCooldown : index != 3;
+        private static float FlatDistance(Vector3 a, Vector3 b)
+        {
+            a.y = b.y = 0f;
+            return Vector3.Distance(a, b);
+        }
     }
 }

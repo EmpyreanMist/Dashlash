@@ -15,6 +15,8 @@ MonoBehaviour:
   id: weapon.rift-iron
   displayName: Rift-Iron Edge
   description: A blade whose edge briefly vanishes between impacts.
+  icon: {fileID: 0}
+  visualPrefab: {fileID: 5811854747445385732, guid: ee4fd848423a3944b92d60996db1fc24, type: 3}
   slot: 0
   rarity: 2
   itemLevel: 5

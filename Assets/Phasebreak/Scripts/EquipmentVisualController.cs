@@ -29,20 +29,41 @@ namespace Phasebreak.Gameplay
         [SerializeField] private Animator animator;
         [SerializeField] private Transform rightHandAttachment;
         [SerializeField] private Transform leftHandAttachment;
+        [SerializeField] private Transform backAttachment;
+        [SerializeField] private Transform hipAttachment;
         [SerializeField] private EquipmentVisualAnchor[] visualAnchors = Array.Empty<EquipmentVisualAnchor>();
 
         private readonly Dictionary<EquipmentVisualSlot, GameObject> equippedVisuals = new();
 
         public Transform RightHandAttachment => rightHandAttachment;
         public Transform LeftHandAttachment => leftHandAttachment;
+        public Transform BackAttachment => backAttachment;
+        public Transform HipAttachment => hipAttachment;
 
         public void Configure(Animator characterAnimator, Transform rightHand, Transform leftHand,
-            EquipmentVisualAnchor[] anchors)
+            Transform back, Transform hip, EquipmentVisualAnchor[] anchors)
         {
             animator = characterAnimator;
             rightHandAttachment = rightHand;
             leftHandAttachment = leftHand;
+            backAttachment = back;
+            hipAttachment = hip;
             visualAnchors = anchors ?? Array.Empty<EquipmentVisualAnchor>();
+        }
+
+        public void SetWeaponsDrawn(bool drawn)
+        {
+            ReparentWeapon(EquipmentVisualSlot.PrimaryWeapon,
+                drawn ? rightHandAttachment : backAttachment);
+            ReparentWeapon(EquipmentVisualSlot.Secondary,
+                drawn ? leftHandAttachment : hipAttachment);
+        }
+
+        private void ReparentWeapon(EquipmentVisualSlot slot, Transform destination)
+        {
+            if (destination == null || !equippedVisuals.TryGetValue(slot, out GameObject visual) || visual == null)
+                return;
+            visual.transform.SetParent(destination, false);
         }
 
         public GameObject SetVisual(EquipmentVisualSlot slot, GameObject visualPrefab)

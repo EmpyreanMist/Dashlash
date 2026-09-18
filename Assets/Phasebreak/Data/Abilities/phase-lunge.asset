@@ -21,4 +21,14 @@ MonoBehaviour:
   resourceCost: 20
   criticalBonus: 0.05
   impulse: 8.5
-  windup: 0.08
+  windup: 0.12
+  recovery: 0.16
+  executionType: 1
+  requiresTarget: 1
+  usesGlobalCooldown: 1
+  minimumRange: 0
+  maximumCharges: 1
+  movementDistance: 0
+  movementDuration: 0.16
+  stopDistance: 1.35
+  icon: {fileID: 0}

@@ -15,6 +15,8 @@ MonoBehaviour:
   id: chest.bulwark
   displayName: Ashen Bulwark Shell
   description: A defensive shell that resists the first pressure spike.
+  icon: {fileID: 0}
+  visualPrefab: {fileID: 5898393837369165078, guid: 93588912cd7a57d44952004999581411, type: 3}
   slot: 4
   rarity: 2
   itemLevel: 5

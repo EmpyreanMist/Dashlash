@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f0e7b0b302cee744e9e8d079d68049b4, type: 3}
-  m_Name: strike
+  m_Name: phase-dash
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
-  id: strike
-  displayName: Strike
-  key: 1
-  damage: 5
-  range: 2.4
-  cooldown: 0
+  id: phase-dash
+  displayName: Phase Dash
+  key: 4
+  damage: 0
+  range: 0.1
+  cooldown: 6
   resourceCost: 0
   criticalBonus: 0
-  impulse: 1.7
-  windup: 0.16
-  recovery: 0.14
-  executionType: 0
-  requiresTarget: 1
-  usesGlobalCooldown: 1
+  impulse: 0
+  windup: 0
+  recovery: 0.04
+  executionType: 2
+  requiresTarget: 0
+  usesGlobalCooldown: 0
   minimumRange: 0
-  maximumCharges: 1
-  movementDistance: 0
+  maximumCharges: 2
+  movementDistance: 4.5
   movementDuration: 0.16
   stopDistance: 1.35
   icon: {fileID: 0}

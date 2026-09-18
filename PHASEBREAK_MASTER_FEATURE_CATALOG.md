@@ -1,7 +1,7 @@
 # PHASEBREAK — Master Feature Catalog
 
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
-> Senast uppdaterad: 2026-09-18. Baslinje: commit `75d4cc4`.
+> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `bcb7191`; Fas 6.75 väntar på manuell kontroll och commit.
 
 ## Så används dokumentet
 
@@ -115,8 +115,9 @@ Nuvarande status:
 - `A/D` — keyboard turn.
 - `Q/E` — strafe.
 - `Space` — jump.
-- `Left Shift` — dash.
-- `1/2/3` — abilities.
+- `1/2/3` — Strike, Crushing Blow och Phase Lunge.
+- `4` — Phase Dash (två charges).
+- `5` — Rift Charge.
 - `Tab` / `Shift+Tab` — target cycling.
 - Vänster musdrag — orbit camera utan character turn.
 - Höger musdrag — orbit camera och character turn.
@@ -177,7 +178,8 @@ Nuvarande status:
 - [x] Keyboard turning och strafe.
 - [x] Gravity, jump buffering och coyote time.
 - [x] Air control.
-- [x] Dash med collision och air dash.
+- [x] Ability-driven Phase Dash med collision, två charges och air-dash-regler.
+- [x] Ingen separat movement-keybind för dash; movement exekveras genom ability-systemet.
 
 ### MOVE-02 — Fördjupning ⬜
 
@@ -259,6 +261,21 @@ Nuvarande status:
 - `Strike` — basic single-target attack.
 - `Crushing Blow` — tyngre hit; kan få cleave via build.
 - `Phase Lunge` — mobility attack; kan få cooldown reduction/extra charge/reset.
+- `Phase Dash` — targetlös mobilitetsability med två charges och individuell recharge.
+- `Rift Charge` — target-baserad rush från 4–14 meter som stannar vid melee-avstånd och träffar målet.
+
+### COMBAT-02B — Presentation och feedback 🟨
+
+- [x] Ability-events för start, impact, complete och failure är separerade från presentationen.
+- [x] Procedurala, utbytbara poses för Strike, Crushing Blow, Phase Lunge, Phase Dash och Rift Charge.
+- [x] Additiv spelarreaction för hit och death utan att ersätta locomotion-controllern.
+- [x] Träffögonblick, slash, camera impulse, hit-stop och damage numbers drivs från samma ability-timing.
+- [x] Enkel genererad prototypaudio för swing, impact, mobility och nekad ability.
+- [x] HUD-feedback för cooldown, charges, resource/range/target-fel och fem action-bar-slots.
+- [ ] Ersätt procedurala poses med licensierade eller egenproducerade humanoid-clips.
+- [ ] Riktigt Animator upper-body/avatar-mask-lager för attacks while moving.
+- [ ] Animation events eller normalized-time markers per clip för exakt hit timing.
+- [ ] Besluta cancel windows, input buffering och root-motion-policy per ability.
 
 ### COMBAT-03 — Combatregler att välja 🔀
 
@@ -472,6 +489,7 @@ Möjliga nodtyper:
 - [x] Name, description, slot, rarity och item level.
 - [x] Stats, tags, set och build effects.
 - [x] Optional Sprite icon.
+- [x] Optional `visualPrefab` för utrustad 3D-representation.
 - [x] Placeholder glyph när Sprite saknas.
 
 ### ITEM-02 — Equipment slots ✅
@@ -585,6 +603,20 @@ Kandidater:
 - [ ] Artifacts med både bonus och drawback.
 - [ ] Sigil combinations/recipes.
 - [ ] Corrupted items med risk/reward.
+
+### ITEM-09 — Visuellt equipment 🟨
+
+- [x] Equipment-state synkas till spelarens visuella rig utan att duplicera equip-logik.
+- [x] Attachment/visual slots för Primary, Secondary, Head, Shoulders, Chest, Hands, Legs och Boots.
+- [x] Höger/vänster hand samt rygg/höft för draw och sheathing.
+- [x] Testvapen `Rift-Iron Edge` och testbröst `Bulwark Chest` har visuella prefabs.
+- [x] Weapon draw vid ability-start och automatisk sheath vid complete.
+- [ ] Separata modulära armor-meshar för samtliga slots.
+- [ ] Dölj rätt basmesh-region när en armor-del ersätter kroppen.
+- [ ] Per-item attachment offset/rotation/scale för olika vapentyper.
+- [ ] Tvåhandsvapen, dual wield, sköldar, bågar och off-hand-regler.
+- [ ] Cosmetic/transmog-lager separat från gameplay equipment.
+- [ ] Dye/material variants och preview i Character-skärmen.
 
 ---
 
@@ -794,6 +826,18 @@ Kandidater:
 - [ ] Death limit.
 - [ ] Timer.
 - [ ] Leaderboards.
+
+### DUNGEON-05 — Första production vertical slice ⬜
+
+- [ ] 10–15 minuters speltid med tydlig utforska → slåss → loota → bygg → boss-loop.
+- [ ] Entré från första open-world-zonen.
+- [ ] 2–3 varierade vanliga encounters med minst tre fiendearketyper.
+- [ ] En elite med läsbar modifier.
+- [ ] Ett valbart riskrum med bättre reward.
+- [ ] Boss med minst två faser och positioneringsmekanik.
+- [ ] Unik set-drop eller build-definierande Artifact.
+- [ ] Checkpoint, completion reward och tydlig exit/återgång till världen.
+- [ ] Metrics hooks för deaths, completion time och övergivna encounters.
 
 ### BOSS-01 — Boss mechanics ⬜
 
@@ -1054,15 +1098,17 @@ Krav för riktig MMO:
 - [ ] UI style guide.
 - [ ] Naming/export/import conventions.
 
-### ART-02 — Player character assets ⬜
+### ART-02 — Player character assets 🟨
 
-- [ ] Final base mesh.
-- [ ] Skeleton/rig.
+- [x] Quaternius Regular Male som nuvarande licensierad prototypmodell.
+- [x] Unity Humanoid-konfigurerad Quaternius-rigg med befintlig locomotion controller.
+- [ ] Final base mesh och slutlig karaktärsidentitet.
+- [ ] Production-skeleton/rig eller beslut att behålla Quaternius-riggen.
 - [ ] Body customization meshes.
 - [ ] Heads, hair och facial features.
 - [ ] Skin/hair/eye materials.
-- [ ] Armor modularity per equipment slot.
-- [ ] Weapon attachment points.
+- [ ] Armor modularity per equipment slot; nuvarande basmodell är en sammanhängande skinned mesh.
+- [x] Weapon attachment points för händer, rygg och höft.
 - [ ] Cloth/hair physics.
 - [ ] LODs.
 - [ ] Damage/hit shaders.
@@ -1127,12 +1173,15 @@ Iconalternativ:
 - [ ] Class/spec icons.
 - [ ] Faction och dungeon emblems.
 
-### VFX-01 — Combat VFX ⬜
+### VFX-01 — Combat VFX 🟨
 
-- [ ] Weapon trails.
+- [x] Prototyp motion trail för Phase Dash, Phase Lunge och Rift Charge.
+- [ ] Weapon-specific trails med korrekt socket och attackkurva.
 - [ ] Impact per damage type.
 - [ ] Crit emphasis.
 - [ ] Phase Lunge trail/arrival.
+- [ ] Rift Charge start/dust/impact och blockerad-charge feedback.
+- [ ] Phase Dash afterimage och charge-recharge feedback.
 - [ ] Crushing Blow fracture.
 - [ ] Buff/debuff auras.
 - [ ] Shields/heals.
@@ -1155,28 +1204,35 @@ Iconalternativ:
 
 ## 19. Animation
 
-### ANIM-01 — Player locomotion ⬜
+### ANIM-01 — Player locomotion 🟨
 
-- [ ] Idle/walk/run/sprint.
+- [x] Idle/walk/run via Starter Assets-controller på Quaternius Humanoid.
+- [ ] Sprint.
 - [ ] 8-direction strafe locomotion.
 - [ ] Start/stop/turn animations.
-- [ ] Jump/fall/land.
-- [ ] Dash variants.
+- [x] Jump/fall/land grundflöde.
+- [x] Procedural Phase Dash-pose som prototyp.
+- [ ] Authored dash variants framåt/sidled/bakåt.
 - [ ] Swim/climb/glide om valda.
 - [ ] Weapon stance layers.
-- [ ] Additive hit reactions.
+- [x] Procedural additive hit/death reaction som prototyp.
 - [ ] Foot IK och slope adaptation.
 
-### ANIM-02 — Combat ⬜
+### ANIM-02 — Combat 🟨
 
-- [ ] Ability animation per weapon/class.
+- [x] Procedurala prototypposer per nuvarande ability.
+- [ ] Authored ability animation per weapon/class.
 - [ ] Animation events för hit timing.
-- [ ] Upper-body layers.
+- [ ] Animator upper-body layer med Avatar Mask; nuvarande presentation appliceras additivt i `LateUpdate`.
 - [ ] Cancel windows.
 - [ ] Root motion policy.
 - [ ] Cast/channel loops.
 - [ ] Stun/knockdown/death.
 - [ ] Execution/finisher optional.
+- [ ] Turn-in-place och facing correction före melee-impact.
+- [ ] Foot locking/warping under Charge och stora attacks.
+- [ ] Animation-set resolution per weapon family, class och stance.
+- [ ] Animation fallback policy när ett item saknar ett kompatibelt set.
 
 ### ANIM-03 — Enemies/bosses ⬜
 
@@ -1200,12 +1256,13 @@ Iconalternativ:
 - [ ] Audio pooling.
 - [ ] Concurrency limits.
 
-### AUDIO-02 — Gameplay sound ⬜
+### AUDIO-02 — Gameplay sound 🟨
 
 - [ ] Footsteps per surface.
-- [ ] Jump/land/dash.
-- [ ] Weapon swings/impacts.
-- [ ] Ability-specific sounds.
+- [ ] Jump/land.
+- [x] Genererad prototypaudio för dash/charge, weapon swing, impact och ability denied.
+- [ ] Producerade weapon swings/impacts per material och vapentyp.
+- [ ] Producerade ability-specific sounds och variationssystem.
 - [ ] Crit confirmation.
 - [ ] Damage/low-health feedback.
 - [ ] Enemy tells.
@@ -1269,6 +1326,8 @@ Iconalternativ:
 - [ ] Separera runtime state från immutable definitions.
 - [ ] ItemDefinition + ItemInstance.
 - [ ] Combat event payloads med source/target/ability/tags.
+- [x] Presentation events för player ability start/impact/complete/failure.
+- [ ] Gemensamt gameplay-eventformat för player, enemies och framtida server authority.
 - [ ] Modifier pipeline med tydlig ordering.
 - [ ] Service interfaces för save/loot/inventory.
 - [ ] Dependency injection endast där det minskar coupling.
@@ -1357,6 +1416,8 @@ Iconalternativ:
 - [x] Dungeon flow.
 - [x] Inventory/equipment/build effects.
 - [x] Corpse looting core logic.
+- [x] Automated Play Mode-smoke: five abilities, dash charges, Charge movement/damage, Strike/Lunge damage och weapon draw/sheath.
+- [ ] Användarens manuella Fas 6.75-kontroll: movement, camera, jump, samtliga abilities, feel och presentation.
 - [ ] Resolution matrix: 1280×720, 1920×1080, 2560×1440, ultrawide.
 - [ ] Gamepad flow.
 - [ ] Full save/reload session.
@@ -1470,18 +1531,30 @@ Guardrails att välja:
 - [x] Fas 6 — Inventory, equipment och build management.
 - [x] Fas 6.5 — Inventory UX, Character screen och corpse looting.
 
+### Pågående godkännande
+
+- [ ] **Fas 6.75 — Character Animation, Combat Presentation, visual equipment foundation och Charge.**
+  - Fem action-bar-slots med Phase Dash på `4` och Rift Charge på `5`.
+  - Ability-eventdriven presentation, procedural combat poses, trail, prototypaudio och failure feedback.
+  - Visual-prefab-stöd, hand/back/hip attachments samt testvapen och testbröst.
+  - Unity compile och fokuserad Play Mode-verifiering klara; inväntar användarens manuella test.
+
 ### Rekommenderat härnäst
 
-- [ ] **Fas 7 — Item instances, affixes och loot tables.**
-  - Stable item-instance save format.
-  - Enemy/dungeon/boss loot tables.
-  - Slot/tag-aware affix rolls.
-  - Boss uniques och first-clear reward.
-  - Dismantle som första item sink.
-- [ ] **Fas 8 — Talent tree och full Vanguard identity.**
-- [ ] **Fas 9 — Enemy variety, status effects och encounter framework.**
-- [ ] **Fas 10 — Första open-world regionen.**
-- [ ] **Fas 11 — Quests, NPCs, map och hub.**
+- [ ] **Fas 7 — Enemy variety och första production-dungeonen.**
+  - Ranged, caster och bruiser först; därefter assassin/support.
+  - Interruptible telegraphs, leash, group aggro och elite modifiers.
+  - Rift Crypt som 10–15 minuters vertical slice med riskrum, bossfaser och unik reward.
+- [ ] **Fas 8 — Open-world foundation.**
+  - Zoner/streaming, vägar, landmarks, spawn-områden och dungeonentréer.
+  - Safe hub, vendors, stash, fast travel samt world map/minimap.
+  - World events och quest/objective foundation; dag/natt och väder efter att content finns.
+- [ ] **Fas 9 — Talent tree, status effects och full Vanguard identity.**
+  - Berserker, Bulwark och Riftblade som kompletta spelstilar.
+  - Aktiva val, passives, ability modifiers, respec och fler ability-slots.
+  - Bleed, Burn, Vulnerable och Void-mark med item/tag/set-synergier.
+- [ ] **Fas 10 — Item instances, affixes, loot tables och dismantling.**
+- [ ] **Fas 11 — Quests, NPCs, narrative och hub-content.**
 - [ ] **Fas 12 — Co-op networking vertical slice.**
 - [ ] **Fas 13 — Content pipeline, polish och performance.**
 - [ ] **Fas 14 — MMO backend/social systems**, endast efter att co-op och core loop är stabila.
@@ -1531,11 +1604,12 @@ En funktion markeras normalt ✅ först när:
 
 Rekommenderat val:
 
-- [ ] Godkänn **Fas 7 — Item instances, affixes och loot tables** som nästa implementation.
+- [ ] Godkänn först den manuella kontrollen av **Fas 6.75**.
+- [ ] Kör därefter **Fas 7 — Enemy variety och första production-dungeonen**.
 - [ ] Välj först art direction under `VISION-03`.
 - [ ] Välj först combatregler under `COMBAT-03`.
 - [ ] Välj en annan funktion genom att ange dess ID.
 
 Exempel på framtida instruktion:
 
-> Kör Fas 7. Välj hybrid smart loot, affix tiers och first-clear boss reward. Dismantling ska finnas, men crafting-upgrades väntar.
+> Fas 6.75 är godkänd. Kör Fas 7 med ranged, caster och bruiser, interruptible telegraphs, leash/group aggro samt ett valbart riskrum i Rift Crypt.

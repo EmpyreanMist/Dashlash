@@ -32,6 +32,8 @@ namespace Phasebreak.Gameplay
         public bool IsInvulnerable => Time.time < invulnerableUntil;
         public int HitCount { get; private set; }
         public event Action Died;
+        public event Action<Vector3, int> HitReceived;
+        public event Action ResetPerformed;
 
         private void Awake()
         {
@@ -54,6 +56,7 @@ namespace Phasebreak.Gameplay
             invulnerableUntil = Time.time + invulnerabilityDuration;
             movement.AddCombatImpulse(direction.normalized * knockback);
             followCamera?.AddImpulse(cameraImpulse);
+            HitReceived?.Invoke(direction.normalized, mitigated);
 
             if (flashRoutine != null)
                 StopCoroutine(flashRoutine);
@@ -74,6 +77,7 @@ namespace Phasebreak.Gameplay
                 flashRoutine = null;
             }
             ClearColor();
+            ResetPerformed?.Invoke();
         }
 
         public void ApplyProgressionBonus(int bonusHealth)

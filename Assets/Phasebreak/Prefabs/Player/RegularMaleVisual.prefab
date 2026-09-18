@@ -103,6 +103,10 @@ GameObject:
   m_Component:
   - component: {fileID: 6921496839843172772}
   - component: {fileID: 821213550276226524}
+  - component: {fileID: 5823064323806683246}
+  - component: {fileID: 411836391675937564}
+  - component: {fileID: 756436829908294264}
+  - component: {fileID: 4694837450782451282}
   m_Layer: 0
   m_Name: RegularMaleVisual
   m_TagString: Untagged
@@ -141,6 +145,8 @@ MonoBehaviour:
   animator: {fileID: 5397791059319119599}
   rightHandAttachment: {fileID: 4686476395851484266}
   leftHandAttachment: {fileID: 7374477187177531828}
+  backAttachment: {fileID: 485365972836980575}
+  hipAttachment: {fileID: 2341816031402401402}
   visualAnchors:
   - slot: 2
     anchor: {fileID: 9131449352448021219}
@@ -154,6 +160,179 @@ MonoBehaviour:
     anchor: {fileID: 2458971865785685002}
   - slot: 7
     anchor: {fileID: 3007801498544352914}
+--- !u!114 &5823064323806683246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5842239421226978491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b92981b0d13138a4ab101d7996aaf7f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.EquipmentVisualSync
+  build: {fileID: 0}
+  combat: {fileID: 0}
+  visuals: {fileID: 0}
+  sheathDelay: 5
+--- !u!82 &411836391675937564
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5842239421226978491}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &756436829908294264
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5842239421226978491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6146ca10cbfc7b0428c705d2dd640f32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAudioFeedback
+  combat: {fileID: 0}
+  volume: 0.28
+--- !u!114 &4694837450782451282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5842239421226978491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0786567266d84644b9647280b954bc31, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.AbilityTrailFeedback
+  combat: {fileID: 0}
+  dashColor: {r: 0.18, g: 0.72, b: 1, a: 0.82}
+  chargeColor: {r: 1, g: 0.32, b: 0.08, a: 0.88}
+--- !u!1 &6092774753076574894
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 485365972836980575}
+  m_Layer: 0
+  m_Name: Back Sheath Attachment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &485365972836980575
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6092774753076574894}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0.35836798, w: 0.93358046}
+  m_LocalPosition: {x: 0, y: 0, z: -0.16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1813319524492055069}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6579743533592768221
 GameObject:
   m_ObjectHideFlags: 0
@@ -246,6 +425,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5797253043402544999}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7396645197729886830
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2341816031402401402}
+  m_Layer: 0
+  m_Name: Hip Sheath Attachment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2341816031402401402
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7396645197729886830}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: -0.104528464, w: 0.9945219}
+  m_LocalPosition: {x: -0.18, y: -0.04, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3770944355311649729}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7940173449312358728
 GameObject:
@@ -398,10 +608,16 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 3447309931397767359, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 2341816031402401402}
+    - targetCorrespondingSourceObject: {fileID: 3447309931397767359, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 2458971865785685002}
     - targetCorrespondingSourceObject: {fileID: -1435591996415127397, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1006787076339060688}
+    - targetCorrespondingSourceObject: {fileID: -9031846494388391581, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 485365972836980575}
     - targetCorrespondingSourceObject: {fileID: -9031846494388391581, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7773607837317027121}
@@ -424,6 +640,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4258966407712192458}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8440551328809140080}
   m_SourcePrefab: {fileID: 100100000, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
 --- !u!4 &730486448759678109 stripped
 Transform:
@@ -453,6 +672,21 @@ MonoBehaviour:
   animationDampTime: 0.1
   jumpVelocityThreshold: 0.1
   fallVelocityThreshold: -0.1
+--- !u!114 &8440551328809140080
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1676238628217642543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 280289edd84c83549b3652348b879be6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.PlayerCombatPresentation
+  animator: {fileID: 0}
+  combat: {fileID: 0}
+  health: {fileID: 0}
 --- !u!4 &1813319524492055069 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -9031846494388391581, guid: df57ffd2f05042a4194a1354b7d15500, type: 3}
