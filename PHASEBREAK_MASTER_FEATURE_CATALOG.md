@@ -1,7 +1,7 @@
 # PHASEBREAK — Master Feature Catalog
 
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
-> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `41e6258`; Fas 6.8 Unit Frames är implementerad och väntar på spelarens manuella godkännande.
+> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `5ff53dc`; zoom, 420 × 420-startregion, no-knockback och den första återanvändbara zombie-fienden är implementerade men ännu inte committade.
 
 ## Så används dokumentet
 
@@ -145,6 +145,7 @@ Nuvarande status:
 ### CAMERA-01 — Tredjepersonskamera ✅
 
 - [x] Orbit, zoom och collision.
+- [x] Plattformsnormaliserad snabbzoom: 3,5 world units per scrollsteg och 0,05–18 zoomgräns, så kameran kan passera in genom spelarmodellen.
 - [x] RMB character steering.
 - [x] LMB endast camera/target, inte attack.
 - [x] Camera impulse vid hits/crits.
@@ -261,6 +262,7 @@ Nuvarande status:
 - [x] Soft auto-target.
 - [x] Boss damage modifier.
 - [x] Build effects kopplade till combat.
+- [x] Vanliga enemy-attacker ger hit-feedback utan player displacement; särskilda bossattacker kan fortfarande begära knockback explicit.
 
 ### COMBAT-02 — Nuvarande abilities ✅
 
@@ -496,7 +498,7 @@ Möjliga nodtyper:
 - [x] Stats, tags, set och build effects.
 - [x] Optional Sprite icon.
 - [x] Optional `visualPrefab` för utrustad 3D-representation.
-- [x] Placeholder glyph när Sprite saknas.
+- [x] Procedurgenererad, slot-specifik silhuettikon när Sprite saknas.
 
 ### ITEM-02 — Equipment slots ✅
 
@@ -522,13 +524,20 @@ Möjliga nodtyper:
 - [x] Rarity visualization.
 - [x] Hover tooltip.
 - [x] Green/red equipped comparison.
-- [x] Click to equip/unequip.
+- [x] Deterministisk, återanvändbar upgrade-bedömning som jämför hela loadouten före/efter bytet.
+- [x] Upgrade-bedömningen räknar in stats, item level, effects/modifiers och aktiverade set-trösklar.
+- [x] Tydlig men diskret grön upgrade-outline i Inventory och Corpse Loot, plus upgrade-count i bag-headern.
+- [x] Vänsterklick för selection/inspection.
+- [x] Högerklick eller dubbelklick för equip/unequip.
 - [x] Separat Character screen.
+- [x] 16-slot paper-doll-layout runt en karaktärssilhuett.
+- [x] Scrollbar bag-grid med tomma slots och item-count.
+- [x] Item inspection-panel med tydlig primary action.
 - [x] Lokal save.
 - [ ] Multiple bags/tabs.
 - [ ] Search.
 - [ ] Sort by rarity/slot/item level/tag.
-- [ ] Filters.
+- [x] Kategorifilter: All, Weapons, Armor, Cores/Relics och Sigils.
 - [ ] Favorite/lock item.
 - [ ] Mark as junk.
 - [ ] Stackable items.
@@ -731,15 +740,18 @@ Kandidater:
 
 ## 12. World, regions och exploration
 
-### WORLD-01 — Open world ⬜
+### WORLD-01 — Open world 🟨
 
+- [x] Första 420 × 420 meter stora startregionen med terrängvariation, vägnät och tydliga combat-/bebyggelseområden.
+- [x] CC0-källpaket: Quaternius Medieval Village MegaKit Standard med 176 importerade FBX-moduler och lokalt bevarad licensfil.
+- [x] Tre bebyggelsekluster, tre ruinområden, Rift Crypt-anslutning, 180 träd och 48 stenformationer.
 - [ ] World streaming/scene partitioning.
 - [ ] Region boundaries och level bands.
-- [ ] Roads och navigation landmarks.
+- [x] Första vägnät och navigation landmarks.
 - [ ] Towns/hubs.
 - [ ] Wilderness camps.
-- [ ] Dungeon entrances.
-- [ ] Hidden caves/ruins.
+- [x] Första dungeonentrén från regionen genom Rift Crypt.
+- [x] Första utforskningsruinerna; secrets/rewards återstår.
 - [ ] Vertical exploration.
 - [ ] Day/night cycle.
 - [ ] Weather.
@@ -872,6 +884,10 @@ Kandidater:
 - [x] Hit reaction och death reaction.
 - [x] Corpse state.
 - [x] Immediate death event för waves/XP.
+- [x] Vanliga melee-träffar skadar spelaren utan automatisk knockback.
+- [x] Första importerade monsterutseendet: `Risen Zombie`, återanvändbar prefab med Humanoid-rigg, idle/chase/attack/hit/death-presentation och åtta startzonsinstanser.
+- [x] Leash och återgång till spawn med full heal efter disengage.
+- [ ] Byt procedural zombie-attack/hit/death mot authored clips när ett animationspaket finns; käll-FBX:en innehåller endast rig/bind pose.
 
 ### AI-02 — Enemy archetypes ⬜
 
@@ -1043,10 +1059,10 @@ Krav för riktig MMO:
 
 ### UI-02 — Menyer 🟨/⬜
 
-- [x] Inventory.
-- [x] Character/equipment.
+- [x] Inventory med dark sci-fi/fantasy-window, filter, scroll-grid, selection och icon-first items.
+- [x] Character/equipment med paper doll, 16 tydligt namngivna slots och separerad build analysis.
 - [x] Talents placeholder.
-- [x] Corpse loot.
+- [x] Corpse loot delar samma slot- och tooltip-presentation som inventory.
 - [ ] Talents complete.
 - [ ] Map.
 - [ ] Quest journal.
@@ -1061,6 +1077,8 @@ Krav för riktig MMO:
 - [x] Item data och stat comparison.
 - [x] Screen clamping.
 - [x] Shared inventory/equipment/loot pattern.
+- [x] Side-by-side equipped comparison med grön/röd deltafärg.
+- [x] Kandidat-tooltip och vald item-inspection visar `UPGRADE`, tom slot eller uppskattad positiv build-score-delta.
 - [ ] Ability tooltips.
 - [ ] Buff/debuff tooltips.
 - [ ] Advanced comparison modifier key.
@@ -1149,11 +1167,13 @@ Krav för riktig MMO:
 - [ ] Water.
 - [ ] Destruction variants.
 
-### ART-05 — Item visuals ⬜
+### ART-05 — Item visuals 🟨
 
 - [ ] 2D item icon template.
 - [ ] Icons per weapon/armor/core/relic/sigil/artifact.
-- [ ] Rarity borders, inte bara färgad bakgrund.
+- [x] Procedural placeholder-silhuetter per weapon/armor/core/relic/sigil/artifact-kategori.
+- [x] Central icon-resolver använder itemets authored Sprite när den finns och kategorispecifik procedural fallback annars.
+- [x] Rarity borders, inte bara färgad bakgrund.
 - [ ] Set emblem.
 - [ ] Tag icons.
 - [ ] Affix icons vid behov.
@@ -1165,16 +1185,16 @@ Iconalternativ:
 
 - [ ] Handmålade rastericons.
 - [ ] Renderade 3D-item thumbnails.
-- [ ] Stiliserade silhuetticons.
+- [x] Stiliserade silhuetticons som placeholder-system.
 - [ ] Hybrid: 3D render + handmålad finish. **Rekommenderad.**
 
 ### ART-06 — UI sprites ⬜
 
 - [ ] Panel nine-slices.
-- [ ] Buttons och hover/pressed/disabled states.
-- [ ] Slot backgrounds.
+- [x] Runtime buttons med hover/pressed/disabled states; production sprites återstår.
+- [x] Runtime slot backgrounds och selection/hover states; production sprites återstår.
 - [ ] Inventory bag frames.
-- [ ] Equipment slot silhouettes.
+- [x] Procedurala equipment slot silhouettes; handgjorda production assets återstår.
 - [ ] Health/resource bars.
 - [ ] Nameplate frames.
 - [ ] Map markers.
@@ -1245,10 +1265,13 @@ Iconalternativ:
 - [ ] Animation-set resolution per weapon family, class och stance.
 - [ ] Animation fallback policy när ett item saknar ett kompatibelt set.
 
-### ANIM-03 — Enemies/bosses ⬜
+### ANIM-03 — Enemies/bosses 🟨
 
-- [ ] Locomotion.
-- [ ] Telegraph/windup/attack/recovery.
+- [x] Zombie-monster med Unity Humanoid-rigg och material från det lokala assetpaketet.
+- [x] Locomotion med kompatibla befintliga idle/run-klipp.
+- [x] Telegraph/windup/attack/recovery med procedural visual presentation kopplad till den befintliga AI-state-maskinen.
+- [x] Hit reaction, death/corpse-flöde och animation-event relay.
+- [ ] Ersätt fallback-presentationen med authored zombie-animationer när sådana finns tillgängliga.
 - [ ] Hit/stagger.
 - [ ] Phase transitions.
 - [ ] Death/corpse poses.
@@ -1542,13 +1565,17 @@ Guardrails att välja:
 - [x] Fas 6 — Inventory, equipment och build management.
 - [x] Fas 6.5 — Inventory UX, Character screen och corpse looting.
 
-### Pågående godkännande
+### Senast godkända milstolpar
 
-- [ ] **Fas 6.75 — Character Animation, Combat Presentation, visual equipment foundation och Charge.**
-  - Fem action-bar-slots med Phase Dash på `4` och Rift Charge på `5`.
-  - Ability-eventdriven presentation, procedural combat poses, trail, prototypaudio och failure feedback.
-  - Visual-prefab-stöd, hand/back/hip attachments samt testvapen och testbröst.
-  - Unity compile och fokuserad Play Mode-verifiering klara; inväntar användarens manuella test.
+- [x] **Fas 6.75 — Character Animation, Combat Presentation, visual equipment foundation och Charge.**
+- [x] **Fas 6.8 — Dark-fantasy Player/Target Frames, cast bar och flyttbara unit frames.**
+
+### Pågående mindre uppdatering
+
+- [x] Snabbare zoom, större startzon, första riktiga monsterutseendet och player no-knockback.
+  - Zoom, 420 × 420-startregion och no-knockback är implementerade och Play Mode-verifierade.
+  - Sexton `Risen Zombie`-instanser använder samma prefab och AI-bas och är placerade vid ruiner och regionens ytterkanter; targeting, chase, attack, damage, stagger, death, XP, corpse loot, leash/return och arena reset är verifierade.
+  - Authored zombie-animationer saknas i källpaketet och är dokumenterade som framtida ersättning för fallback-presentationen.
 
 ### Rekommenderat härnäst
 
@@ -1615,8 +1642,8 @@ En funktion markeras normalt ✅ först när:
 
 Rekommenderat val:
 
-- [ ] Godkänn först den manuella kontrollen av **Fas 6.75**.
-- [ ] Kör därefter **Fas 7 — Enemy variety och första production-dungeonen**.
+- [ ] Lägg till authored animation clips för zombiens attack, hit och death, eller välj ett kompatibelt animationspaket.
+- [ ] Kör därefter **Fas 7 — Enemy variety och första production-dungeonen** och återanvänd zombie-AI-basen för fler monster.
 - [ ] Välj först art direction under `VISION-03`.
 - [ ] Välj först combatregler under `COMBAT-03`.
 - [ ] Välj en annan funktion genom att ange dess ID.

@@ -35,6 +35,8 @@ namespace Phasebreak.Gameplay
         public event Action<Vector3, int> HitReceived;
         public event Action ResetPerformed;
 
+        public bool TakeHit(int damage, Vector3 direction) => TakeHit(damage, direction, 0f);
+
         private void Awake()
         {
             movement = GetComponent<PhasebreakPlayerMovement>();
@@ -54,7 +56,8 @@ namespace Phasebreak.Gameplay
             int mitigated = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - (build != null ? Mathf.Clamp(build.Defense, 0f, .75f) : 0f))));
             CurrentHealth = Mathf.Max(0, CurrentHealth - mitigated);
             invulnerableUntil = Time.time + invulnerabilityDuration;
-            movement.AddCombatImpulse(direction.normalized * knockback);
+            if (knockback > 0f)
+                movement.AddCombatImpulse(direction.normalized * knockback);
             followCamera?.AddImpulse(cameraImpulse);
             HitReceived?.Invoke(direction.normalized, mitigated);
 

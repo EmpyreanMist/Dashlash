@@ -13,12 +13,13 @@ namespace Phasebreak.Gameplay
 
         [Header("Third Person Orbit")]
         [SerializeField, Min(0.5f)] private float distance = 10f;
-        [SerializeField, Min(0.5f)] private float minimumDistance = 2.5f;
+        [SerializeField, Min(0.01f)] private float minimumDistance = 0.05f;
         [SerializeField, Min(0.5f)] private float maximumDistance = 18f;
         [SerializeField, Range(-20f, 85f)] private float pitch = 32f;
         [SerializeField] private float yaw = 45f;
         [SerializeField, Min(0.001f)] private float mouseSensitivity = 0.12f;
-        [SerializeField, Min(0.001f)] private float zoomSensitivity = 0.01f;
+        [Tooltip("World-space zoom distance per mouse-wheel notch. Scroll input is normalized across common Unity input backends.")]
+        [SerializeField, Min(0.01f)] private float zoomSensitivity = 3.5f;
         [SerializeField, Min(1f)] private float clickDragThreshold = 8f;
         [SerializeField, Range(-20f, 85f)] private float minimumPitch = -10f;
         [SerializeField, Range(-20f, 85f)] private float maximumPitch = 72f;
@@ -157,7 +158,12 @@ namespace Phasebreak.Gameplay
 
             Vector2 scroll = zoomAction.ReadValue<Vector2>();
             if (Mathf.Abs(scroll.y) > 0.01f)
-                distance = Mathf.Clamp(distance - scroll.y * zoomSensitivity, minimumDistance, maximumDistance);
+            {
+                // Windows commonly reports 120 per wheel notch while some devices/backends report 1.
+                // Normalize both conventions while retaining fractional high-resolution trackpad input.
+                float scrollSteps = Mathf.Abs(scroll.y) >= 10f ? scroll.y / 120f : scroll.y;
+                distance = Mathf.Clamp(distance - scrollSteps * zoomSensitivity, minimumDistance, maximumDistance);
+            }
 
             if (IsRightMouseHeld && target != null)
                 target.rotation = Quaternion.Euler(0f, yaw, 0f);

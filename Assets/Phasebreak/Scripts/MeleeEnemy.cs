@@ -6,7 +6,7 @@ namespace Phasebreak.Gameplay
     [RequireComponent(typeof(CharacterController))]
     public sealed class MeleeEnemy : MonoBehaviour, ICombatTarget, ICombatCastSource
     {
-        private enum EnemyState { Idle, Chase, Windup, Active, Recovery, Stagger, Dead }
+        private enum EnemyState { Idle, Chase, Windup, Active, Recovery, Stagger, Return, Dead }
 
         [Header("References")]
         [SerializeField] private Transform target;
@@ -22,6 +22,8 @@ namespace Phasebreak.Gameplay
         [SerializeField, Min(0f)] private float awarenessRange = 10f;
         [SerializeField, Min(0f)] private float moveSpeed = 3.6f;
         [SerializeField, Min(0f)] private float rotationSpeed = 540f;
+        [SerializeField, Min(1f)] private float leashRange = 18f;
+        [SerializeField, Min(0.05f)] private float returnStopDistance = 0.2f;
         [SerializeField] private float gravity = -24f;
 
         [Header("Attack")]
@@ -31,7 +33,6 @@ namespace Phasebreak.Gameplay
         [SerializeField, Min(0.01f)] private float activeDuration = 0.12f;
         [SerializeField, Min(0f)] private float recoveryDuration = 0.65f;
         [SerializeField, Min(1)] private int attackDamage = 1;
-        [SerializeField, Min(0f)] private float playerKnockback = 5f;
 
         [Header("Hit Reaction")]
         [SerializeField] private Color hitColor = Color.white;
@@ -64,6 +65,11 @@ namespace Phasebreak.Gameplay
         public float CastProgress => !IsCasting || windupDuration <= 0f
             ? 0f : 1f - Mathf.Clamp01(stateRemaining / windupDuration);
         public bool IsCastInterruptible => true;
+        public bool IsMoving => state == EnemyState.Chase || state == EnemyState.Return;
+        public bool IsAttackActive => state == EnemyState.Active;
+        public bool IsRecovering => state == EnemyState.Recovery;
+        public bool IsStaggered => state == EnemyState.Stagger;
+        public bool IsDead => state == EnemyState.Dead;
 
         public void SetRespawnEnabled(bool enabled) => respawnEnabled = enabled;
 
@@ -105,6 +111,13 @@ namespace Phasebreak.Gameplay
             Vector3 toTarget = target.position - transform.position;
             toTarget.y = 0f;
             float distance = toTarget.magnitude;
+            Vector3 fromSpawn = transform.position - spawnPosition;
+            fromSpawn.y = 0f;
+            if (state != EnemyState.Idle && state != EnemyState.Return &&
+                (fromSpawn.magnitude > leashRange || distance > awarenessRange * 1.75f))
+            {
+                SetState(EnemyState.Return, 0f);
+            }
 
             switch (state)
             {
@@ -126,6 +139,9 @@ namespace Phasebreak.Gameplay
                     break;
                 case EnemyState.Stagger:
                     TickTimer(EnemyState.Chase);
+                    break;
+                case EnemyState.Return:
+                    TickReturn();
                     break;
             }
         }
@@ -154,6 +170,8 @@ namespace Phasebreak.Gameplay
 
         public void ResetEnemy()
         {
+            if (!gameObject.activeSelf)
+                gameObject.SetActive(true);
             GetComponent<CorpseLootContainer>()?.ClearForReset();
             if (reactionRoutine != null)
             {
@@ -177,12 +195,6 @@ namespace Phasebreak.Gameplay
 
         private void TickChase(Vector3 toTarget, float distance)
         {
-            if (distance > awarenessRange * 1.35f)
-            {
-                SetState(EnemyState.Idle, 0f);
-                return;
-            }
-
             if (distance <= attackRange)
             {
                 SetState(EnemyState.Windup, windupDuration);
@@ -191,6 +203,22 @@ namespace Phasebreak.Gameplay
 
             RotateToward(toTarget);
             controller.Move(toTarget.normalized * (moveSpeed * Time.deltaTime));
+        }
+
+        private void TickReturn()
+        {
+            Vector3 toSpawn = spawnPosition - transform.position;
+            toSpawn.y = 0f;
+            if (toSpawn.magnitude <= returnStopDistance)
+            {
+                CurrentHealth = maxHealth;
+                knockbackVelocity = Vector3.zero;
+                SetState(EnemyState.Idle, 0f);
+                return;
+            }
+
+            RotateToward(toSpawn);
+            controller.Move(toSpawn.normalized * (moveSpeed * Time.deltaTime));
         }
 
         private void TickWindup(Vector3 toTarget)
@@ -227,7 +255,7 @@ namespace Phasebreak.Gameplay
             if (toPlayer.magnitude > attackRange + 0.35f || Vector3.Angle(transform.forward, toPlayer) > attackArc * 0.5f)
                 return;
 
-            if (playerHealth.TakeHit(attackDamage, toPlayer.normalized, playerKnockback))
+            if (playerHealth.TakeHit(attackDamage, toPlayer.normalized))
                 AttackCount++;
         }
 
