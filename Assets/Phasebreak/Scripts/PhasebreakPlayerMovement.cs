@@ -102,6 +102,16 @@ namespace Phasebreak.Gameplay
             planarVelocity = Vector3.ClampMagnitude(planarVelocity + velocityChange, moveSpeed * 2.4f);
         }
 
+        public void ResetMotion()
+        {
+            isDashing = false;
+            planarVelocity = Vector3.zero;
+            desiredMoveDirection = Vector3.zero;
+            verticalVelocity = -2f;
+            jumpBufferedUntil = float.NegativeInfinity;
+            airDashesRemaining = airDashesPerJump;
+        }
+
         private void Awake()
         {
             controller = GetComponent<CharacterController>();

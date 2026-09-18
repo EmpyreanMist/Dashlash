@@ -78,11 +78,15 @@ namespace Phasebreak.Editor
             cameraObject.AddComponent<AudioListener>();
             PhasebreakFollowCamera followCamera = cameraObject.AddComponent<PhasebreakFollowCamera>();
             followCamera.SetTarget(player.transform);
+            followCamera.SetFirstPersonHiddenRenderers(body.GetComponent<Renderer>(), facing.GetComponent<Renderer>());
             SerializedObject movementSettings = new SerializedObject(player.GetComponent<PhasebreakPlayerMovement>());
             movementSettings.FindProperty("cameraTransform").objectReferenceValue = cameraObject.transform;
             movementSettings.ApplyModifiedPropertiesWithoutUndo();
             SetupCombat(player, followCamera, slashMaterial, dummyMaterial);
             SetupJumpCourse(room, jumpMaterial);
+            Material enemyMaterial = CreateMaterial("Assets/Phasebreak/Materials/Enemy.mat", new Color(0.68f, 0.12f, 0.18f));
+            Material telegraphMaterial = CreateMaterial("Assets/Phasebreak/Materials/EnemyTelegraph.mat", new Color(1f, 0.12f, 0.04f));
+            SetupEnemyCore(player, followCamera, enemyMaterial, telegraphMaterial);
 
             GameObject lightObject = new GameObject("Directional Light");
             lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
@@ -148,6 +152,32 @@ namespace Phasebreak.Editor
             Debug.Log("Phasebreak jump sandbox added successfully.");
         }
 
+        [MenuItem("Phasebreak/Build Enemy Core")]
+        public static void BuildEnemyCore()
+        {
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "dashlash")
+            {
+                Debug.LogError("Enemy core setup only runs in the dashlash scene.");
+                return;
+            }
+
+            GameObject player = GameObject.Find("Player");
+            PhasebreakFollowCamera followCamera = Object.FindAnyObjectByType<PhasebreakFollowCamera>();
+            if (player == null || followCamera == null)
+            {
+                Debug.LogError("The movement milestone player and follow camera must exist first.");
+                return;
+            }
+
+            Material enemyMaterial = CreateMaterial("Assets/Phasebreak/Materials/Enemy.mat", new Color(0.68f, 0.12f, 0.18f));
+            Material telegraphMaterial = CreateMaterial("Assets/Phasebreak/Materials/EnemyTelegraph.mat", new Color(1f, 0.12f, 0.04f));
+            SetupEnemyCore(player, followCamera, enemyMaterial, telegraphMaterial);
+            Selection.activeGameObject = player;
+            EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log("Phasebreak enemy core and camera toggle built successfully.");
+        }
+
         private static void SetupJumpCourse(GameObject room, Material material)
         {
             Transform oldCourse = room.transform.Find("Jump Course");
@@ -200,6 +230,80 @@ namespace Phasebreak.Editor
             CreateDummy("Front Dummy", targets.transform, new Vector3(0f, 1.1f, -3.75f), dummyMaterial);
             CreateDummy("Left Dummy", targets.transform, new Vector3(-3.4f, 1.1f, -4.3f), dummyMaterial);
             CreateDummy("Right Dummy", targets.transform, new Vector3(4.2f, 1.1f, -1.6f), dummyMaterial);
+        }
+
+        private static void SetupEnemyCore(GameObject player, PhasebreakFollowCamera followCamera, Material enemyMaterial, Material telegraphMaterial)
+        {
+            GameObject oldTargets = GameObject.Find("Target Dummies");
+            if (oldTargets != null)
+                Object.DestroyImmediate(oldTargets);
+            GameObject oldEnemies = GameObject.Find("Combat Enemies");
+            if (oldEnemies != null)
+                Object.DestroyImmediate(oldEnemies);
+            GameObject oldArena = GameObject.Find("Combat Arena Controller");
+            if (oldArena != null)
+                Object.DestroyImmediate(oldArena);
+
+            PlayerHealth health = player.GetComponent<PlayerHealth>() ?? player.AddComponent<PlayerHealth>();
+            Renderer bodyRenderer = player.transform.Find("Body")?.GetComponent<Renderer>();
+            Renderer facingRenderer = player.transform.Find("Facing Marker")?.GetComponent<Renderer>();
+            followCamera.SetTarget(player.transform);
+            followCamera.SetFirstPersonHiddenRenderers(bodyRenderer, facingRenderer);
+
+            GameObject enemyRoot = new GameObject("Combat Enemies");
+            MeleeEnemy[] enemies =
+            {
+                CreateEnemy("Enemy Vanguard", enemyRoot.transform, new Vector3(0f, 1f, -1.2f), player.transform, enemyMaterial, telegraphMaterial),
+                CreateEnemy("Enemy Left", enemyRoot.transform, new Vector3(-5.5f, 1f, 1.5f), player.transform, enemyMaterial, telegraphMaterial),
+                CreateEnemy("Enemy Right", enemyRoot.transform, new Vector3(6.5f, 1f, 5.5f), player.transform, enemyMaterial, telegraphMaterial)
+            };
+
+            GameObject arenaObject = new GameObject("Combat Arena Controller");
+            CombatArenaReset resetter = arenaObject.AddComponent<CombatArenaReset>();
+            resetter.Configure(player.transform, health, enemies);
+        }
+
+        private static MeleeEnemy CreateEnemy(string name, Transform parent, Vector3 position, Transform player,
+            Material enemyMaterial, Material telegraphMaterial)
+        {
+            GameObject enemyObject = new GameObject(name);
+            enemyObject.transform.SetParent(parent);
+            enemyObject.transform.position = position;
+
+            CharacterController controller = enemyObject.AddComponent<CharacterController>();
+            controller.height = 2f;
+            controller.radius = 0.45f;
+            controller.center = Vector3.zero;
+            controller.skinWidth = 0.06f;
+            controller.stepOffset = 0.3f;
+            controller.slopeLimit = 50f;
+
+            GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "Body";
+            body.transform.SetParent(enemyObject.transform, false);
+            body.GetComponent<Renderer>().sharedMaterial = enemyMaterial;
+            Object.DestroyImmediate(body.GetComponent<Collider>());
+
+            GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blade.name = "Blade";
+            blade.transform.SetParent(enemyObject.transform, false);
+            blade.transform.localPosition = new Vector3(0.62f, 0.15f, 0.25f);
+            blade.transform.localRotation = Quaternion.Euler(0f, 0f, -25f);
+            blade.transform.localScale = new Vector3(0.12f, 1.15f, 0.12f);
+            blade.GetComponent<Renderer>().sharedMaterial = telegraphMaterial;
+            Object.DestroyImmediate(blade.GetComponent<Collider>());
+
+            GameObject telegraph = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            telegraph.name = "Attack Telegraph";
+            telegraph.transform.SetParent(enemyObject.transform, false);
+            telegraph.transform.localPosition = new Vector3(0f, -0.96f, 0f);
+            telegraph.transform.localScale = new Vector3(3.5f, 0.025f, 3.5f);
+            telegraph.GetComponent<Renderer>().sharedMaterial = telegraphMaterial;
+            Object.DestroyImmediate(telegraph.GetComponent<Collider>());
+
+            MeleeEnemy enemy = enemyObject.AddComponent<MeleeEnemy>();
+            enemy.Configure(player, telegraph.transform);
+            return enemy;
         }
 
         private static void CreateDummy(string name, Transform parent, Vector3 position, Material material)

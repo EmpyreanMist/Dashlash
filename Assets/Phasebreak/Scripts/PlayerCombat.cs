@@ -43,6 +43,11 @@ namespace Phasebreak.Gameplay
         [SerializeField, Min(0f)] private float finisherLunge = 6.2f;
         [SerializeField, Min(0f)] private float aerialLunge = 2.5f;
 
+        [Header("Soft Targeting")]
+        [SerializeField, Min(0f)] private float targetingRadius = 5.5f;
+        [SerializeField, Range(10f, 180f)] private float targetingArc = 100f;
+        [SerializeField, Range(0f, 90f)] private float attackSteeringDegrees = 28f;
+
         [Header("Impact")]
         [SerializeField, Min(0f)] private float attackPower = 1f;
         [SerializeField, Min(0f)] private float knockback = 1.05f;
@@ -53,6 +58,7 @@ namespace Phasebreak.Gameplay
         [SerializeField, Range(0f, 1f)] private float cameraImpulse = 0.16f;
 
         private readonly Collider[] hitBuffer = new Collider[24];
+        private readonly Collider[] targetingBuffer = new Collider[32];
         private readonly HashSet<ICombatTarget> hitTargets = new HashSet<ICombatTarget>();
         private InputAction attackAction;
         private AttackPhase phase;
@@ -67,12 +73,28 @@ namespace Phasebreak.Gameplay
         private bool attackStartedFromDash;
         private bool hitboxFired;
         private Coroutine hitStopRoutine;
+        private Transform softTarget;
 
         public bool IsAttacking => phase != AttackPhase.Ready;
         public bool IsAerialAttack => IsAttacking && currentAttackIsAerial;
         public int ComboStep => comboStep;
+        public Transform SoftTarget => softTarget;
 
         public void QueueAttack() => bufferedUntil = Time.time + inputBufferDuration;
+
+        public void ResetCombat()
+        {
+            phase = AttackPhase.Ready;
+            bufferedUntil = float.NegativeInfinity;
+            comboExpiresAt = float.NegativeInfinity;
+            comboStep = 0;
+            currentAttackStep = 0;
+            currentAttackIsAerial = false;
+            aerialBridgeUsed = false;
+            softTarget = null;
+            hitTargets.Clear();
+            SetSlashVisible(false);
+        }
 
         public void Configure(PhasebreakPlayerMovement playerMovement, PhasebreakFollowCamera camera, Transform visual)
         {
@@ -185,6 +207,8 @@ namespace Phasebreak.Gameplay
                 comboExpiresAt = Time.time + comboGraceDuration;
             }
 
+            ApplyAttackSteering();
+
             phase = AttackPhase.Windup;
             phaseDuration = GetWindupDuration();
             phaseRemaining = phaseDuration;
@@ -198,6 +222,56 @@ namespace Phasebreak.Gameplay
                 _ => firstLunge
             };
             movement?.AddCombatImpulse(transform.forward * lunge);
+        }
+
+        private void ApplyAttackSteering()
+        {
+            softTarget = null;
+            if (targetingRadius <= 0f || attackSteeringDegrees <= 0f)
+                return;
+
+            int count = Physics.OverlapSphereNonAlloc(transform.position, targetingRadius, targetingBuffer,
+                targetLayers, QueryTriggerInteraction.Collide);
+            float bestScore = float.PositiveInfinity;
+            Vector3 bestDirection = Vector3.zero;
+
+            for (int i = 0; i < count; i++)
+            {
+                Collider candidate = targetingBuffer[i];
+                if (candidate == null || candidate.transform.IsChildOf(transform))
+                    continue;
+
+                ICombatTarget combatTarget = candidate.GetComponentInParent<ICombatTarget>();
+                Component targetComponent = combatTarget as Component;
+                if (targetComponent == null)
+                    continue;
+                if (combatTarget is MeleeEnemy enemy && !enemy.IsAlive)
+                    continue;
+
+                Vector3 direction = targetComponent.transform.position - transform.position;
+                direction.y = 0f;
+                float distance = direction.magnitude;
+                if (distance < 0.01f)
+                    continue;
+
+                float angle = Vector3.Angle(transform.forward, direction);
+                if (angle > targetingArc * 0.5f)
+                    continue;
+
+                float score = distance + angle * 0.035f;
+                if (score >= bestScore)
+                    continue;
+
+                bestScore = score;
+                bestDirection = direction.normalized;
+                softTarget = targetComponent.transform;
+            }
+
+            if (softTarget == null)
+                return;
+
+            Quaternion targetRotation = Quaternion.LookRotation(bestDirection, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, attackSteeringDegrees);
         }
 
         private void FinishAttack()
