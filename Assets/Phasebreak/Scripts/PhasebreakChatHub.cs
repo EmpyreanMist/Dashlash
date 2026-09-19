@@ -14,10 +14,10 @@ namespace Phasebreak.Gameplay
     {
         private const int MaxMessages = 60;
         private const int MaxHistory = 40;
-        private static readonly Color Backdrop = new(.012f, .019f, .032f, .9f);
-        private static readonly Color Raised = new(.035f, .053f, .075f, .96f);
-        private static readonly Color Accent = new(.16f, .67f, .76f, 1f);
-        private static readonly Color Body = new(.85f, .9f, .93f, 1f);
+        private static readonly Color Backdrop = PhasebreakUiTheme.Window;
+        private static readonly Color Raised = PhasebreakUiTheme.Raised;
+        private static readonly Color Accent = PhasebreakUiTheme.Accent;
+        private static readonly Color Body = PhasebreakUiTheme.Text;
 
         private readonly Queue<TextMeshProUGUI> messages = new();
         private readonly List<string> history = new();
@@ -276,11 +276,8 @@ namespace Phasebreak.Gameplay
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0f, 0f);
             panel.anchoredPosition = new Vector2(26f, 30f);
             panel.sizeDelta = new Vector2(520f, 254f);
-            AddImage(panel, Backdrop, true);
+            PhasebreakUiTheme.StyleSurface(AddImage(panel, Backdrop, true), Backdrop);
             panelGroup = panel.gameObject.AddComponent<CanvasGroup>();
-            Outline outline = panel.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(.12f, .48f, .55f, .65f);
-            outline.effectDistance = new Vector2(1f, -1f);
 
             TextMeshProUGUI heading = AddText("Chat Heading", panel, "LOCAL  /  PHASEBREAK", 13f, Accent);
             Place(heading.rectTransform, new Vector2(14f, 222f), new Vector2(492f, 20f));
@@ -315,7 +312,7 @@ namespace Phasebreak.Gameplay
 
             RectTransform fieldRoot = Rect("Chat Input", panel);
             Place(fieldRoot, new Vector2(12f, 14f), new Vector2(496f, 43f));
-            AddImage(fieldRoot, Raised, true);
+            PhasebreakUiTheme.StyleSurface(AddImage(fieldRoot, Raised, true), Raised);
             input = fieldRoot.gameObject.AddComponent<TMP_InputField>();
             input.lineType = TMP_InputField.LineType.SingleLine;
             input.characterLimit = 240;
