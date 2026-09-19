@@ -64,8 +64,8 @@ namespace Phasebreak.Gameplay
             instance = this;
             journal = FindAnyObjectByType<QuestJournal>();
             player = journal != null ? journal.transform : FindAnyObjectByType<PlayerProgression>()?.transform;
-            mapAction = new InputAction("World Map", InputActionType.Button, "<Keyboard>/m");
-            journalAction = new InputAction("Quest Journal", InputActionType.Button, "<Keyboard>/j");
+            mapAction = PhasebreakSettings.Button("worldmap", "World Map");
+            journalAction = PhasebreakSettings.Button("journal", "Quest Journal");
             closeAction = new InputAction("Close World UI", InputActionType.Button, "<Keyboard>/escape");
             Build();
             Refresh();
@@ -74,6 +74,7 @@ namespace Phasebreak.Gameplay
         private void OnEnable()
         {
             instance = this;
+            PhasebreakSettings.BindingsChanged += RefreshBindingHints;
             mapAction?.Enable(); journalAction?.Enable(); closeAction?.Enable();
             if (journal != null) { journal.Changed += Refresh; journal.Message += ShowMessage; }
         }
@@ -81,6 +82,7 @@ namespace Phasebreak.Gameplay
         private void OnDisable()
         {
             IsWorldMenuOpen = false;
+            PhasebreakSettings.BindingsChanged -= RefreshBindingHints;
             mapAction?.Disable(); journalAction?.Disable(); closeAction?.Disable();
             if (journal != null) { journal.Changed -= Refresh; journal.Message -= ShowMessage; }
         }
@@ -88,6 +90,7 @@ namespace Phasebreak.Gameplay
         private void OnDestroy()
         {
             if (instance == this) instance = null;
+            PhasebreakSettings.Unregister(mapAction); PhasebreakSettings.Unregister(journalAction);
             mapAction?.Dispose(); journalAction?.Dispose(); closeAction?.Dispose();
         }
 
@@ -97,7 +100,7 @@ namespace Phasebreak.Gameplay
             {
                 if (mapAction.WasPressedThisFrame()) ToggleMap();
                 else if (journalAction.WasPressedThisFrame()) ToggleJournal();
-                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen)) CloseWindows();
+                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen)) { CloseWindows(); GameplayInputFocus.ConsumeFrame(); }
             }
             bool modal = IsWorldMenuOpen || PhasebreakInventoryHud.IsMajorMenuOpen;
             if (trackerPanel != null) trackerPanel.gameObject.SetActive(!modal);
@@ -231,7 +234,7 @@ namespace Phasebreak.Gameplay
             }
             mapObjective = Diamond("Objective Marker", mapSurface, new Color(1f, .74f, .21f), 20f);
             mapPlayer = Diamond("Player Marker", mapSurface, new Color(.75f, .95f, 1f), 18f);
-            mapFooter = Label("Map Footer", mapWindow, "LIGHT MARKER: YOU     GOLD MARKER: OBJECTIVE     [M] CLOSE", 13f, TextAlignmentOptions.Center,
+            mapFooter = Label("Map Footer", mapWindow, $"LIGHT MARKER: YOU     GOLD MARKER: OBJECTIVE     [{PhasebreakSettings.Display("worldmap")}] CLOSE", 13f, TextAlignmentOptions.Center,
                 new Vector2(.1f, .02f), new Vector2(.9f, .075f), Muted);
             mapWindow.gameObject.SetActive(false);
 
@@ -315,8 +318,9 @@ namespace Phasebreak.Gameplay
                 PositionMarker(mapObjective, WorldToMap(V2Objective(active)));
             }
             trackerHeading.text = active == null ? "NO ACTIVE QUEST" : active.title.ToUpperInvariant();
-            tracker.text = active == null ? "Speak with a questgiver.\n<color=#8998AA>[J] FIELD JOURNAL</color>" :
-                $"{(journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText)}\n<color=#6BE7FF>{journal.Progress}/{active.requiredCount}</color>  <color=#8998AA>•  [J] JOURNAL</color>";
+            string journalKey = PhasebreakSettings.Display("journal");
+            tracker.text = active == null ? $"Speak with a questgiver.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>" :
+                $"{(journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText)}\n<color=#6BE7FF>{journal.Progress}/{active.requiredCount}</color>  <color=#8998AA>•  [{journalKey}] JOURNAL</color>";
             RefreshJournal();
         }
 
@@ -400,6 +404,13 @@ namespace Phasebreak.Gameplay
         {
             IsWorldMenuOpen = mapOpen || journalOpen;
             if (IsWorldMenuOpen) { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
+        }
+
+        private void RefreshBindingHints()
+        {
+            if (mapFooter != null)
+                mapFooter.text = $"LIGHT MARKER: YOU     GOLD MARKER: OBJECTIVE     [{PhasebreakSettings.Display("worldmap")}] CLOSE";
+            Refresh();
         }
 
         private static bool IsFrontierV2 => SceneManager.GetActiveScene().name == "StarterZone_V2";

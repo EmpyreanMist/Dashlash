@@ -30,7 +30,7 @@ namespace Phasebreak.Gameplay
                 worldCamera = Camera.main;
             if (followCamera == null && worldCamera != null)
                 followCamera = worldCamera.GetComponent<PhasebreakFollowCamera>();
-            nextTargetAction = new InputAction("Next Target", InputActionType.Button, "<Keyboard>/tab");
+            nextTargetAction = PhasebreakSettings.Button("target.next", "Next Target");
             clearTargetAction = new InputAction("Clear Target", InputActionType.Button, "<Keyboard>/escape");
         }
 
@@ -49,6 +49,7 @@ namespace Phasebreak.Gameplay
 
         private void OnDestroy()
         {
+            PhasebreakSettings.Unregister(nextTargetAction);
             nextTargetAction.Dispose();
             clearTargetAction.Dispose();
         }
@@ -61,8 +62,8 @@ namespace Phasebreak.Gameplay
             if (GameplayInputFocus.GameplayInputBlocked || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
                 return;
 
-            if (clearTargetAction.WasPressedThisFrame())
-                SetTarget(null);
+            if (clearTargetAction.WasPressedThisFrame() && CurrentTarget != null)
+            { SetTarget(null); GameplayInputFocus.ConsumeFrame(); }
 
             if (nextTargetAction.WasPressedThisFrame())
             {

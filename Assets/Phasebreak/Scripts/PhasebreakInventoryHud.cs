@@ -95,9 +95,9 @@ namespace Phasebreak.Gameplay
             progression = FindAnyObjectByType<PlayerProgression>();
             cameraController = FindAnyObjectByType<PhasebreakFollowCamera>();
             worldCamera = Camera.main;
-            inventoryAction = KeyAction("Inventory", "<Keyboard>/b");
-            characterAction = KeyAction("Character", "<Keyboard>/c");
-            talentsAction = KeyAction("Talents", "<Keyboard>/t");
+            inventoryAction = PhasebreakSettings.Button("inventory", "Inventory");
+            characterAction = PhasebreakSettings.Button("character", "Character");
+            talentsAction = PhasebreakSettings.Button("talents", "Talents");
             escapeAction = KeyAction("Close Menu", "<Keyboard>/escape");
             EnsureEventSystem();
             BuildUi();
@@ -108,6 +108,7 @@ namespace Phasebreak.Gameplay
         private void OnDisable() { SetActions(false); if (build != null) build.BuildChanged -= RefreshOpenPanel; CloseMenu(); }
         private void OnDestroy()
         {
+            PhasebreakSettings.Unregister(inventoryAction); PhasebreakSettings.Unregister(characterAction); PhasebreakSettings.Unregister(talentsAction);
             inventoryAction?.Dispose(); characterAction?.Dispose(); talentsAction?.Dispose(); escapeAction?.Dispose();
             if (instance == this) instance = null;
         }
@@ -118,7 +119,7 @@ namespace Phasebreak.Gameplay
             if (inventoryAction.WasPressedThisFrame()) Toggle(MenuMode.Inventory);
             else if (characterAction.WasPressedThisFrame()) Toggle(MenuMode.Character);
             else if (talentsAction.WasPressedThisFrame()) Toggle(MenuMode.Talents);
-            else if (escapeAction.WasPressedThisFrame() && mode != MenuMode.None) CloseMenu();
+            else if (escapeAction.WasPressedThisFrame() && mode != MenuMode.None) { CloseMenu(); GameplayInputFocus.ConsumeFrame(); }
             UpdateCorpseInteraction();
         }
 
@@ -323,14 +324,14 @@ namespace Phasebreak.Gameplay
             Outline outline = nav.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(.08f, .45f, .62f, .8f);
             outline.effectDistance = new Vector2(1f, -1f);
-            NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory  [B]");
-            NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character  [C]");
-            NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents  [T]");
+            NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory", "inventory");
+            NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character", "character");
+            NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents", "talents");
             navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f, TextAlignmentOptions.Center, new Vector2(.77f, .105f), new Vector2(.99f, .15f), TextPrimary);
             navTooltip.gameObject.SetActive(false);
         }
 
-        private void NavButton(RectTransform root, MenuMode target, EquipmentSlot iconSlot, int index, string hint)
+        private void NavButton(RectTransform root, MenuMode target, EquipmentSlot iconSlot, int index, string hint, string bindingId)
         {
             RectTransform rect = Block(target.ToString(), root, PanelLight);
             rect.anchorMin = rect.anchorMax = new Vector2(0f, 0f);
@@ -343,7 +344,7 @@ namespace Phasebreak.Gameplay
             icon.sprite = PhasebreakItemIconLibrary.Get(iconSlot);
             icon.color = TextPrimary;
             ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
-            relay.Configure(() => { navTooltip.text = hint; navTooltip.gameObject.SetActive(true); }, () => navTooltip.gameObject.SetActive(false), () => Toggle(target));
+            relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]"; navTooltip.gameObject.SetActive(true); }, () => navTooltip.gameObject.SetActive(false), () => Toggle(target));
             relay.ConfigureVisual(background, PanelLight, new Color(.08f, .2f, .29f, 1f), Cyan);
         }
 

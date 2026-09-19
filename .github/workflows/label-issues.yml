@@ -1,0 +1,33 @@
+name: Label PHASEBREAK issues by area
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  area:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply selected development area
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          selected="$(printf '%s\n' "$ISSUE_BODY" | awk '/^### Development area$/ { found=1; next } found && /^area: / { print; exit }')"
+          case "$selected" in
+            'area: interface'|'area: combat'|'area: world'|'area: progression'|'area: developer tools'|'area: quality') ;;
+            *) echo 'No valid development area was selected'; exit 0 ;;
+          esac
+          existing="$(gh issue view "$ISSUE_NUMBER" --json labels --jq '.labels[].name | select(startswith("area: "))')"
+          while IFS= read -r label; do
+            if [[ -n "$label" && "$label" != "$selected" ]]; then
+              gh issue edit "$ISSUE_NUMBER" --remove-label "$label"
+            fi
+          done <<< "$existing"
+          gh issue edit "$ISSUE_NUMBER" --add-label "$selected"

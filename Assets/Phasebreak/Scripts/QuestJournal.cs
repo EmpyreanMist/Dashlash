@@ -48,7 +48,7 @@ namespace Phasebreak.Gameplay
             progression = GetComponent<PlayerProgression>();
             build = GetComponent<PlayerBuildSystem>();
             dungeon = FindAnyObjectByType<RiftDungeonController>();
-            interact = new InputAction("Talk to NPC", InputActionType.Button, "<Keyboard>/e");
+            interact = PhasebreakSettings.Button("interact", "Talk to NPC");
             npcs = FindObjectsByType<QuestNpc>(FindObjectsSortMode.None);
             Load();
         }
@@ -68,7 +68,7 @@ namespace Phasebreak.Gameplay
             if (dungeon != null) dungeon.StateChanged -= OnDungeonStateChanged;
         }
 
-        private void OnDestroy() => interact?.Dispose();
+        private void OnDestroy() { PhasebreakSettings.Unregister(interact); interact?.Dispose(); }
 
         private void Update()
         {
