@@ -17,6 +17,40 @@ namespace Phasebreak.Gameplay
         private readonly List<MeleeEnemy> enemies = new List<MeleeEnemy>();
         private readonly List<float> deaths = new List<float>();
         private Transform player;
+        public int Capacity => count;
+        public int LivingCount
+        {
+            get
+            {
+                int living = 0;
+                foreach (MeleeEnemy enemy in enemies)
+                    if (enemy != null && enemy.IsAlive) living++;
+                return living;
+            }
+        }
+
+        public int DebugDefeatActive()
+        {
+            int defeated = 0;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i] == null || !enemies[i].IsAlive) continue;
+                enemies[i].DebugDefeatWithoutRewards();
+                deaths[i] = Time.time;
+                defeated++;
+            }
+            return defeated;
+        }
+
+        public void DebugReset()
+        {
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i] != null) Destroy(enemies[i].gameObject);
+                enemies[i] = null;
+                deaths[i] = -1f;
+            }
+        }
 
         public void Configure(string id, GameObject prefab, int population, float spread, float delay, int tier)
         {

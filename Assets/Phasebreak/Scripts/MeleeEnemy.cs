@@ -170,6 +170,9 @@ namespace Phasebreak.Gameplay
 
         public void ResetEnemy()
         {
+            propertyBlock ??= new MaterialPropertyBlock();
+            renderers ??= GetComponentsInChildren<Renderer>(true);
+            controller ??= GetComponent<CharacterController>();
             if (!gameObject.activeSelf)
                 gameObject.SetActive(true);
             GetComponent<CorpseLootContainer>()?.ClearForReset();
@@ -191,6 +194,18 @@ namespace Phasebreak.Gameplay
             verticalVelocity = -2f;
             knockbackVelocity = Vector3.zero;
             SetState(EnemyState.Idle, 0f);
+        }
+
+        public void DebugDefeatWithoutRewards()
+        {
+            if (!IsAlive) return;
+            defeatRewardGranted = true;
+            CurrentHealth = 0;
+            SetState(EnemyState.Dead, 0f);
+            knockbackVelocity = Vector3.zero;
+            if (reactionRoutine != null) StopCoroutine(reactionRoutine);
+            GetComponent<CorpseLootContainer>()?.ClearForReset();
+            controller.enabled = false;
         }
 
         private void TickChase(Vector3 toTarget, float distance)
@@ -348,6 +363,8 @@ namespace Phasebreak.Gameplay
 
         private void SetColor(Color color)
         {
+            propertyBlock ??= new MaterialPropertyBlock();
+            renderers ??= GetComponentsInChildren<Renderer>(true);
             foreach (Renderer item in renderers)
             {
                 item.GetPropertyBlock(propertyBlock);
@@ -359,6 +376,8 @@ namespace Phasebreak.Gameplay
 
         private void ClearColor()
         {
+            propertyBlock ??= new MaterialPropertyBlock();
+            renderers ??= GetComponentsInChildren<Renderer>(true);
             propertyBlock.Clear();
             foreach (Renderer item in renderers)
                 item.SetPropertyBlock(propertyBlock);

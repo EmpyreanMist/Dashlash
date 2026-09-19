@@ -47,6 +47,20 @@ namespace Phasebreak.Gameplay
         public int KillCount { get; private set; }
         public bool RewardClaimed { get; private set; }
         public string DungeonName => "Rift Crypt";
+        public void DebugRespawn()
+        {
+            if (!IsInDungeon) return;
+            if (deathRoutine != null) { StopCoroutine(deathRoutine); deathRoutine = null; }
+            CurrentEncounter?.ResetEncounter();
+            Transform checkpoint = activeCheckpoint != null ? activeCheckpoint : dungeonSpawn;
+            if (checkpoint != null) TeleportPlayer(checkpoint.position, checkpoint.rotation);
+            playerHealth?.ResetHealth();
+        }
+
+        public void DebugResetEncounters()
+        {
+            if (IsInDungeon) CurrentEncounter?.ResetEncounter();
+        }
         public string DifficultyName => "Normal";
         public float ElapsedTime => State == RiftDungeonState.Outside
             ? 0f
@@ -282,13 +296,7 @@ namespace Phasebreak.Gameplay
 
         private void TeleportPlayer(Vector3 position, Quaternion rotation)
         {
-            CharacterController controller = player.GetComponent<CharacterController>();
-            if (controller != null)
-                controller.enabled = false;
-            player.SetPositionAndRotation(position, rotation);
-            if (controller != null)
-                controller.enabled = true;
-            player.GetComponent<PhasebreakPlayerMovement>()?.ResetMotion();
+            player.GetComponent<PhasebreakPlayerMovement>()?.DebugTeleport(position, rotation);
             playerCombat?.ResetCombat();
             targeting?.SetTarget(null);
         }

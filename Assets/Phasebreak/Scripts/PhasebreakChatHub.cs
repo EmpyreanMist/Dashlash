@@ -36,6 +36,15 @@ namespace Phasebreak.Gameplay
         private int historyIndex;
         private int openedFrame;
         private string draft = string.Empty;
+        private DeveloperCommandRegistry commands;
+        private RectTransform hudRoot;
+        private TextMeshProUGUI debugOverlay;
+        private readonly List<GameObject> hiddenHud = new();
+        private float nextOverlayUpdate;
+
+        public bool ShowCoords { get; set; }
+        public bool ShowFps { get; set; }
+        public bool HudVisible { get; private set; } = true;
 
         public bool IsOpen => GameplayInputFocus.ChatFocused;
 
@@ -58,6 +67,9 @@ namespace Phasebreak.Gameplay
         private void OnDisable()
         {
             Close();
+            SetHudVisible(true);
+            ShowCoords = false;
+            ShowFps = false;
             enterAction.Disable(); escapeAction.Disable(); upAction.Disable(); downAction.Disable(); tabAction.Disable();
         }
 
@@ -71,14 +83,16 @@ namespace Phasebreak.Gameplay
             if (panel != null || hudCanvas == null)
                 return;
             EnsureEventSystem();
+            hudRoot = hudCanvas;
             BuildUi(hudCanvas);
+            commands = new DeveloperCommandRegistry(this);
+            SetCommandSuggestions(commands.Names);
             AppendMessage("Local chat  •  Enter to talk", Accent);
             panelGroup.alpha = .78f;
             panelGroup.blocksRaycasts = false;
             input.interactable = false;
         }
 
-        // The command registry can supply names here in the next ticket. No commands run in this one.
         public void SetCommandSuggestions(IEnumerable<string> names)
         {
             commandSuggestions.Clear();
@@ -90,6 +104,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            UpdateOverlay();
             if (input == null)
                 return;
             if (!IsOpen)
@@ -153,7 +168,10 @@ namespace Phasebreak.Gameplay
                 if (history.Count == MaxHistory) history.RemoveAt(0);
                 history.Add(message);
                 if (message.StartsWith("/"))
-                    AppendMessage("Commands are not available yet.", Accent);
+                {
+                    string result = commands.Run(message);
+                    if (!string.IsNullOrEmpty(result)) AppendMessage(result, Accent);
+                }
                 else
                     AppendMessage("YOU  " + message, Body);
             }
@@ -191,7 +209,7 @@ namespace Phasebreak.Gameplay
             if (suggestion == null) return;
             string match = FindSuggestion(value);
             suggestion.text = match != null ? "/" + match + "    TAB TO COMPLETE" :
-                !string.IsNullOrEmpty(value) && value[0] == '/' ? "COMMANDS COMING SOON" : string.Empty;
+                !string.IsNullOrEmpty(value) && value[0] == '/' ? "UNKNOWN COMMAND  •  /help" : string.Empty;
             suggestion.gameObject.SetActive(suggestion.text.Length > 0);
         }
 
@@ -206,6 +224,44 @@ namespace Phasebreak.Gameplay
                 Destroy(messages.Dequeue().gameObject);
             Canvas.ForceUpdateCanvases();
             scroll.verticalNormalizedPosition = 0f;
+        }
+
+        public void ClearMessages()
+        {
+            while (messages.Count > 0) Destroy(messages.Dequeue().gameObject);
+        }
+
+        public void SetHudVisible(bool visible)
+        {
+            if (hudRoot == null || HudVisible == visible) return;
+            HudVisible = visible;
+            if (!visible)
+            {
+                hiddenHud.Clear();
+                foreach (Transform child in hudRoot)
+                {
+                    if (child == panel || child == debugOverlay.transform || !child.gameObject.activeSelf) continue;
+                    hiddenHud.Add(child.gameObject);
+                    child.gameObject.SetActive(false);
+                }
+            }
+            else
+            {
+                foreach (GameObject item in hiddenHud)
+                    if (item != null) item.SetActive(true);
+                hiddenHud.Clear();
+            }
+        }
+
+        private void UpdateOverlay()
+        {
+            if (debugOverlay == null || Time.unscaledTime < nextOverlayUpdate) return;
+            nextOverlayUpdate = Time.unscaledTime + .25f;
+            var player = FindAnyObjectByType<PhasebreakPlayerMovement>();
+            Vector3 p = player != null ? player.transform.position : Vector3.zero;
+            debugOverlay.text = (ShowFps ? $"FPS {1f / Mathf.Max(.001f, Time.unscaledDeltaTime):0}\n" : "") +
+                (ShowCoords && player != null ? $"XYZ {p.x:0.#}, {p.y:0.#}, {p.z:0.#}" : "");
+            debugOverlay.gameObject.SetActive(debugOverlay.text.Length > 0);
         }
 
         private void BuildUi(RectTransform canvas)
@@ -273,6 +329,14 @@ namespace Phasebreak.Gameplay
             suggestion = AddText("Command Suggestion", panel, string.Empty, 13f, Accent);
             Place(suggestion.rectTransform, new Vector2(16f, 58f), new Vector2(486f, 16f));
             suggestion.gameObject.SetActive(false);
+
+            debugOverlay = AddText("Debug Overlay", canvas, string.Empty, 15f, Accent);
+            debugOverlay.alignment = TextAlignmentOptions.TopRight;
+            debugOverlay.rectTransform.anchorMin = debugOverlay.rectTransform.anchorMax = new Vector2(1f, 1f);
+            debugOverlay.rectTransform.pivot = new Vector2(1f, 1f);
+            debugOverlay.rectTransform.anchoredPosition = new Vector2(-22f, -22f);
+            debugOverlay.rectTransform.sizeDelta = new Vector2(340f, 54f);
+            debugOverlay.gameObject.SetActive(false);
         }
 
         private static RectTransform Rect(string name, Transform parent)

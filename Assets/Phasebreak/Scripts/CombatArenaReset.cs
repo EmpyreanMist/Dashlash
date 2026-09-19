@@ -17,6 +17,7 @@ namespace Phasebreak.Gameplay
         private Coroutine pendingReset;
 
         public int ResetCount { get; private set; }
+        public int EnemyCapacity => enemies != null ? enemies.Length : 0;
 
         public void Configure(Transform playerTransform, PlayerHealth health, MeleeEnemy[] arenaEnemies)
         {
@@ -88,12 +89,15 @@ namespace Phasebreak.Gameplay
             player?.GetComponent<PhasebreakPlayerMovement>()?.ResetMotion();
             player?.GetComponent<PlayerCombat>()?.ResetCombat();
             playerHealth?.ResetHealth();
-            if (enemies != null)
-            {
-                foreach (MeleeEnemy enemy in enemies)
-                    enemy?.ResetEnemy();
-            }
+            DebugResetEnemies();
             ResetCount++;
+        }
+
+        public void DebugResetEnemies()
+        {
+            if (enemies == null) return;
+            foreach (MeleeEnemy enemy in enemies)
+                enemy?.ResetEnemy();
         }
 
         private void HandlePlayerDied()
