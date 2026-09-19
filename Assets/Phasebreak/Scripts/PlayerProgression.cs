@@ -8,7 +8,7 @@ namespace Phasebreak.Gameplay
     public sealed class PlayerProgression : MonoBehaviour
     {
         [Header("Leveling")]
-        [SerializeField, Min(1)] private int maximumLevel = 3;
+        [SerializeField, Min(1)] private int maximumLevel = 10;
         [SerializeField, Min(1)] private int baseExperienceToLevel = 24;
         [SerializeField, Min(0)] private int experienceGrowthPerLevel = 12;
 
@@ -23,6 +23,8 @@ namespace Phasebreak.Gameplay
 
         private PlayerHealth health;
         private Targetable targetable;
+        private const string SaveKey = "Phasebreak.Progression.v1";
+        [Serializable] private sealed class ProgressionSave { public int version = 1; public int level = 1; public int experience; }
 
         public int Level { get; private set; } = 1;
         public int CurrentExperience { get; private set; }
@@ -49,6 +51,15 @@ namespace Phasebreak.Gameplay
         {
             health = GetComponent<PlayerHealth>();
             targetable = GetComponent<Targetable>();
+            if (PlayerPrefs.HasKey(SaveKey))
+            {
+                ProgressionSave saved = JsonUtility.FromJson<ProgressionSave>(PlayerPrefs.GetString(SaveKey));
+                if (saved != null)
+                {
+                    Level = Mathf.Clamp(saved.level, 1, maximumLevel);
+                    CurrentExperience = Level >= maximumLevel ? 0 : Mathf.Clamp(saved.experience, 0, ExperienceToNextLevel - 1);
+                }
+            }
             ApplyLevelBenefits();
         }
 
@@ -73,6 +84,8 @@ namespace Phasebreak.Gameplay
 
             if (IsMaximumLevel)
                 CurrentExperience = 0;
+            PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(new ProgressionSave { level = Level, experience = CurrentExperience }));
+            PlayerPrefs.Save();
             ProgressChanged?.Invoke();
         }
 

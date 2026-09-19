@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767621614a61dbe48a13a17647766051, type: 3}
+  m_Name: bulwark-iron-constitution
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.TalentNodeDefinition
+  id: bulwark-iron-constitution
+  displayName: Iron Constitution
+  description: Reinforce the body against the rift's punishment.
+  icon: {fileID: 21300000, guid: 7c10c5f80061cee439da2eeb9d9a8bae, type: 3}
+  specialization: 2
+  nodeType: 0
+  maximumRank: 2
+  pointCost: 1
+  requiredPlayerLevel: 1
+  prerequisiteIds: []
+  choiceGroup: 
+  effect: 2
+  secondaryEffect: 0
+  targetAbilityId: 
+  grantedAbilityId: 
+  synergyTag: 0
+  effectValuePerRank: 4
+  secondaryValuePerRank: 0
+  presentationPosition: {x: 0.5, y: 0.84}

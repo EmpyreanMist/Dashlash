@@ -91,9 +91,22 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 - Zombie AI supports idle, aggro, chase, readable windup/attack/recovery, stagger, immediate death, corpse loot, leash and return-to-spawn with health reset.
 - The supplied zombie FBX contains a Humanoid rig but no authored action clips beyond its bind/T-pose. Existing compatible idle/run clips and a procedural presentation layer currently provide locomotion, melee, hit and death feedback; authored zombie clips remain a future art upgrade.
 
+## Goal 5 — Talents
+
+The first data-driven talent trees, point spending and respec flow are now implemented for the existing specializations. Production balance, full spellbook/action-bar integration and content tuning remain open.
+
+## Goal 6 — Living Starter Zone foundation
+
+- The player starts in Northgate rather than the old test clearing. Six named, visually differentiated NPCs connect Northgate, Westmere and Eastwatch.
+- The existing zombie population now includes five heavier Brutes and five faster Skirmishers, with distinct health, speed, attack cadence, rewards and target rank.
+- Six sequential quests now cover NPC dialogue, overworld zombie combat, ruin discovery and the Rift Crypt completion/reward loop. Objectives, discovered locations, completed quests and Rift Marks persist locally.
+- `E` interacts with nearby NPCs; `J` opens the field journal and `M` opens a schematic world map. The HUD shows the active objective, NPC interaction prompt and map/compass markers.
+- The level cap is 10 in the active scene, with locally saved level/experience, making quest rewards and further overworld combat meaningful beyond level 3.
+- This is a single-player vertical slice, not an online MMO. Rift Marks have no vendor sink yet, the map is schematic, NPCs are stationary, and all three zombie types still use melee AI. Ranged/caster roles are explicit next tasks, not completed features.
+
 ## Recommended next milestone — Phase 7
 
-Build the first real combat-content slice: ranged, caster and bruiser enemies; interruptible telegraphs, leash/group aggro and an elite modifier; then turn Rift Crypt into a polished 10–15 minute dungeon with an optional risk room, boss phases and a unique reward. Item-instance loot tables should follow before broad open-world expansion.
+Make the world loop deeper: give Rift Marks a vendor/supply sink, add ranged/caster/bruiser enemy roles with readable telegraphs and camp behavior, and turn the schematic map into a readable authored zone map. Then polish Rift Crypt into a 10–15 minute dungeon with boss phases and a unique reward. Keep authoritative multiplayer services as a separate later milestone.
 
 ## Proposed focused next step — local chat and developer commands
 

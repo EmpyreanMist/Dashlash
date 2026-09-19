@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35bc3882a8b422945b0fc58f890cb0d5, type: 3}
+  m_Name: frontier-01
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.QuestDefinition
+  id: frontier-01
+  title: Northgate Muster
+  description: Warden Elira asks you to check on the quartermaster before leaving the walls.
+  giverNpcId: warden-elira
+  turnInNpcId: warden-elira
+  prerequisiteQuestId: 
+  objectiveKind: 0
+  targetId: quartermaster-orin
+  objectiveText: Speak with Quartermaster Orin
+  requiredCount: 1
+  experienceReward: 18
+  marksReward: 4
+  itemRewardId: 
+  mapPosition: {x: -57, y: 72}

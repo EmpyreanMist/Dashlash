@@ -18,6 +18,7 @@ namespace Phasebreak.Gameplay
 
         private PhasebreakPlayerMovement movement;
         private PlayerBuildSystem build;
+        private TalentSystem talents;
         private PhasebreakFollowCamera followCamera;
         private Renderer[] renderers;
         private MaterialPropertyBlock propertyBlock;
@@ -41,6 +42,7 @@ namespace Phasebreak.Gameplay
         {
             movement = GetComponent<PhasebreakPlayerMovement>();
             build = GetComponent<PlayerBuildSystem>();
+            talents = GetComponent<TalentSystem>();
             followCamera = FindAnyObjectByType<PhasebreakFollowCamera>();
             renderers = GetComponentsInChildren<Renderer>(true);
             propertyBlock = new MaterialPropertyBlock();
@@ -60,6 +62,8 @@ namespace Phasebreak.Gameplay
                 movement.AddCombatImpulse(direction.normalized * knockback);
             followCamera?.AddImpulse(cameraImpulse);
             HitReceived?.Invoke(direction.normalized, mitigated);
+            talents ??= GetComponent<TalentSystem>();
+            talents?.NotifyDamageTaken();
 
             if (flashRoutine != null)
                 StopCoroutine(flashRoutine);
