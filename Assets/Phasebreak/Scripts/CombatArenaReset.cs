@@ -65,7 +65,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            if (resetAction.WasPressedThisFrame())
+            if (!GameplayInputFocus.GameplayInputBlocked && resetAction.WasPressedThisFrame())
                 ResetArena();
         }
 

@@ -77,7 +77,7 @@ namespace Phasebreak.Gameplay
                 nextNpcRefresh = Time.unscaledTime + 2f;
                 npcs = FindObjectsByType<QuestNpc>(FindObjectsSortMode.None);
             }
-            if (!WorldQuestHud.IsWorldMenuOpen && !PhasebreakInventoryHud.IsMajorMenuOpen &&
+            if (!GameplayInputFocus.GameplayInputBlocked && !WorldQuestHud.IsWorldMenuOpen && !PhasebreakInventoryHud.IsMajorMenuOpen &&
                 interact != null && interact.WasPressedThisFrame())
             {
                 QuestNpc nearby = NearbyNpc();

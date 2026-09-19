@@ -52,8 +52,8 @@ namespace Phasebreak.Gameplay
         private bool leftDragging;
         private bool leftClickCandidate;
 
-        public bool IsLeftMouseHeld => leftMouseAction != null && leftMouseAction.IsPressed();
-        public bool IsRightMouseHeld => rightMouseAction != null && rightMouseAction.IsPressed();
+        public bool IsLeftMouseHeld => !GameplayInputFocus.GameplayInputBlocked && leftMouseAction != null && leftMouseAction.IsPressed();
+        public bool IsRightMouseHeld => !GameplayInputFocus.GameplayInputBlocked && rightMouseAction != null && rightMouseAction.IsPressed();
         public bool MoveForwardRequested => IsLeftMouseHeld && IsRightMouseHeld;
         public bool LeftClickReleasedThisFrame { get; private set; }
         public Vector2 LeftClickPosition { get; private set; }
@@ -98,8 +98,10 @@ namespace Phasebreak.Gameplay
         {
             LeftClickReleasedThisFrame = false;
             RightClickStartedThisFrame = false;
-            if (PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
+            if (GameplayInputFocus.GameplayInputBlocked || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
             {
+                leftClickCandidate = false;
+                leftDragging = false;
                 SetPointerCaptured(false);
                 return;
             }
