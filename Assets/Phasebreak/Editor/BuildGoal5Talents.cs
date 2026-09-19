@@ -46,6 +46,12 @@ namespace Phasebreak.Editor
                 Node("riftblade-rift-execution", "Rift Execution", "Mobility kills feed Energy back into the sequence.", "rift_execution.png", Specialization.Riftblade, TalentNodeType.Passive, 1, TalentEffect.TeleportKillRecovery, 22f, new(.72f, .38f), "riftblade-rift-momentum"),
                 Node("riftblade-void-circuit", "Void Circuit", "Mobility kills restore the movement charge that delivered the finishing blow.", "void_circuit.png", Specialization.Riftblade, TalentNodeType.Keystone, 1, TalentEffect.MobilityKillCircuit, 1f, new(.5f, .13f), new[] { "riftblade-echo-step", "riftblade-rift-execution" }));
 
+            TalentNodeDefinition circuit = Array.Find(riftblade.nodes, node => node.id == "riftblade-void-circuit");
+            circuit.secondaryEffect = TalentEffect.AbilityDamage;
+            circuit.secondaryValuePerRank = .35f;
+            circuit.targetAbilityId = "phase-lunge";
+            EditorUtility.SetDirty(circuit);
+
             TalentCatalog catalog = AssetAt<TalentCatalog>($"{ResourceRoot}/TalentCatalog.asset");
             catalog.saveVersion = 1;
             catalog.prototypeBasePoints = 6;

@@ -36,6 +36,7 @@ namespace Phasebreak.Gameplay
         public int PhaseLungeExtraCharges => (Has(BuildEffect.PhaseLungeExtraCharge) ? 1 : 0) + Mathf.RoundToInt(talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityExtraCharge, "phase-lunge") : 0f);
         public bool CrushingBlowCleave => Has(BuildEffect.CrushingBlowCleave) || (talents != null && talents.HasEffect(TalentEffect.CrushingCleave));
         public float TeleportKillRecovery => Mathf.Max(Has(BuildEffect.TeleportKillRecovery) ? Mathf.Max(20f, teleportRecovery) : 0f, talents != null ? talents.GetEffect(TalentEffect.TeleportKillRecovery) : 0f);
+        public bool TeleportKillRestoresCharge => Has(BuildEffect.TeleportKillRecovery);
         public event Action BuildChanged;
         public event Action<PhasebreakItemDefinition> LootAcquired;
 

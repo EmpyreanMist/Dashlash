@@ -712,7 +712,7 @@ namespace Phasebreak.Editor
         {
             GameObject zombie = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Phasebreak/Art/Enemies/SZombie/SZombieEnemy.prefab");
             Transform root = Container(parent, "Encounter ecology - 26 respawning pockets");
-            Vector2[] centers = { new Vector2(300, 335), new Vector2(545, 570), new Vector2(600, 740),
+            Vector2[] centers = { new Vector2(310, 335), new Vector2(545, 570), new Vector2(600, 740),
                 new Vector2(580, 870), new Vector2(330, 800), new Vector2(315, 1050), new Vector2(480, 1160),
                 new Vector2(660, 1110), new Vector2(760, 1210), new Vector2(860, 1350), new Vector2(1020, 1320),
                 new Vector2(1110, 1480), new Vector2(930, 1530), new Vector2(1250, 1590), new Vector2(1480, 1500),
@@ -728,6 +728,16 @@ namespace Phasebreak.Editor
                 zone.transform.position = Point(centers[i].x, centers[i].y, 0);
                 zone.AddComponent<FrontierEncounterZone>().Configure($"frontier-v2-{i + 1:00}", zombie,
                     count, major ? 25 : 12, major ? 240 : 180, i < 5 ? 1 : i < 20 ? 2 : 3);
+                if (i == 0)
+                {
+                    zone.name = "01 - Riftblade practice lane";
+                    FrontierEncounterZone practice = zone.GetComponent<FrontierEncounterZone>();
+                    practice.Configure("riftblade-practice", zombie, 12, 32, 180, 1);
+                    Vector3[] offsets = new Vector3[12];
+                    for (int step = 0; step < offsets.Length; step++)
+                        offsets[step] = new Vector3(Mathf.Sin(step * .7f) * 3f, 0f, step * 4.8f);
+                    practice.ConfigureFormation(offsets);
+                }
             }
         }
 

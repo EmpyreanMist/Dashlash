@@ -14,6 +14,9 @@ namespace Phasebreak.Gameplay
         [SerializeField] private float activationDistance = 230;
         [SerializeField] private float unloadDistance = 300;
         [SerializeField] private int dangerTier = 1;
+        [SerializeField] private Vector3[] authoredOffsets;
+        public string ZoneId => zoneId;
+        public void ConfigureFormation(Vector3[] offsets) { authoredOffsets = offsets; count = offsets.Length; }
         private readonly List<MeleeEnemy> enemies = new List<MeleeEnemy>();
         private readonly List<float> deaths = new List<float>();
         private Transform player;
@@ -100,6 +103,8 @@ namespace Phasebreak.Gameplay
             float angle = index * 2.39996f + hash * .11f;
             float distance = radius * (.38f + .52f * ((index % 3) / 2f));
             Vector3 point = transform.position + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance;
+            if (authoredOffsets != null && index < authoredOffsets.Length)
+                point = transform.TransformPoint(authoredOffsets[index]);
             Terrain terrain = Terrain.activeTerrain;
             if (terrain != null)
             {

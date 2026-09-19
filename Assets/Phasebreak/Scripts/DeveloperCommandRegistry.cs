@@ -70,6 +70,75 @@ namespace Phasebreak.Gameplay
             Register(new("resetencounters", "/resetencounters", "Reset encounters through their owners.", "Debug", true, ResetEncounters));
             Register(new("xp", "/xp <amount>", "Grant nonnegative XP through progression.", "Progression", true, Xp));
             Register(new("level", "/level <level>", "Set a level within the current progression range.", "Progression", true, Level));
+            Register(new("riftbuild", "/riftbuild apply", "Save a level-10 Riftblade test loadout with existing talents and six Circuit items. Preserves owned gear; refuses other specializations.", "Progression", true, RiftBuild));
+            Register(new("riftpack", "/riftpack", "Reset the Riftblade practice pack and travel to its starting point.", "Debug", true, RiftPack));
+        }
+
+        private string RiftBuild(string[] args)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (!Application.isPlaying) return "Enter Play Mode to apply the Riftblade loadout.";
+            if (args.Length != 1 || args[0] != "apply") return "Usage: /riftbuild apply — saves level, talents and equipment to this character.";
+            PlayerBuildSystem build = Combat != null ? Combat.GetComponent<PlayerBuildSystem>() : null;
+            TalentSystem talents = Combat != null ? Combat.GetComponent<TalentSystem>() : null;
+            if (build == null || talents == null || Progression == null) return Missing;
+            if (build.Specialization != Specialization.Unchosen && build.Specialization != Specialization.Riftblade)
+                return "Use a Riftblade character; existing specializations are preserved.";
+            if (talents.Catalog.trees.Where(t => t.specialization != Specialization.Riftblade).Any(t => t.nodes.Any(n => talents.GetRank(n.id) > 0)))
+                return "Reset other talent trees through the Talents window before applying this loadout.";
+            Progression.SetDebugLevel(Progression.MaximumLevel);
+            if (build.Specialization == Specialization.Unchosen) build.ChooseSpecialization(Specialization.Riftblade);
+            string[] path = { "phase-efficiency", "lunge-mastery", "rift-momentum", "echo-step", "rift-execution", "void-circuit" };
+            foreach (string id in path)
+            {
+                TalentNodeDefinition node = talents.GetNode("riftblade-" + id);
+                if (node == null) return "Missing Riftblade talent: " + id;
+                while (talents.GetRank(node.id) < node.maximumRank)
+                {
+                    TalentPurchaseResult result = talents.Purchase(node);
+                    if (result != TalentPurchaseResult.Purchased) return "Talent setup stopped: " + result;
+                }
+            }
+            string[] items = { "weapon.rift-iron", "hands.phasegrip", "boots.wake", "core.riftheart", "relic.blinkwake", "sigil.emberglass" };
+            foreach (string id in items)
+            {
+                if (Enum.GetValues(typeof(EquipmentSlot)).Cast<EquipmentSlot>().Any(slot => build.GetEquipped(slot)?.id == id)) continue;
+                PhasebreakItemDefinition item = build.Inventory.FirstOrDefault(i => i.id == id);
+                if (item == null)
+                {
+                    if (!build.GrantRewardById(id)) return "Missing test equipment: " + id;
+                    item = build.Inventory.First(i => i.id == id);
+                }
+                build.Equip(item);
+            }
+            Combat.ResetCombat();
+            Health?.ResetHealth();
+            return "Riftblade loadout saved. /riftpack to practice. Phase Dash primes Momentum; Phase Lunge kills return Energy and one charge. No godmode enabled.";
+#else
+            return "Developer commands require an Editor or Development Build.";
+#endif
+        }
+
+        private string RiftPack(string[] args)
+        {
+            if (!Application.isPlaying) return "Enter Play Mode to practice the encounter.";
+            if (!NoArgs(args)) return "Usage: /riftpack";
+            FrontierEncounterZone zone = UnityEngine.Object.FindObjectsByType<FrontierEncounterZone>(FindObjectsSortMode.None)
+                .FirstOrDefault(z => z.ZoneId == "riftblade-practice");
+            if (zone == null || Movement == null) return "Riftblade practice pack is available in StarterZone_V2.";
+            Combat?.GetComponent<PlayerTargeting>()?.SetTarget(null);
+            zone.DebugReset();
+            Vector3 point = zone.transform.position + Vector3.back * 5f;
+            foreach (Terrain terrain in Terrain.activeTerrains)
+            {
+                Vector3 local = point - terrain.transform.position;
+                Vector3 size = terrain.terrainData.size;
+                if (local.x >= 0 && local.z >= 0 && local.x <= size.x && local.z <= size.z)
+                    point.y = terrain.SampleHeight(point) + terrain.transform.position.y + .2f;
+            }
+            Movement.DebugTeleport(point, Quaternion.identity);
+            Combat?.ResetCombat();
+            return "Rift practice: 12 zombies in a winding lane. Dash to prime Momentum, then Lunge between kills; soften targets if undergeared. Three seconds between kills.";
         }
 
         private void Register(Command command)

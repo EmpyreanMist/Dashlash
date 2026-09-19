@@ -107,6 +107,13 @@ namespace Phasebreak.Gameplay
         private float currentResource;
         private Coroutine attackRoutine;
         private Coroutine hitStopRoutine;
+        private int riftChainCount;
+        private float riftChainUntil;
+        public int RiftChainCount => Time.time < riftChainUntil && (health == null || health.IsAlive) ? riftChainCount : 0;
+        public float RiftChainRemaining => RiftChainCount > 0 ? Mathf.Max(0f, riftChainUntil - Time.time) : 0f;
+        public float LastChainEnergyRestored { get; private set; }
+        public bool LastChainChargeRestored { get; private set; }
+        public event Action<int> RiftChainKill;
 
         public int AbilityCount => AbilityCountValue;
         public bool IsAttacking => attackRoutine != null;
@@ -226,6 +233,8 @@ namespace Phasebreak.Gameplay
                     return false;
                 }
                 ConsumeAbility(index);
+                if (build != null && build.Specialization == Specialization.Riftblade)
+                    talents?.NotifyAbilityUsed(true);
                 attackRoutine = StartCoroutine(PerformDash(index));
                 return true;
             }
@@ -267,6 +276,8 @@ namespace Phasebreak.Gameplay
 
         private bool ValidateCommonRequirements(int index, bool report)
         {
+            if (health != null && !health.IsAlive)
+                return Reject(report, "Cannot attack while defeated");
             if (!IsValidIndex(index))
                 return false;
             if (IsAttacking)
@@ -396,6 +407,7 @@ namespace Phasebreak.Gameplay
 
         private IEnumerator PerformAttack(int index, Targetable target, float damage, bool critical)
         {
+            int chainBefore = RiftChainCount;
             Vector3 toTarget = target.transform.position - transform.position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude > 0.01f)
@@ -407,9 +419,29 @@ namespace Phasebreak.Gameplay
             AbilityPresentationEvent presentation = Event(index, windup + recovery + 0.12f, critical);
             AbilityStarted?.Invoke(presentation);
 
-            if (GetExecutionType(index) == AbilityExecutionType.PhaseLunge && toTarget.sqrMagnitude > 0.01f)
+            bool riftLunge = GetExecutionType(index) == AbilityExecutionType.PhaseLunge &&
+                build != null && build.Specialization == Specialization.Riftblade;
+            if (riftLunge && movement != null && movement.BeginAbilityMovement())
+            {
+                float elapsed = 0f;
+                float duration = Mathf.Max(.08f, GetMovementDuration(index));
+                while (target != null && target.IsAlive && elapsed < duration)
+                {
+                    Vector3 delta = target.transform.position - transform.position;
+                    delta.y = 0f;
+                    float remaining = delta.magnitude - GetStopDistance(index);
+                    if (remaining <= .05f) break;
+                    CollisionFlags flags = movement.MoveAbility(delta.normalized *
+                        Mathf.Min(remaining, GetRange(index) / duration * Time.deltaTime));
+                    elapsed += Time.deltaTime;
+                    if ((flags & CollisionFlags.Sides) != 0) break;
+                    yield return null;
+                }
+                movement.EndAbilityMovement();
+            }
+            else if (!riftLunge && GetExecutionType(index) == AbilityExecutionType.PhaseLunge && toTarget.sqrMagnitude > 0.01f)
                 movement?.AddCombatImpulse(toTarget.normalized * GetImpulse(index));
-            else
+            else if (!riftLunge)
                 movement?.AddCombatImpulse(transform.forward * GetImpulse(index));
 
             yield return new WaitForSeconds(windup);
@@ -417,7 +449,8 @@ namespace Phasebreak.Gameplay
             if (slashVisual != null)
                 slashVisual.localScale = Vector3.one * (critical ? 1.55f : index == 1 ? 1.3f : 1f);
             if (target != null && target.IsAlive &&
-                FlatDistance(transform.position, target.transform.position) <= GetRange(index) + 1f)
+                FlatDistance(transform.position, target.transform.position) <= (riftLunge ? GetStopDistance(index) + .6f : GetRange(index) + 1f) &&
+                (!riftLunge || IsTargetValid(target, 0f, GetRange(index))))
             {
                 ApplyHit(index, target, damage, critical,
                     GetExecutionType(index) == AbilityExecutionType.PhaseLunge);
@@ -425,7 +458,7 @@ namespace Phasebreak.Gameplay
             }
             yield return new WaitForSeconds(0.12f);
             SetSlashVisible(false);
-            yield return new WaitForSeconds(recovery);
+            yield return new WaitForSeconds(riftLunge && RiftChainCount > chainBefore && LastChainChargeRestored ? Mathf.Min(recovery, .04f) : recovery);
             AbilityCompleted?.Invoke(presentation);
             attackRoutine = null;
         }
@@ -449,14 +482,31 @@ namespace Phasebreak.Gameplay
             if (critical) talents?.NotifyCriticalHit();
             if (index == 1 && build != null && build.CrushingBlowCleave)
                 PerformCleave(target, damage * 0.6f, critical);
-            if (GetExecutionType(index) == AbilityExecutionType.PhaseLunge && !target.IsAlive &&
+            bool riftblade = build != null && build.Specialization == Specialization.Riftblade;
+            if (riftblade && mobilityHit && !target.IsAlive)
+            {
+                float before = currentResource;
+                currentResource = Mathf.Min(maximumResource, currentResource + build.TeleportKillRecovery);
+                LastChainEnergyRestored = currentResource - before;
+                bool restore = (GetExecutionType(index) == AbilityExecutionType.PhaseLunge && build.TeleportKillRestoresCharge) ||
+                    (talents != null && talents.HasEffect(TalentEffect.MobilityKillCircuit));
+                int previousCharges = charges[index];
+                if (restore) RefundCharge(index);
+                LastChainChargeRestored = charges[index] > previousCharges;
+                if (LastChainChargeRestored) globalReadyAt = Time.time;
+                riftChainCount = RiftChainCount + 1;
+                riftChainUntil = Time.time + 3f;
+                RiftChainKill?.Invoke(riftChainCount);
+                followCamera?.AddImpulse(.04f * Mathf.Min(riftChainCount, 4));
+            }
+            else if (!riftblade && GetExecutionType(index) == AbilityExecutionType.PhaseLunge && !target.IsAlive &&
                 build != null && build.TeleportKillRecovery > 0f)
             {
                 currentResource = Mathf.Min(maximumResource, currentResource + build.TeleportKillRecovery);
                 charges[index] = GetMaximumCharges(index);
                 nextChargeReadyAt[index] = 0f;
             }
-            if (mobilityHit && !target.IsAlive && talents != null && talents.HasEffect(TalentEffect.MobilityKillCircuit))
+            if (!riftblade && mobilityHit && !target.IsAlive && talents != null && talents.HasEffect(TalentEffect.MobilityKillCircuit))
             {
                 charges[index] = GetMaximumCharges(index);
                 nextChargeReadyAt[index] = 0f;
@@ -478,6 +528,10 @@ namespace Phasebreak.Gameplay
 
         private void StopCombatRoutines()
         {
+            riftChainCount = 0;
+            riftChainUntil = 0f;
+            LastChainEnergyRestored = 0f;
+            LastChainChargeRestored = false;
             if (attackRoutine != null)
             {
                 StopCoroutine(attackRoutine);

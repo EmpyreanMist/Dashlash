@@ -20,6 +20,7 @@ The current UI milestone moves the prototype toward a compact dark fantasy actio
 
 ## Near-term milestones
 
+- Validate the Riftblade "fighter to anomaly" direction through the implemented chain-kill lane: build investment sustains Energy, then charges, then short flicker sequences. The mechanical prototype supports a 12-kill chain; hands-on feel, audio and balance validation should precede any global Phasebreak meter or world-wide Phasebreach expansion.
 - Add a useful Rift Marks vendor/supply sink and more readable ranged, caster, and bruiser enemy roles with camp behavior.
 - Improve the schematic map with authored zone art and make the Rift Crypt a paced 10–15 minute dungeon with boss phases and a distinctive reward.
 - Replace prototype world geometry and fallback animation where they limit readability; validate quest, loot, talent, dungeon, and save flows in Play Mode and a packaged build.
