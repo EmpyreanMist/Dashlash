@@ -111,6 +111,7 @@ namespace Phasebreak.Gameplay
         public int AbilityCount => AbilityCountValue;
         public bool IsAttacking => attackRoutine != null;
         public float CurrentResource => currentResource;
+        public void SetDebugResource(float amount) => currentResource = Mathf.Clamp(amount, 0f, maximumResource);
         public float MaximumResource => maximumResource;
         public float ResourceFraction => maximumResource <= 0f ? 0f : currentResource / maximumResource;
         public float CriticalChance => Mathf.Clamp01(criticalChance +

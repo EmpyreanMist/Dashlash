@@ -72,7 +72,7 @@ namespace Phasebreak.Gameplay
             if (amount <= 0 || IsMaximumLevel)
                 return;
 
-            CurrentExperience += amount;
+            CurrentExperience = (int)Math.Min((long)CurrentExperience + amount, int.MaxValue);
             while (!IsMaximumLevel && CurrentExperience >= ExperienceToNextLevel)
             {
                 CurrentExperience -= ExperienceToNextLevel;
@@ -84,9 +84,25 @@ namespace Phasebreak.Gameplay
 
             if (IsMaximumLevel)
                 CurrentExperience = 0;
+            Save();
+            ProgressChanged?.Invoke();
+        }
+
+        public bool SetDebugLevel(int level)
+        {
+            if (level < 1 || level > maximumLevel) return false;
+            Level = level;
+            CurrentExperience = 0;
+            ApplyLevelBenefits();
+            Save();
+            ProgressChanged?.Invoke();
+            return true;
+        }
+
+        private void Save()
+        {
             PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(new ProgressionSave { level = Level, experience = CurrentExperience }));
             PlayerPrefs.Save();
-            ProgressChanged?.Invoke();
         }
 
         private void ApplyLevelBenefits()

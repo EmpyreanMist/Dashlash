@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 namespace Phasebreak.Gameplay
@@ -36,6 +37,7 @@ namespace Phasebreak.Gameplay
         [SerializeField] private bool levelAirDash = true;
 
         private CharacterController controller;
+        private PlayerHealth health;
         private PlayerBuildSystem build;
         private InputAction moveAction;
         private InputAction strafeAction;
@@ -56,12 +58,71 @@ namespace Phasebreak.Gameplay
         private bool isDashing;
         private bool isAbilityDriven;
         private bool inputWasBlocked;
+        private float debugSpeedMultiplier = 1f;
+        private bool debugFly;
+        private bool debugNoClip;
+        private bool debugTeleportClickConsumed;
+        private bool debugLeftMouseWasPressed;
+        private int debugTeleportReleaseFrame = -1;
+        private Vector3 lastSafeGroundedPosition;
+        private bool hasSafeGroundedPosition;
 
         public bool IsDashing => isDashing;
         public bool CanDashNow => !isDashing && !isAbilityDriven && CanDash(controller != null && controller.isGrounded);
         public bool IsGrounded => controller != null && controller.isGrounded;
         public float VerticalSpeed => verticalVelocity;
+        public float DebugSpeedMultiplier => debugSpeedMultiplier;
+        public bool DebugFly => debugFly;
+        public bool DebugNoClip => debugNoClip;
+        public bool DebugTeleportClickConsumed => debugTeleportClickConsumed;
+        public bool HasSafeGroundedPosition => hasSafeGroundedPosition;
+        public Vector3 LastSafeGroundedPosition => lastSafeGroundedPosition;
         public event Action DashStarted;
+
+        public void SetDebugSpeed(float multiplier) => debugSpeedMultiplier = Mathf.Clamp(multiplier, .25f, 5f);
+
+        public void SetDebugFly(bool enabled)
+        {
+            debugFly = enabled;
+            ResetMotion();
+        }
+
+        public void SetDebugNoClip(bool enabled)
+        {
+            if (debugNoClip == enabled) return;
+            debugNoClip = enabled;
+            ResetMotion();
+            controller.enabled = !enabled;
+        }
+
+        public void DebugTeleport(Vector3 position, Quaternion? rotation = null)
+        {
+            bool wasEnabled = controller.enabled;
+            controller.enabled = false;
+            transform.position = position;
+            if (rotation.HasValue) transform.rotation = rotation.Value;
+            ResetMotion();
+            controller.enabled = wasEnabled;
+            followCamera?.SnapAfterTeleport();
+        }
+
+        public bool TryDebugCursorTeleport(Camera camera, Vector2 screenPoint)
+        {
+            if (health == null || !health.DebugGodMode || camera == null) return false;
+            Ray ray = camera.ScreenPointToRay(screenPoint);
+            RaycastHit[] hits = Physics.RaycastAll(ray, 2000f, ~0, QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider == null || hit.collider.transform == transform ||
+                    hit.collider.transform.IsChildOf(transform)) continue;
+                Vector3 arrival = hit.point + hit.normal * (controller.radius + .15f) +
+                    Vector3.up * (controller.height * .5f + .1f);
+                DebugTeleport(arrival);
+                return true;
+            }
+            return false;
+        }
 
         public void QueueJump()
         {
@@ -148,6 +209,7 @@ namespace Phasebreak.Gameplay
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
+            health = GetComponent<PlayerHealth>();
             build = GetComponent<PlayerBuildSystem>();
             if (cameraTransform == null && Camera.main != null)
                 cameraTransform = Camera.main.transform;
@@ -179,6 +241,13 @@ namespace Phasebreak.Gameplay
 
         private void OnDisable()
         {
+            debugFly = false;
+            debugNoClip = false;
+            debugSpeedMultiplier = 1f;
+            debugTeleportClickConsumed = false;
+            debugLeftMouseWasPressed = false;
+            debugTeleportReleaseFrame = -1;
+            if (controller != null) controller.enabled = true;
             moveAction.Disable();
             strafeAction.Disable();
             jumpAction.Disable();
@@ -194,11 +263,37 @@ namespace Phasebreak.Gameplay
         private void Update()
         {
             bool blocked = GameplayInputFocus.GameplayInputBlocked;
+            bool leftMouseHeld = Mouse.current != null && Mouse.current.leftButton.isPressed;
+            bool leftMousePressed = leftMouseHeld && !debugLeftMouseWasPressed;
+            debugLeftMouseWasPressed = leftMouseHeld;
+            if (debugTeleportClickConsumed && !leftMouseHeld)
+            {
+                if (debugTeleportReleaseFrame < 0) debugTeleportReleaseFrame = Time.frameCount;
+                else if (Time.frameCount > debugTeleportReleaseFrame)
+                {
+                    debugTeleportClickConsumed = false;
+                    debugTeleportReleaseFrame = -1;
+                }
+            }
+            if (!blocked && health != null && health.DebugGodMode && Keyboard.current != null &&
+                Keyboard.current.gKey.isPressed && Mouse.current != null &&
+                leftMousePressed &&
+                !PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen &&
+                !HudFrameDragHandle.IsPointerOverFrame() &&
+                (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
+            {
+                debugTeleportClickConsumed = true;
+                debugTeleportReleaseFrame = -1;
+                Camera camera = cameraTransform != null ? cameraTransform.GetComponent<Camera>() : Camera.main;
+                if (TryDebugCursorTeleport(camera, Mouse.current.position.ReadValue())) return;
+            }
             if (blocked && !inputWasBlocked)
                 ResetMotion();
             inputWasBlocked = blocked;
             Vector2 input = blocked ? Vector2.zero : Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
             float strafeInput = blocked ? 0f : strafeAction.ReadValue<float>();
+            if ((debugFly || debugNoClip) && Keyboard.current != null && Keyboard.current.qKey.isPressed)
+                strafeInput = Mathf.Max(0f, strafeInput);
             bool mouseSteering = !blocked && followCamera != null && followCamera.IsRightMouseHeld;
             if (!mouseSteering && Mathf.Abs(input.x) > 0.001f)
                 transform.Rotate(0f, input.x * keyboardTurnSpeed * Time.deltaTime, 0f);
@@ -209,6 +304,11 @@ namespace Phasebreak.Gameplay
 
             if (grounded)
             {
+                if (!debugFly && !debugNoClip)
+                {
+                    lastSafeGroundedPosition = transform.position;
+                    hasSafeGroundedPosition = true;
+                }
                 lastGroundedAt = Time.time;
                 airDashesRemaining = airDashesPerJump;
                 if (verticalVelocity < 0f)
@@ -218,10 +318,24 @@ namespace Phasebreak.Gameplay
             if (!blocked && jumpAction.WasPressedThisFrame())
                 QueueJump();
 
-            if (Time.time <= jumpBufferedUntil)
+            if (!debugFly && !debugNoClip && Time.time <= jumpBufferedUntil)
                 TryJump();
 
-            UpdateVerticalVelocity(grounded);
+            if (!debugFly && !debugNoClip) UpdateVerticalVelocity(grounded);
+            else verticalVelocity = 0f;
+
+            if (debugFly || debugNoClip)
+            {
+                float rise = blocked || Keyboard.current == null ? 0f : (Keyboard.current.spaceKey.isPressed ? 1f : 0f) -
+                    (Keyboard.current.qKey.isPressed || Keyboard.current.leftCtrlKey.isPressed ||
+                     Keyboard.current.rightCtrlKey.isPressed ? 1f : 0f);
+                Vector3 motion = (desiredMoveDirection * inputMagnitude + Vector3.up * rise) *
+                    (moveSpeed * debugSpeedMultiplier * Time.deltaTime);
+                if (debugNoClip) transform.position += motion;
+                else controller.Move(motion);
+                UpdateRotation(mouseSteering);
+                return;
+            }
 
             if (isAbilityDriven)
                 return;
@@ -264,7 +378,7 @@ namespace Phasebreak.Gameplay
         private void UpdateMovement(float inputMagnitude, bool grounded)
         {
             float buildSpeed = build != null ? build.MovementSpeedMultiplier : 1f;
-            Vector3 targetVelocity = desiredMoveDirection * (moveSpeed * buildSpeed * inputMagnitude);
+            Vector3 targetVelocity = desiredMoveDirection * (moveSpeed * buildSpeed * debugSpeedMultiplier * inputMagnitude);
             float rate = targetVelocity.sqrMagnitude > planarVelocity.sqrMagnitude ? acceleration : deceleration;
             if (!grounded)
                 rate *= airControl;

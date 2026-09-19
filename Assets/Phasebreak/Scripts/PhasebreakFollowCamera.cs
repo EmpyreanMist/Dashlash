@@ -63,6 +63,7 @@ namespace Phasebreak.Gameplay
         public Vector3 PlanarRight => Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
 
         public void AddImpulse(float strength) => impulseStrength = Mathf.Max(impulseStrength, strength);
+        public void SnapAfterTeleport() => SnapToTarget();
 
         public void SetTarget(Transform newTarget)
         {

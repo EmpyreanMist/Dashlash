@@ -71,7 +71,8 @@ namespace Phasebreak.Gameplay
                 SelectNextTarget(reverse);
             }
 
-            if (followCamera != null && followCamera.LeftClickReleasedThisFrame)
+            if (followCamera != null && followCamera.LeftClickReleasedThisFrame &&
+                !(GetComponent<PhasebreakPlayerMovement>()?.DebugTeleportClickConsumed ?? false))
                 SelectFromScreenPoint(followCamera.LeftClickPosition);
         }
 

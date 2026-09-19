@@ -26,11 +26,13 @@ namespace Phasebreak.Gameplay
         private Coroutine flashRoutine;
         private int progressionBonusHealth;
         private int equipmentBonusHealth;
+        private bool debugGodMode;
 
         public int CurrentHealth { get; private set; }
         public int MaxHealth => maxHealth + progressionBonusHealth + equipmentBonusHealth;
         public bool IsAlive => CurrentHealth > 0;
-        public bool IsInvulnerable => Time.time < invulnerableUntil;
+        public bool IsInvulnerable => debugGodMode || Time.time < invulnerableUntil;
+        public bool DebugGodMode => debugGodMode;
         public int HitCount { get; private set; }
         public event Action Died;
         public event Action<Vector3, int> HitReceived;
@@ -74,6 +76,15 @@ namespace Phasebreak.Gameplay
             return true;
         }
 
+        public void SetDebugGodMode(bool enabled) => debugGodMode = enabled;
+
+        public void DebugKill()
+        {
+            if (!IsAlive) return;
+            CurrentHealth = 0;
+            Died?.Invoke();
+        }
+
         public void ResetHealth()
         {
             CurrentHealth = MaxHealth;
@@ -113,6 +124,8 @@ namespace Phasebreak.Gameplay
 
         private void SetColor(Color color)
         {
+            propertyBlock ??= new MaterialPropertyBlock();
+            renderers ??= GetComponentsInChildren<Renderer>(true);
             foreach (Renderer item in renderers)
             {
                 item.GetPropertyBlock(propertyBlock);

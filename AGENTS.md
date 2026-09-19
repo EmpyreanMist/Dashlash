@@ -9,7 +9,7 @@
 - MapMagic 2 lives in `Assets/MapMagic`. The V2 scene and graph are paired. If a scene genuinely fails to deserialize, use the checked-in `Phasebreak > Rebuild Complete Starter Zone V2` editor workflow and verify the saved scene afterward.
 - Let Unity finish import and compile, then run focused Play Mode checks for the changed flow. Report what was observed and what remains untested.
 - When finishing work, report files changed, tests run, manual checks, and remaining risks.
-- The local chat hub exists. The command registry in `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md` remains a proposal, not an existing feature.
+- The local chat hub and developer command registry exist. `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md` is historical design context.
 
 ## Documentation policy
 
