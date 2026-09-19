@@ -643,16 +643,17 @@ namespace Phasebreak.Gameplay
         {
             RectTransform root = CreateRect($"{targetable.DisplayName} Nameplate", nameplateLayer);
             root.anchorMin = root.anchorMax = root.pivot = new Vector2(0.5f, 0.5f);
-            root.sizeDelta = new Vector2(176f, 42f);
+            root.sizeDelta = new Vector2(170f, 43f);
 
-            UnityEngine.UI.Image panel = AddImage(root, PanelColor);
+            UnityEngine.UI.Image panel = AddImage(root, PhasebreakUiTheme.Window);
+            PhasebreakUiTheme.StyleSurface(panel, PhasebreakUiTheme.Window);
             RectTransform bar = CreateRect("Health", root);
             bar.anchorMin = new Vector2(0f, 0f);
             bar.anchorMax = new Vector2(1f, 0f);
             bar.pivot = new Vector2(0.5f, 0f);
             bar.offsetMin = new Vector2(5f, 5f);
             bar.offsetMax = new Vector2(-5f, 18f);
-            AddImage(bar, BarBackgroundColor);
+            PhasebreakUiTheme.StyleSurface(AddImage(bar, BarBackgroundColor), BarBackgroundColor, false);
 
             RectTransform fill = CreateRect("Fill", bar);
             fill.anchorMin = Vector2.zero;
@@ -660,7 +661,8 @@ namespace Phasebreak.Gameplay
             fill.offsetMin = fill.offsetMax = Vector2.zero;
             UnityEngine.UI.Image fillImage = AddImage(fill, EnemyHealthColor);
 
-            TextMeshProUGUI label = AddText("Name", root, 16f, TextAlignmentOptions.Center);
+            TextMeshProUGUI label = AddText("Name", root, 14f, TextAlignmentOptions.Center);
+            label.color = PhasebreakUiTheme.Text;
             RectTransform labelRect = label.rectTransform;
             labelRect.anchorMin = new Vector2(0f, 0f);
             labelRect.anchorMax = new Vector2(1f, 1f);
@@ -668,8 +670,8 @@ namespace Phasebreak.Gameplay
             labelRect.offsetMax = new Vector2(-6f, -2f);
 
             WorldNameplateUI result = root.gameObject.AddComponent<WorldNameplateUI>();
-            result.Configure(targetable, panel, fill, fillImage, label, PanelColor, EnemyHealthColor,
-                new Color(.22f, .12f, .035f, .96f), SelectedColor);
+            result.Configure(targetable, panel, fill, fillImage, label, PhasebreakUiTheme.Window, EnemyHealthColor,
+                PhasebreakUiTheme.Active, EnemyHealthColor);
             return result;
         }
 
@@ -694,8 +696,64 @@ namespace Phasebreak.Gameplay
             root.anchorMin = root.anchorMax = anchor;
             root.pivot = anchor;
             root.anchoredPosition = position;
+            RestyleUnitFrame(root, typeof(T) == typeof(TargetFrameUI));
             root.GetComponent<HudFrameDragHandle>()?.CaptureDefaultPosition();
             return instance.GetComponent<T>();
+        }
+
+        private static void RestyleUnitFrame(RectTransform root, bool hostile)
+        {
+            PhasebreakUiTheme.StyleSurface(root.GetComponent<UnityEngine.UI.Image>(), PhasebreakUiTheme.Window);
+            root.GetComponentInChildren<ClassResourcePipsUI>(true)?.SetPalette(
+                PhasebreakUiTheme.Accent, PhasebreakUiTheme.Raised);
+            foreach (UnityEngine.UI.Image image in root.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+            {
+                switch (image.gameObject.name)
+                {
+                    case "Inner Panel":
+                        PhasebreakUiTheme.StyleSurface(image, PhasebreakUiTheme.Panel, false);
+                        break;
+                    case "Obsidian Panel":
+                    case "Portrait Well":
+                        image.color = PhasebreakUiTheme.Window;
+                        break;
+                    case "Portrait Frame":
+                    case "Level Badge":
+                        PhasebreakUiTheme.StyleSurface(image, PhasebreakUiTheme.Raised);
+                        break;
+                    case "Portrait":
+                        image.color = new Color(.18f, .17f, .16f, 1f);
+                        break;
+                    case "Arcane Edge":
+                    case "Left Fang":
+                    case "Right Fang":
+                    case "Portrait Rune":
+                        image.color = PhasebreakUiTheme.MetalEdge;
+                        break;
+                    case "Arcane Glow":
+                        image.color = new Color(.4f, .35f, .27f, .12f);
+                        break;
+                    case "Health Bar":
+                    case "Resource Bar":
+                    case "Cast Bar":
+                        PhasebreakUiTheme.StyleSurface(image, PhasebreakUiTheme.Raised, false);
+                        break;
+                    case "Health Fill":
+                        image.color = hostile ? new Color(.57f, .23f, .22f, 1f) : new Color(.27f, .53f, .36f, 1f);
+                        break;
+                    case "Resource Fill":
+                        image.color = new Color(.33f, .43f, .55f, 1f);
+                        break;
+                    case "Health Shine":
+                    case "Resource Shine":
+                        image.color = new Color(.8f, .78f, .73f, .13f);
+                        break;
+                }
+            }
+            foreach (TextMeshProUGUI label in root.GetComponentsInChildren<TextMeshProUGUI>(true))
+                if (label.gameObject.name is "Player Name" or "Target Name" or "Role" or "Disposition" or "Rank")
+                    label.color = label.gameObject.name is "Player Name" or "Target Name"
+                        ? PhasebreakUiTheme.Text : PhasebreakUiTheme.MutedText;
         }
 
         private static RectTransform CreateRect(string name, Transform parent)

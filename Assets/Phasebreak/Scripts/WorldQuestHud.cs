@@ -52,11 +52,11 @@ namespace Phasebreak.Gameplay
             if (hud != null && (hud.mapOpen || hud.journalOpen)) hud.CloseWindows();
         }
 
-        private static readonly Color Back = new(.014f, .022f, .038f, .96f);
-        private static readonly Color Raised = new(.031f, .049f, .077f, .96f);
-        private static readonly Color Text = new(.9f, .94f, 1f, 1f);
-        private static readonly Color Muted = new(.55f, .64f, .74f, 1f);
-        private static readonly Color Cyan = new(.12f, .74f, .89f, 1f);
+        private static readonly Color Back = PhasebreakUiTheme.Window;
+        private static readonly Color Raised = PhasebreakUiTheme.Raised;
+        private static readonly Color Text = PhasebreakUiTheme.Text;
+        private static readonly Color Muted = PhasebreakUiTheme.MutedText;
+        private static readonly Color Cyan = PhasebreakUiTheme.Accent;
         private static readonly Color Purple = new(.55f, .35f, .84f, 1f);
 
         private void Awake()
@@ -145,14 +145,16 @@ namespace Phasebreak.Gameplay
             Canvas uiCanvas = root.GetComponent<Canvas>(); uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay; uiCanvas.sortingOrder = 32;
             canvas = root.GetComponent<RectTransform>();
 
-            miniPanel = Block("Zone Compass", canvas, new Color(.012f, .018f, .03f, .9f));
-            Pin(miniPanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(224f, 224f));
+            miniPanel = Block("Zone Compass", canvas, Back);
+            Pin(miniPanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(310f, 224f));
+            PhasebreakUiTheme.StyleSurface(miniPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             Label("Mini Title", miniPanel, "NORTHGATE FRONTIER", 11f, TextAlignmentOptions.Center,
                 new Vector2(.06f, .86f), new Vector2(.94f, .97f), Text);
             Label("North Cue", miniPanel, "N", 11f, TextAlignmentOptions.Center,
                 new Vector2(.46f, .75f), new Vector2(.54f, .84f), Cyan);
-            minimap = Block("Mini Map", miniPanel, new Color(.04f, .058f, .066f, .96f));
+            minimap = Block("Mini Map", miniPanel, Raised);
             Stretch(minimap, new Vector2(12f, 12f), new Vector2(-12f, -34f));
+            PhasebreakUiTheme.StyleSurface(minimap.GetComponent<UnityEngine.UI.Image>(), Raised, false);
             if (IsFrontierV2)
             {
                 MiniLandmark("Northgate", new Vector2(850, 870), new Color(.36f, .75f, .77f));
@@ -172,8 +174,9 @@ namespace Phasebreak.Gameplay
             minimapObjective = Diamond("Objective Marker", minimap, new Color(1f, .72f, .28f), 12f);
             minimapPlayer = Diamond("Player Marker", minimap, new Color(.76f, .95f, 1f), 12f);
 
-            trackerPanel = Block("Quest Tracker", canvas, new Color(.014f, .022f, .038f, .86f));
+            trackerPanel = Block("Quest Tracker", canvas, Back);
             Pin(trackerPanel, new Vector2(1f, 1f), new Vector2(-24f, -262f), new Vector2(310f, 108f));
+            PhasebreakUiTheme.StyleSurface(trackerPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             Stripe(trackerPanel, Cyan, new Vector2(0f, 0f), new Vector2(.012f, 1f));
             trackerHeading = Label("Tracker Heading", trackerPanel, string.Empty, 17f, TextAlignmentOptions.Left,
                 new Vector2(.055f, .67f), new Vector2(.95f, .94f), Text);

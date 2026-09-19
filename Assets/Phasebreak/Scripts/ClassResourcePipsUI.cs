@@ -16,6 +16,12 @@ namespace Phasebreak.Gameplay
             inactiveColor = inactive;
         }
 
+        public void SetPalette(Color active, Color inactive)
+        {
+            activeColor = active;
+            inactiveColor = inactive;
+        }
+
         public void SetPips(int current, int maximum)
         {
             if (pips == null)

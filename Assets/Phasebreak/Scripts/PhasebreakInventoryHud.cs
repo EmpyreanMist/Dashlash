@@ -45,11 +45,7 @@ namespace Phasebreak.Gameplay
         private RectTransform lootPanel;
         private RectTransform lootGrid;
         private TextMeshProUGUI inventoryCount;
-        private TextMeshProUGUI selectedItemTitle;
-        private TextMeshProUGUI selectedItemDetails;
         private TextMeshProUGUI inventoryStatus;
-        private Image selectedItemIcon;
-        private Button selectedEquipButton;
         private TextMeshProUGUI characterSummary;
         private TextMeshProUGUI characterDetails;
         private TextMeshProUGUI characterTitle;
@@ -130,7 +126,7 @@ namespace Phasebreak.Gameplay
         {
             WorldQuestHud.CloseWorldMenus();
             mode = target;
-            if (modalBackdrop != null) modalBackdrop.gameObject.SetActive(true);
+            if (modalBackdrop != null) modalBackdrop.gameObject.SetActive(target != MenuMode.Inventory);
             inventoryPanel.gameObject.SetActive(target == MenuMode.Inventory);
             characterPanel.gameObject.SetActive(target == MenuMode.Character);
             talentsPanel.gameObject.SetActive(target == MenuMode.Talents);
@@ -194,24 +190,18 @@ namespace Phasebreak.Gameplay
 
         private void BuildInventoryWindow(RectTransform root)
         {
-            inventoryPanel = WindowPanel("Inventory Panel", root, new Vector2(.12f, .09f), new Vector2(.88f, .92f));
-            BuildTitleBar(inventoryPanel, "RIFT SATCHEL", "INVENTORY", MenuMode.Inventory);
-            RectTransform left = Section("Bag Section", inventoryPanel, new Vector2(.025f, .07f), new Vector2(.675f, .875f));
-            Text("Bag Header", left, "FIELD INVENTORY", 13f, TextAlignmentOptions.Left, new Vector2(.03f, .91f), new Vector2(.5f, .985f), TextMuted);
-            inventoryCount = Text("Capacity", left, string.Empty, 13f, TextAlignmentOptions.Right, new Vector2(.55f, .91f), new Vector2(.97f, .985f), TextMuted);
-            BuildInventoryFilters(left);
-            inventoryGrid = CreateScrollGrid(left, new Vector2(.025f, .11f), new Vector2(.975f, .82f), 9, new Vector2(82f, 82f), new Vector2(11f, 11f));
-            Text("Inventory Controls", left, "LEFT-CLICK  SELECT     RIGHT-CLICK / DOUBLE-CLICK  EQUIP", 11f, TextAlignmentOptions.Center, new Vector2(.03f, .018f), new Vector2(.97f, .09f), TextMuted);
-
-            RectTransform details = Section("Selected Item", inventoryPanel, new Vector2(.695f, .07f), new Vector2(.975f, .875f));
-            Text("Inspect Label", details, "ITEM INSPECTION", 13f, TextAlignmentOptions.Left, new Vector2(.06f, .91f), new Vector2(.94f, .985f), TextMuted);
-            RectTransform iconFrame = FramedIcon("Selected Icon Frame", details, new Vector2(.08f, .72f), new Vector2(.34f, .88f), Cyan);
-            selectedItemIcon = IconImage("Selected Icon", iconFrame, new Vector2(.12f, .12f), new Vector2(.88f, .88f));
-            selectedItemTitle = Text("Selected Name", details, "Select an item", 20f, TextAlignmentOptions.TopLeft, new Vector2(.39f, .71f), new Vector2(.94f, .88f), TextPrimary);
-            selectedItemDetails = Text("Selected Details", details, "Hover an item for its full tooltip.\nSelect it to inspect actions here.", 14f, TextAlignmentOptions.TopLeft, new Vector2(.07f, .25f), new Vector2(.93f, .69f), TextMuted);
-            selectedEquipButton = TextButton("Equip Button", details, "EQUIP ITEM", new Vector2(.12f, .12f), new Vector2(.88f, .22f), TryEquipSelected);
-            selectedEquipButton.interactable = false;
-            inventoryStatus = Text("Inventory Status", details, string.Empty, 12f, TextAlignmentOptions.Center, new Vector2(.06f, .035f), new Vector2(.94f, .105f), TextMuted);
+            inventoryPanel = WindowPanel("Inventory Panel", root, Vector2.zero, Vector2.zero);
+            inventoryPanel.anchorMin = inventoryPanel.anchorMax = inventoryPanel.pivot = new Vector2(1f, 0f);
+            inventoryPanel.anchoredPosition = new Vector2(-24f, 100f);
+            inventoryPanel.sizeDelta = new Vector2(520f, 650f);
+            BuildTitleBar(inventoryPanel, string.Empty, "INVENTORY", MenuMode.Inventory);
+            RectTransform bag = Section("Bag Section", inventoryPanel, new Vector2(.035f, .055f), new Vector2(.965f, .88f));
+            Text("Bag Header", bag, "FIELD INVENTORY", 12f, TextAlignmentOptions.Left, new Vector2(.03f, .91f), new Vector2(.47f, .985f), TextMuted);
+            inventoryCount = Text("Capacity", bag, string.Empty, 12f, TextAlignmentOptions.Right, new Vector2(.46f, .91f), new Vector2(.97f, .985f), TextMuted);
+            BuildInventoryFilters(bag);
+            inventoryGrid = CreateScrollGrid(bag, new Vector2(.025f, .12f), new Vector2(.975f, .82f), 7, new Vector2(54f, 54f), new Vector2(6f, 6f));
+            inventoryStatus = Text("Inventory Status", bag, "HOVER FOR DETAILS  •  RIGHT-CLICK TO EQUIP", 11f,
+                TextAlignmentOptions.Center, new Vector2(.03f, .02f), new Vector2(.97f, .1f), TextMuted);
         }
 
         private void BuildInventoryFilters(RectTransform parent)
@@ -226,7 +216,8 @@ namespace Phasebreak.Gameplay
                 Image image = rect.GetComponent<Image>();
                 filterImages[filter] = image;
                 Button button = rect.gameObject.AddComponent<Button>();
-                Text("Label", rect, filter == InventoryFilter.Relics ? "CORES / RELICS" : filter.ToString().ToUpperInvariant(), 10.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, TextPrimary);
+                PhasebreakUiTheme.StyleButton(button);
+                Text("Label", rect, filter.ToString().ToUpperInvariant(), 10.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, TextPrimary);
                 button.onClick.AddListener(() => SetFilter(filter));
             }
         }
@@ -384,10 +375,9 @@ namespace Phasebreak.Gameplay
                 CreateInventoryCell(inventoryGrid, item, i, comparison);
                 visibleCount++;
             }
-            int capacity = Mathf.Max(45, Mathf.CeilToInt(Mathf.Max(1, visibleCount) / 9f) * 9);
+            int capacity = Mathf.Max(42, Mathf.CeilToInt(Mathf.Max(1, visibleCount) / 7f) * 7);
             for (int i = visibleCount; i < capacity; i++) CreateInventoryCell(inventoryGrid, null, i, default);
-            inventoryCount.text = $"{build.Inventory.Count} ITEMS  •  {visibleCount} SHOWN  •  <color=#5EFF91>{upgradeCount} UPGRADES</color>";
-            UpdateSelectedItemPanel();
+            inventoryCount.text = $"{visibleCount} / {build.Inventory.Count}  •  {upgradeCount} UPGRADES";
             UpdateFilterVisuals();
             LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryGrid);
         }
@@ -404,49 +394,16 @@ namespace Phasebreak.Gameplay
                 () => SelectInventoryItem(item, index),
                 () => TryEquip(item),
                 () => TryEquip(item));
-            relay.ConfigureVisual(visual, new Color(.035f, .055f, .082f, 1f), new Color(.075f, .13f, .18f, 1f), new Color(.08f, .24f, .32f, 1f));
+            relay.ConfigureVisual(visual, PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
             relay.SetSelected(item == selectedItem && index == selectedInventoryIndex);
         }
 
-        private void SelectInventoryItem(PhasebreakItemDefinition item, int index) { selectedItem = item; selectedInventoryIndex = index; inventoryStatus.text = "Selected for inspection"; RefreshInventory(); }
-        private void TryEquipSelected() { if (selectedItem != null) TryEquip(selectedItem); }
+        private void SelectInventoryItem(PhasebreakItemDefinition item, int index) { selectedItem = item; selectedInventoryIndex = index; inventoryStatus.text = item.displayName; RefreshInventory(); }
         private void TryEquip(PhasebreakItemDefinition item)
         {
             itemTooltip.Hide();
             if (build != null && build.Equip(item)) { selectedItem = null; selectedInventoryIndex = -1; inventoryStatus.text = $"Equipped {item.displayName}"; }
             else inventoryStatus.text = "That item cannot be equipped right now";
-        }
-
-        private void UpdateSelectedItemPanel()
-        {
-            if (selectedItem == null)
-            {
-                selectedItemIcon.sprite = PhasebreakItemIconLibrary.Get(EquipmentSlot.Core);
-                selectedItemIcon.color = new Color(.25f, .36f, .46f, .65f);
-                selectedItemTitle.text = "Select an item";
-                selectedItemDetails.text = "Hover an item for full details and comparison.\n\nSelect an item to inspect it here.";
-                selectedEquipButton.interactable = false;
-                return;
-            }
-            selectedItemIcon.sprite = PhasebreakItemIconLibrary.Resolve(selectedItem);
-            selectedItemIcon.color = selectedItem.icon != null ? Color.white : RarityTint(selectedItem.rarity);
-            selectedItemTitle.text = $"<color={RarityHex(selectedItem.rarity)}><b>{selectedItem.displayName}</b></color>\n<size=12><color=#8292A8>{selectedItem.rarity}  •  ITEM LEVEL {selectedItem.itemLevel}</color></size>";
-            StringBuilder details = new();
-            GearComparisonResult comparison = GearUpgradeEvaluator.Evaluate(selectedItem, build);
-            if (comparison.IsUpgrade)
-            {
-                string reason = comparison.HasEquippedComparison
-                    ? $"+{comparison.Delta:0.0} ESTIMATED BUILD SCORE"
-                    : $"EMPTY {Pretty(comparison.ComparedSlot).ToUpperInvariant()} SLOT";
-                details.Append($"<color=#5EFF91><b>UPGRADE</b>  {reason}</color>\n\n");
-            }
-            details.Append($"<b>{Pretty(selectedItem.slot)}</b>\n");
-            if (selectedItem.tags != ItemTag.None) details.Append($"<color=#64CDEB>{selectedItem.tags.ToString().Replace(",", "  •")}</color>\n\n");
-            details.Append(selectedItem.description);
-            if (selectedItem.itemSet != null) details.Append($"\n\n<color=#73D6EE>{selectedItem.itemSet.displayName}</color>");
-            AppendCompactStats(details, selectedItem.stats);
-            selectedItemDetails.text = details.ToString();
-            selectedEquipButton.interactable = true;
         }
 
         private void RefreshCharacter()
@@ -587,9 +544,9 @@ namespace Phasebreak.Gameplay
 
         private GameObject CreateGridItem(RectTransform root, PhasebreakItemDefinition item, string slotLabel, List<GameObject> list, bool equipped, GearComparisonResult comparison = default)
         {
-            RectTransform outer = Block(item == null ? "Empty Slot" : item.displayName, root, item == null ? new Color(.06f, .075f, .1f, .9f) : RarityColor(item.rarity));
+            RectTransform outer = Block(item == null ? "Empty Slot" : item.displayName, root, item == null ? Panel : RarityColor(item.rarity));
             list.Add(outer.gameObject);
-            RectTransform surface = Block("Slot Surface", outer, new Color(.035f, .055f, .082f, 1f));
+            RectTransform surface = Block("Slot Surface", outer, PanelLight);
             Stretch(surface, 3f);
             Image icon = IconImage("Item Icon", surface, new Vector2(.14f, .14f), new Vector2(.86f, .86f));
             if (item != null)
@@ -599,13 +556,13 @@ namespace Phasebreak.Gameplay
                 icon.preserveAspect = true;
                 Text("Item Level", surface, item.itemLevel.ToString(), 10f, TextAlignmentOptions.BottomRight, new Vector2(.55f, .03f), new Vector2(.95f, .28f), TextPrimary);
                 ItemSlotUI relay = outer.gameObject.AddComponent<ItemSlotUI>();
-                relay.ConfigureVisual(surface.GetComponent<Image>(), new Color(.035f, .055f, .082f, 1f), new Color(.075f, .13f, .18f, 1f), new Color(.08f, .24f, .32f, 1f));
+                relay.ConfigureVisual(surface.GetComponent<Image>(), PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
                 if (comparison.IsUpgrade) AddUpgradeIndicator(outer);
             }
             else
             {
                 icon.sprite = PhasebreakItemIconLibrary.Get(EquipmentSlot.Core);
-                icon.color = new Color(.18f, .25f, .34f, .16f);
+                icon.color = new Color(.42f, .41f, .38f, .16f);
                 icon.preserveAspect = true;
             }
             if (equipped) Text("Equipped", surface, "EQUIPPED", 9f, TextAlignmentOptions.Top, new Vector2(.05f, .76f), new Vector2(.95f, .97f), new Color(.4f, .92f, .64f));
@@ -616,8 +573,8 @@ namespace Phasebreak.Gameplay
         private static void AddUpgradeIndicator(RectTransform slot)
         {
             Outline glow = slot.gameObject.AddComponent<Outline>();
-            glow.effectColor = new Color(.22f, 1f, .46f, .62f);
-            glow.effectDistance = new Vector2(2.5f, -2.5f);
+            glow.effectColor = PhasebreakUiTheme.Accent;
+            glow.effectDistance = new Vector2(1f, -1f);
             glow.useGraphicAlpha = false;
         }
 
@@ -637,7 +594,7 @@ namespace Phasebreak.Gameplay
             };
         }
 
-        private void UpdateFilterVisuals() { foreach (KeyValuePair<InventoryFilter, Image> pair in filterImages) pair.Value.color = pair.Key == inventoryFilter ? new Color(.08f, .38f, .5f, 1f) : PanelLight; }
+        private void UpdateFilterVisuals() { foreach (KeyValuePair<InventoryFilter, Image> pair in filterImages) pair.Value.color = pair.Key == inventoryFilter ? PhasebreakUiTheme.Active : PanelLight; }
 
         private void UpdateCorpseInteraction()
         {
@@ -682,7 +639,7 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private void UpdateNav() { foreach (KeyValuePair<MenuMode, Image> pair in navImages) pair.Value.color = mode == pair.Key ? new Color(.08f, .4f, .54f, 1f) : PanelLight; }
+        private void UpdateNav() { foreach (KeyValuePair<MenuMode, Image> pair in navImages) pair.Value.color = mode == pair.Key ? PhasebreakUiTheme.Active : PanelLight; }
         private void SetActions(bool enabled) { foreach (InputAction action in new[] { inventoryAction, characterAction, talentsAction, escapeAction }) if (enabled) action.Enable(); else action.Disable(); }
 
         private static RectTransform CreateScrollGrid(Transform parent, Vector2 min, Vector2 max, int columns, Vector2 cellSize, Vector2 spacing)
@@ -758,25 +715,11 @@ namespace Phasebreak.Gameplay
         private static void Stretch(RectTransform rect, float inset) { rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = new Vector2(inset, inset); rect.offsetMax = new Vector2(-inset, -inset); }
         private static void Clear(List<GameObject> list) { foreach (GameObject go in list) if (go != null) Destroy(go); list.Clear(); }
         private static void StatRow(StringBuilder text, string label, string value) => text.Append($"<color=#8998AA>{label}</color><pos=72%><b>{value}</b>\n");
-        private static void AppendCompactStats(StringBuilder text, BuildStats stats)
-        {
-            StringBuilder values = new();
-            if (!Mathf.Approximately(stats.power, 0f)) values.Append($"Power {stats.power:+0%;-0%}  ");
-            if (stats.maxHealth != 0) values.Append($"Health {stats.maxHealth:+0;-0}  ");
-            if (!Mathf.Approximately(stats.defense, 0f)) values.Append($"Defense {stats.defense:+0%;-0%}  ");
-            if (!Mathf.Approximately(stats.criticalChance, 0f)) values.Append($"Crit {stats.criticalChance:+0%;-0%}  ");
-            if (!Mathf.Approximately(stats.criticalDamage, 0f)) values.Append($"Crit damage {stats.criticalDamage:+0%;-0%}  ");
-            if (!Mathf.Approximately(stats.attackSpeed, 0f)) values.Append($"Attack speed {stats.attackSpeed:+0%;-0%}  ");
-            if (!Mathf.Approximately(stats.movementSpeed, 0f)) values.Append($"Mobility {stats.movementSpeed:+0%;-0%}  ");
-            if (!Mathf.Approximately(stats.bossDamage, 0f)) values.Append($"Boss damage {stats.bossDamage:+0%;-0%}");
-            if (values.Length > 0) text.Append($"\n\n<color=#DDE7F3>{values}</color>");
-        }
         private static string Pretty(EquipmentSlot slot) => System.Text.RegularExpressions.Regex.Replace(slot.ToString(), "([a-z])([A-Z0-9])", "$1 $2");
         private static string CompactSlotLabel(EquipmentSlot slot) => slot switch { EquipmentSlot.Sigil1 => "SIGIL I", EquipmentSlot.Sigil2 => "SIGIL II", EquipmentSlot.Sigil3 => "SIGIL III", EquipmentSlot.WildcardArtifact => "ARTIFACT", _ => Pretty(slot).ToUpperInvariant() };
         private static InputAction KeyAction(string name, string binding) => new(name, InputActionType.Button, binding);
         private static void EnsureEventSystem() { if (EventSystem.current == null) new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule)); }
-        private static Color RarityColor(ItemRarity rarity) => rarity switch { ItemRarity.Mythic => new Color(.86f, .28f, .12f, 1f), ItemRarity.Epic => new Color(.47f, .25f, .78f, 1f), ItemRarity.Rare => new Color(.12f, .42f, .72f, 1f), ItemRarity.Uncommon => new Color(.1f, .52f, .29f, 1f), _ => new Color(.19f, .23f, .3f, 1f) };
+        private static Color RarityColor(ItemRarity rarity) => rarity switch { ItemRarity.Mythic => new Color(.67f, .38f, .24f, 1f), ItemRarity.Epic => new Color(.43f, .34f, .57f, 1f), ItemRarity.Rare => new Color(.28f, .43f, .57f, 1f), ItemRarity.Uncommon => new Color(.31f, .46f, .35f, 1f), _ => PhasebreakUiTheme.MetalEdge };
         private static Color RarityTint(ItemRarity rarity) => rarity switch { ItemRarity.Mythic => new Color(1f, .47f, .3f), ItemRarity.Epic => new Color(.72f, .55f, 1f), ItemRarity.Rare => new Color(.3f, .68f, 1f), ItemRarity.Uncommon => new Color(.4f, .88f, .55f), _ => new Color(.82f, .86f, .92f) };
-        private static string RarityHex(ItemRarity rarity) => rarity switch { ItemRarity.Mythic => "#FF784E", ItemRarity.Epic => "#B58CFF", ItemRarity.Rare => "#4BA3FF", ItemRarity.Uncommon => "#62D77B", _ => "#D6D9DE" };
     }
 }
