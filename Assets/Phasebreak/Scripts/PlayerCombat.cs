@@ -274,6 +274,30 @@ namespace Phasebreak.Gameplay
             FillCharges();
         }
 
+        public int[] CaptureMaximumCharges()
+        {
+            int[] maximum = new int[AbilityCountValue];
+            for (int i = 0; i < maximum.Length; i++) maximum[i] = GetMaximumCharges(i);
+            return maximum;
+        }
+
+        public void ReconcileAbilityModifiers(int[] previousMaximumCharges)
+        {
+            if (previousMaximumCharges == null || previousMaximumCharges.Length != AbilityCountValue) return;
+            for (int i = 0; i < AbilityCountValue; i++)
+            {
+                int maximum = GetMaximumCharges(i);
+                charges[i] = Mathf.Min(charges[i], maximum);
+                if (charges[i] >= maximum) nextChargeReadyAt[i] = 0f;
+                else if (maximum != previousMaximumCharges[i] && nextChargeReadyAt[i] <= Time.time)
+                    nextChargeReadyAt[i] = Time.time + GetCooldown(i);
+            }
+            riftChainCount = 0;
+            riftChainUntil = 0f;
+            LastChainEnergyRestored = 0f;
+            LastChainChargeRestored = false;
+        }
+
         private bool ValidateCommonRequirements(int index, bool report)
         {
             if (health != null && !health.IsAlive)
