@@ -23,6 +23,7 @@ namespace Phasebreak.Gameplay
         private readonly List<string> history = new();
         private readonly List<string> commandSuggestions = new();
         private InputAction enterAction;
+        private InputAction submitAction;
         private InputAction escapeAction;
         private InputAction upAction;
         private InputAction downAction;
@@ -50,9 +51,11 @@ namespace Phasebreak.Gameplay
 
         private void Awake()
         {
-            enterAction = new InputAction("Chat Enter", InputActionType.Button);
-            enterAction.AddBinding("<Keyboard>/enter");
+            enterAction = PhasebreakSettings.Button("chat", "Chat Enter");
             enterAction.AddBinding("<Keyboard>/numpadEnter");
+            submitAction = new InputAction("Chat Submit", InputActionType.Button);
+            submitAction.AddBinding("<Keyboard>/enter");
+            submitAction.AddBinding("<Keyboard>/numpadEnter");
             escapeAction = new InputAction("Chat Cancel", InputActionType.Button, "<Keyboard>/escape");
             upAction = new InputAction("Chat History Previous", InputActionType.Button, "<Keyboard>/upArrow");
             downAction = new InputAction("Chat History Next", InputActionType.Button, "<Keyboard>/downArrow");
@@ -61,7 +64,7 @@ namespace Phasebreak.Gameplay
 
         private void OnEnable()
         {
-            enterAction.Enable(); escapeAction.Enable(); upAction.Enable(); downAction.Enable(); tabAction.Enable();
+            enterAction.Enable(); submitAction.Enable(); escapeAction.Enable(); upAction.Enable(); downAction.Enable(); tabAction.Enable();
         }
 
         private void OnDisable()
@@ -70,12 +73,13 @@ namespace Phasebreak.Gameplay
             SetHudVisible(true);
             ShowCoords = false;
             ShowFps = false;
-            enterAction.Disable(); escapeAction.Disable(); upAction.Disable(); downAction.Disable(); tabAction.Disable();
+            enterAction.Disable(); submitAction.Disable(); escapeAction.Disable(); upAction.Disable(); downAction.Disable(); tabAction.Disable();
         }
 
         private void OnDestroy()
         {
-            enterAction.Dispose(); escapeAction.Dispose(); upAction.Dispose(); downAction.Dispose(); tabAction.Dispose();
+            PhasebreakSettings.Unregister(enterAction);
+            enterAction.Dispose(); submitAction.Dispose(); escapeAction.Dispose(); upAction.Dispose(); downAction.Dispose(); tabAction.Dispose();
         }
 
         public void Initialize(RectTransform hudCanvas)
@@ -87,7 +91,7 @@ namespace Phasebreak.Gameplay
             BuildUi(hudCanvas);
             commands = new DeveloperCommandRegistry(this);
             SetCommandSuggestions(commands.Names);
-            AppendMessage("Local chat  •  Enter to talk", Accent);
+            AppendMessage($"Local chat  •  {PhasebreakSettings.Display("chat")} to talk", Accent);
             panelGroup.alpha = .78f;
             panelGroup.blocksRaycasts = false;
             input.interactable = false;
@@ -109,7 +113,7 @@ namespace Phasebreak.Gameplay
                 return;
             if (!IsOpen)
             {
-                if (enterAction.WasPressedThisFrame() &&
+                if (enterAction.WasPressedThisFrame() && !GameplayInputFocus.GameplayInputBlocked &&
                     !PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen)
                     Open();
                 return;
@@ -117,7 +121,7 @@ namespace Phasebreak.Gameplay
 
             if (escapeAction.WasPressedThisFrame()) { Close(); return; }
             if (Time.frameCount == openedFrame) return;
-            if (enterAction.WasPressedThisFrame()) { Submit(); return; }
+            if (submitAction.WasPressedThisFrame()) { Submit(); return; }
             if (upAction.WasPressedThisFrame()) Recall(-1);
             else if (downAction.WasPressedThisFrame()) Recall(1);
             else if (tabAction.WasPressedThisFrame()) CompleteSuggestion();
@@ -125,6 +129,8 @@ namespace Phasebreak.Gameplay
 
         private void Open()
         {
+            if (input.placeholder is TextMeshProUGUI placeholder)
+                placeholder.text = $"Press {PhasebreakSettings.Display("chat")} to speak locally…";
             GameplayInputFocus.SetChatFocused(true);
             panelGroup.alpha = 1f;
             panelGroup.blocksRaycasts = true;
@@ -138,7 +144,7 @@ namespace Phasebreak.Gameplay
 
         private IEnumerator FocusNextFrame()
         {
-            // Let the opening Enter event pass before the Input System UI module sees the field.
+            // Let the opening key event pass before the Input System UI module sees the field.
             yield return null;
             if (!IsOpen || input == null) yield break;
             input.ActivateInputField();

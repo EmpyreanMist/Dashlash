@@ -7,10 +7,11 @@ namespace Phasebreak.Gameplay
     public static class GameplayInputFocus
     {
         private static bool chatFocused;
+        private static bool menuFocused;
         private static int blockedThroughFrame = -1;
 
         public static bool ChatFocused => chatFocused;
-        public static bool GameplayInputBlocked => chatFocused || Time.frameCount <= blockedThroughFrame;
+        public static bool GameplayInputBlocked => chatFocused || menuFocused || Time.frameCount <= blockedThroughFrame;
 
         internal static void SetChatFocused(bool focused)
         {
@@ -18,10 +19,19 @@ namespace Phasebreak.Gameplay
             blockedThroughFrame = Time.frameCount;
         }
 
+        internal static void SetMenuFocused(bool focused)
+        {
+            menuFocused = focused;
+            blockedThroughFrame = Time.frameCount;
+        }
+
+        internal static void ConsumeFrame() => blockedThroughFrame = Time.frameCount;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
             chatFocused = false;
+            menuFocused = false;
             blockedThroughFrame = -1;
         }
     }

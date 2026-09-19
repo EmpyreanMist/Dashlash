@@ -17,6 +17,7 @@
 - `PROJECT_STATE.md` is the factual current implementation snapshot. Update it only when implemented capability materially changes.
 - `PHASEBREAK_ROADMAP.md` records development direction and milestones. Update it only when milestone status or development direction changes.
 - GitHub Issues are the actionable backlog. `docs/reference/` holds specialist context, not parallel task lists.
+- New issues use a concise title without a manual issue number, exactly one `area:` label, and the sections Goal, Scope, Acceptance criteria, and Non-goals. Add Dependencies and Verification when relevant. Refer to dependencies by GitHub `#number`; use the repository issue form for new feature tickets. Its selected development area is applied by the issue-label workflow.
 - Do not create per-ticket completion report Markdown files. Report completion in the Codex response and/or PR.
 
 ## Normal implementation context

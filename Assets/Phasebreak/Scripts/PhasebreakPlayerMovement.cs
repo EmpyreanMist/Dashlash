@@ -42,6 +42,8 @@ namespace Phasebreak.Gameplay
         private InputAction moveAction;
         private InputAction strafeAction;
         private InputAction jumpAction;
+        private InputAction teleportAction;
+        private InputAction descendAction;
         private Vector3 planarVelocity;
         private Vector3 desiredMoveDirection;
         private Vector3 dashDirection;
@@ -222,13 +224,21 @@ namespace Phasebreak.Gameplay
                 .With("Down", "<Keyboard>/s")
                 .With("Left", "<Keyboard>/a")
                 .With("Right", "<Keyboard>/d");
+            PhasebreakSettings.RegisterCompositePart("move.forward", moveAction, 1);
+            PhasebreakSettings.RegisterCompositePart("move.backward", moveAction, 2);
+            PhasebreakSettings.RegisterCompositePart("move.left", moveAction, 3);
+            PhasebreakSettings.RegisterCompositePart("move.right", moveAction, 4);
 
             strafeAction = new InputAction("Strafe", InputActionType.Value);
             strafeAction.AddCompositeBinding("1DAxis")
                 .With("Negative", "<Keyboard>/q")
                 .With("Positive", "<Keyboard>/e");
+            PhasebreakSettings.RegisterCompositePart("strafe.left", strafeAction, 1);
+            PhasebreakSettings.RegisterCompositePart("strafe.right", strafeAction, 2);
 
-            jumpAction = new InputAction("Jump", InputActionType.Button, "<Keyboard>/space");
+            jumpAction = PhasebreakSettings.Button("jump", "Jump");
+            teleportAction = PhasebreakSettings.Button("teleport", "Godmode cursor teleport");
+            descendAction = PhasebreakSettings.Button("strafe.left", "Fly descend");
             airDashesRemaining = airDashesPerJump;
         }
 
@@ -237,6 +247,8 @@ namespace Phasebreak.Gameplay
             moveAction.Enable();
             strafeAction.Enable();
             jumpAction.Enable();
+            teleportAction.Enable();
+            descendAction.Enable();
         }
 
         private void OnDisable()
@@ -251,13 +263,22 @@ namespace Phasebreak.Gameplay
             moveAction.Disable();
             strafeAction.Disable();
             jumpAction.Disable();
+            teleportAction.Disable();
+            descendAction.Disable();
         }
 
         private void OnDestroy()
         {
+            PhasebreakSettings.Unregister(moveAction);
+            PhasebreakSettings.Unregister(strafeAction);
+            PhasebreakSettings.Unregister(jumpAction);
+            PhasebreakSettings.Unregister(teleportAction);
+            PhasebreakSettings.Unregister(descendAction);
             moveAction.Dispose();
             strafeAction.Dispose();
             jumpAction.Dispose();
+            teleportAction.Dispose();
+            descendAction.Dispose();
         }
 
         private void Update()
@@ -276,7 +297,7 @@ namespace Phasebreak.Gameplay
                 }
             }
             if (!blocked && health != null && health.DebugGodMode && Keyboard.current != null &&
-                Keyboard.current.gKey.isPressed && Mouse.current != null &&
+                teleportAction.IsPressed() && Mouse.current != null &&
                 leftMousePressed &&
                 !PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen &&
                 !HudFrameDragHandle.IsPointerOverFrame() &&
@@ -292,7 +313,7 @@ namespace Phasebreak.Gameplay
             inputWasBlocked = blocked;
             Vector2 input = blocked ? Vector2.zero : Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
             float strafeInput = blocked ? 0f : strafeAction.ReadValue<float>();
-            if ((debugFly || debugNoClip) && Keyboard.current != null && Keyboard.current.qKey.isPressed)
+            if ((debugFly || debugNoClip) && descendAction.IsPressed())
                 strafeInput = Mathf.Max(0f, strafeInput);
             bool mouseSteering = !blocked && followCamera != null && followCamera.IsRightMouseHeld;
             if (!mouseSteering && Mathf.Abs(input.x) > 0.001f)
@@ -326,8 +347,8 @@ namespace Phasebreak.Gameplay
 
             if (debugFly || debugNoClip)
             {
-                float rise = blocked || Keyboard.current == null ? 0f : (Keyboard.current.spaceKey.isPressed ? 1f : 0f) -
-                    (Keyboard.current.qKey.isPressed || Keyboard.current.leftCtrlKey.isPressed ||
+                float rise = blocked || Keyboard.current == null ? 0f : (jumpAction.IsPressed() ? 1f : 0f) -
+                    (descendAction.IsPressed() || Keyboard.current.leftCtrlKey.isPressed ||
                      Keyboard.current.rightCtrlKey.isPressed ? 1f : 0f);
                 Vector3 motion = (desiredMoveDirection * inputMagnitude + Vector3.up * rise) *
                     (moveSpeed * debugSpeedMultiplier * Time.deltaTime);

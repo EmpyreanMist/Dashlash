@@ -82,7 +82,7 @@ namespace Phasebreak.Gameplay
                     player = health.GetComponent<Targetable>();
             }
             BuildCanvas();
-            debugHudAction = new InputAction("Debug Build Snapshot", InputActionType.Button, "<Keyboard>/f8");
+            debugHudAction = PhasebreakSettings.Button("debug.hud", "Debug Build Snapshot");
         }
 
         private void Start() => RefreshNameplates();
@@ -147,7 +147,7 @@ namespace Phasebreak.Gameplay
                 HideAbilityTooltip();
         }
 
-        private void OnDestroy() => debugHudAction?.Dispose();
+        private void OnDestroy() { PhasebreakSettings.Unregister(debugHudAction); debugHudAction?.Dispose(); }
 
         private void HandleTargetChanged(Targetable currentTarget) => targetFrame?.Bind(currentTarget);
 
@@ -195,6 +195,9 @@ namespace Phasebreak.Gameplay
             PhasebreakChatHub chat = GetComponent<PhasebreakChatHub>();
             if (chat == null) chat = gameObject.AddComponent<PhasebreakChatHub>();
             chat.Initialize(canvasRect);
+            PhasebreakGameMenu gameMenu = GetComponent<PhasebreakGameMenu>();
+            if (gameMenu == null) gameMenu = gameObject.AddComponent<PhasebreakGameMenu>();
+            gameMenu.Initialize();
         }
 
         private void HandleAbilityFailed(string message)
@@ -690,6 +693,7 @@ namespace Phasebreak.Gameplay
             root.anchorMin = root.anchorMax = anchor;
             root.pivot = anchor;
             root.anchoredPosition = position;
+            root.GetComponent<HudFrameDragHandle>()?.CaptureDefaultPosition();
             return instance.GetComponent<T>();
         }
 

@@ -40,7 +40,7 @@ namespace Phasebreak.Gameplay
                 playerSpawnPosition = player.position;
                 playerSpawnRotation = player.rotation;
             }
-            resetAction = new InputAction("Reset Arena", InputActionType.Button, "<Keyboard>/r");
+            resetAction = PhasebreakSettings.Button("arena.reset", "Reset Arena");
         }
 
         private void OnEnable()
@@ -62,7 +62,7 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private void OnDestroy() => resetAction.Dispose();
+        private void OnDestroy() { PhasebreakSettings.Unregister(resetAction); resetAction.Dispose(); }
 
         private void Update()
         {

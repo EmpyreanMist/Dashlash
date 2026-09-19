@@ -168,7 +168,10 @@ namespace Phasebreak.Gameplay
         private void OnDestroy()
         {
             foreach (InputAction action in abilityActions)
+            {
+                PhasebreakSettings.Unregister(action);
                 action?.Dispose();
+            }
         }
 
         private void CreateInputActions()
@@ -176,8 +179,7 @@ namespace Phasebreak.Gameplay
             for (int i = 0; i < abilityActions.Length; i++)
             {
                 abilityActions[i]?.Dispose();
-                abilityActions[i] = new InputAction(GetAbilityName(i), InputActionType.Button,
-                    $"<Keyboard>/{GetKey(i)}");
+                abilityActions[i] = PhasebreakSettings.Button($"ability.{i + 1}", GetAbilityName(i));
             }
         }
 
@@ -576,8 +578,7 @@ namespace Phasebreak.Gameplay
             Sprite icon = Ability(index)?.icon;
             return icon != null ? icon : PhasebreakIconCatalog.Current?.fallbackAbility;
         }
-        private string GetKey(int index) => !string.IsNullOrWhiteSpace(Ability(index)?.key)
-            ? Ability(index).key : (index + 1).ToString();
+        private string GetKey(int index) => PhasebreakSettings.Display($"ability.{index + 1}");
         private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null
             ? Ability(index).executionType : index switch
             {

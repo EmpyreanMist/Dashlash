@@ -21,6 +21,9 @@ namespace Phasebreak.Gameplay
         private bool unlocked;
         private bool dragging;
         private static int activeDragCount;
+        private static readonly List<HudFrameDragHandle> ActiveHandles = new();
+        private Vector2 defaultPosition;
+        private bool defaultCaptured;
         private static readonly List<RaycastResult> RaycastBuffer = new();
 
         public bool IsUnlocked => unlocked;
@@ -42,12 +45,40 @@ namespace Phasebreak.Gameplay
         {
             frame ??= transform as RectTransform;
             canvas = GetComponentInParent<Canvas>();
+            ActiveHandles.Add(this);
+        }
+
+        private void OnDestroy() => ActiveHandles.Remove(this);
+
+        public static void ResetAllPositions()
+        {
+            foreach (HudFrameDragHandle handle in ActiveHandles)
+            {
+                if (handle == null || handle.frame == null) continue;
+                if (!string.IsNullOrWhiteSpace(handle.positionSaveKey))
+                {
+                    PlayerPrefs.DeleteKey(handle.positionSaveKey + ".x");
+                    PlayerPrefs.DeleteKey(handle.positionSaveKey + ".y");
+                }
+                handle.frame.anchoredPosition = handle.defaultPosition;
+                handle.ClampToCanvas();
+            }
+            PlayerPrefs.Save();
         }
 
         private void Start()
         {
+            if (!defaultCaptured) CaptureDefaultPosition();
             LoadPosition();
             SetUnlocked(false);
+        }
+
+        public void CaptureDefaultPosition()
+        {
+            if (frame == null) frame = transform as RectTransform;
+            if (frame == null) return;
+            defaultPosition = frame.anchoredPosition;
+            defaultCaptured = true;
         }
 
         private void OnDisable()

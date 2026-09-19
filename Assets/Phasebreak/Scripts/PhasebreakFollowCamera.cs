@@ -51,6 +51,8 @@ namespace Phasebreak.Gameplay
         private bool pointerCaptured;
         private bool leftDragging;
         private bool leftClickCandidate;
+        private bool invertY;
+        private float screenShakeAmount = 1f;
 
         public bool IsLeftMouseHeld => !GameplayInputFocus.GameplayInputBlocked && leftMouseAction != null && leftMouseAction.IsPressed();
         public bool IsRightMouseHeld => !GameplayInputFocus.GameplayInputBlocked && rightMouseAction != null && rightMouseAction.IsPressed();
@@ -62,8 +64,12 @@ namespace Phasebreak.Gameplay
         public Vector3 PlanarForward => Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
         public Vector3 PlanarRight => Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
 
-        public void AddImpulse(float strength) => impulseStrength = Mathf.Max(impulseStrength, strength);
+        public void AddImpulse(float strength) => impulseStrength = Mathf.Max(impulseStrength, strength * screenShakeAmount);
         public void SnapAfterTeleport() => SnapToTarget();
+        public float MouseSensitivity { get => mouseSensitivity; set { mouseSensitivity = Mathf.Clamp(value, .01f, 1f); PhasebreakSettings.SetFloat("mouseSensitivity", mouseSensitivity); } }
+        public float ZoomSensitivity { get => zoomSensitivity; set { zoomSensitivity = Mathf.Clamp(value, .1f, 10f); PhasebreakSettings.SetFloat("zoomSensitivity", zoomSensitivity); } }
+        public bool InvertY { get => invertY; set { invertY = value; PhasebreakSettings.SetInt("invertY", value ? 1 : 0); } }
+        public float ScreenShakeAmount { get => screenShakeAmount; set { screenShakeAmount = Mathf.Clamp01(value); PhasebreakSettings.SetFloat("screenShake", screenShakeAmount); } }
 
         public void SetTarget(Transform newTarget)
         {
@@ -73,6 +79,10 @@ namespace Phasebreak.Gameplay
 
         private void Awake()
         {
+            mouseSensitivity = Mathf.Clamp(PhasebreakSettings.GetFloat("mouseSensitivity", mouseSensitivity), .01f, 1f);
+            zoomSensitivity = Mathf.Clamp(PhasebreakSettings.GetFloat("zoomSensitivity", zoomSensitivity), .1f, 10f);
+            invertY = PhasebreakSettings.GetInt("invertY", 0) != 0;
+            screenShakeAmount = Mathf.Clamp01(PhasebreakSettings.GetFloat("screenShake", 1f));
             controlledCamera = GetComponent<Camera>();
             lookAction = new InputAction("Orbit Camera", InputActionType.Value, "<Mouse>/delta");
             leftMouseAction = new InputAction("Orbit Without Turning", InputActionType.Button, "<Mouse>/leftButton");
@@ -156,7 +166,7 @@ namespace Phasebreak.Gameplay
             if (orbiting)
             {
                 yaw += lookDelta.x * mouseSensitivity;
-                pitch = Mathf.Clamp(pitch - lookDelta.y * mouseSensitivity, minimumPitch, maximumPitch);
+                pitch = Mathf.Clamp(pitch + lookDelta.y * mouseSensitivity * (invertY ? 1f : -1f), minimumPitch, maximumPitch);
             }
 
             Vector2 scroll = zoomAction.ReadValue<Vector2>();

@@ -130,7 +130,7 @@ namespace Phasebreak.Gameplay
             playerCombat ??= player != null ? player.GetComponent<PlayerCombat>() : null;
             targeting ??= player != null ? player.GetComponent<PlayerTargeting>() : null;
             build ??= player != null ? player.GetComponent<PlayerBuildSystem>() : null;
-            interactAction = new InputAction("Dungeon Interact", InputActionType.Button, "<Keyboard>/e");
+            interactAction = PhasebreakSettings.Button("interact", "Dungeon Interact");
             PrepareDungeon();
         }
 
@@ -150,7 +150,7 @@ namespace Phasebreak.Gameplay
             CombatEvents.EnemyDefeatedDetailed -= HandleEnemyDefeated;
         }
 
-        private void OnDestroy() => interactAction.Dispose();
+        private void OnDestroy() { PhasebreakSettings.Unregister(interactAction); interactAction.Dispose(); }
 
         private void Update()
         {
