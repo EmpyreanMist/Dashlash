@@ -120,3 +120,7 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Licensed Bestiary source files imported from the owner's local copy.
+/Assets/Phasebreak/LocalMonsters/
+/Assets/Phasebreak/LocalMonsters.meta
