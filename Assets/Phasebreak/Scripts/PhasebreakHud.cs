@@ -505,7 +505,7 @@ namespace Phasebreak.Gameplay
         private void ShowAbilityTooltip(int index)
         {
             if (combat == null || abilityTooltip == null || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen) return;
-            AbilityState state = combat.GetAbilityState(index);
+            AbilityState state = combat.GetAssignedAbilityState(index);
             abilityTooltip.text = $"<b>{state.Name}</b>  <color=#9CAABD>[{state.Key}]</color>\n" +
                 $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}  •  Cooldown {state.CooldownDuration:0.#}s" +
                 (state.MaximumCharges > 1 ? $"  •  Charges {state.MaximumCharges}" : string.Empty) + "</color>";
@@ -526,7 +526,7 @@ namespace Phasebreak.Gameplay
             if (resourceLabel != null)
                 resourceLabel.text = $"ENERGY  {Mathf.CeilToInt(combat.CurrentResource)}/{Mathf.CeilToInt(combat.MaximumResource)}";
             for (int i = 0; i < abilitySlots.Length; i++)
-                abilitySlots[i].UpdateView(combat.GetAbilityState(i));
+                abilitySlots[i].UpdateView(combat.GetAssignedAbilityState(i));
         }
 
         private void CreateProgressionDisplay()

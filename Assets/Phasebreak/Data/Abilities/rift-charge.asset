@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
   id: rift-charge
   displayName: Rift Charge
+  description: Charge a distant target. Requires room to build momentum.
   key: 5
   damage: 7
   range: 14

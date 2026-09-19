@@ -103,6 +103,8 @@ namespace Phasebreak.Gameplay
         private readonly int[] charges = new int[AbilityCountValue];
         private readonly float[] nextChargeReadyAt = new float[AbilityCountValue];
         private readonly InputAction[] abilityActions = new InputAction[AbilityCountValue];
+        private readonly int[] slotAbilities = new int[AbilityCountValue];
+        private const string AssignmentPrefix = "Phasebreak.ActionBar.v1.slot.";
         private float globalReadyAt;
         private float currentResource;
         private Coroutine attackRoutine;
@@ -116,6 +118,9 @@ namespace Phasebreak.Gameplay
         public event Action<int> RiftChainKill;
 
         public int AbilityCount => AbilityCountValue;
+        public int CatalogCount => abilityDefinitions != null && abilityDefinitions.Length > 0
+            ? Mathf.Min(abilityDefinitions.Length, AbilityCountValue) : AbilityCountValue;
+        public event Action AssignmentsChanged;
         public bool IsAttacking => attackRoutine != null;
         public float CurrentResource => currentResource;
         public void SetDebugResource(float amount) => currentResource = Mathf.Clamp(amount, 0f, maximumResource);
@@ -151,6 +156,7 @@ namespace Phasebreak.Gameplay
             build ??= GetComponent<PlayerBuildSystem>() ?? gameObject.AddComponent<PlayerBuildSystem>();
             talents ??= GetComponent<TalentSystem>() ?? gameObject.AddComponent<TalentSystem>();
             health ??= GetComponent<PlayerHealth>();
+            LoadAssignments();
             CreateInputActions();
             currentResource = maximumResource;
             FillCharges();
@@ -201,7 +207,51 @@ namespace Phasebreak.Gameplay
                 return;
             for (int i = 0; i < abilityActions.Length; i++)
                 if (abilityActions[i].WasPressedThisFrame())
-                    TryUseAbility(i);
+                    TryUseAssignedAbility(i);
+        }
+
+        public CombatAbilityDefinition GetAbilityDefinition(int index) =>
+            IsValidIndex(index) ? Ability(index) : null;
+
+        public int GetAssignedAbilityIndex(int slot) => IsValidIndex(slot) ? slotAbilities[slot] : -1;
+
+        public bool AssignAbilityToSlot(int slot, string abilityId)
+        {
+            if (!IsValidIndex(slot) || string.IsNullOrWhiteSpace(abilityId)) return false;
+            for (int index = 0; index < CatalogCount; index++)
+            {
+                if (!string.Equals(GetAbilityId(index), abilityId, StringComparison.Ordinal)) continue;
+                slotAbilities[slot] = index;
+                PlayerPrefs.SetString(AssignmentPrefix + slot, abilityId);
+                PlayerPrefs.Save();
+                AssignmentsChanged?.Invoke();
+                return true;
+            }
+            return false;
+        }
+
+        public AbilityState GetAssignedAbilityState(int slot)
+        {
+            if (!IsValidIndex(slot)) return default;
+            AbilityState ability = GetAbilityState(slotAbilities[slot]);
+            return new AbilityState(ability.Name, GetKey(slot), ability.CooldownRemaining,
+                ability.CooldownDuration, ability.ResourceCost, ability.IsUsable,
+                ability.Charges, ability.MaximumCharges, ability.Icon);
+        }
+
+        public bool TryUseAssignedAbility(int slot) => IsValidIndex(slot) && TryUseAbility(slotAbilities[slot]);
+
+        private void LoadAssignments()
+        {
+            for (int slot = 0; slot < slotAbilities.Length; slot++)
+            {
+                slotAbilities[slot] = Mathf.Min(slot, CatalogCount - 1);
+                string savedId = PlayerPrefs.GetString(AssignmentPrefix + slot, string.Empty);
+                if (string.IsNullOrEmpty(savedId)) continue;
+                for (int index = 0; index < CatalogCount; index++)
+                    if (string.Equals(GetAbilityId(index), savedId, StringComparison.Ordinal))
+                    { slotAbilities[slot] = index; break; }
+            }
         }
 
         public AbilityState GetAbilityState(int index)

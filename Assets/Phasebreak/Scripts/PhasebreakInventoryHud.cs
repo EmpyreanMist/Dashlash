@@ -14,7 +14,7 @@ namespace Phasebreak.Gameplay
     [DefaultExecutionOrder(150), DisallowMultipleComponent]
     public sealed class PhasebreakInventoryHud : MonoBehaviour
     {
-        private enum MenuMode { None, Inventory, Character, Talents, Loot }
+        private enum MenuMode { None, Inventory, Character, Talents, Spellbook, Loot }
         private enum InventoryFilter { All, Weapons, Armor, Relics, Sigils }
 
         private static PhasebreakInventoryHud instance;
@@ -27,12 +27,14 @@ namespace Phasebreak.Gameplay
         private readonly Dictionary<InventoryFilter, Image> filterImages = new();
 
         private PlayerBuildSystem build;
+        private PlayerCombat combat;
         private PlayerProgression progression;
         private PhasebreakFollowCamera cameraController;
         private Camera worldCamera;
         private InputAction inventoryAction;
         private InputAction characterAction;
         private InputAction talentsAction;
+        private InputAction spellbookAction;
         private InputAction escapeAction;
         private RectTransform canvasRect;
         private RectTransform modalBackdrop;
@@ -41,6 +43,11 @@ namespace Phasebreak.Gameplay
         private RectTransform characterPanel;
         private RectTransform equipmentStage;
         private RectTransform talentsPanel;
+        private RectTransform spellbookPanel;
+        private TextMeshProUGUI spellbookDetails;
+        private readonly List<TextMeshProUGUI> spellbookRows = new();
+        private readonly List<TextMeshProUGUI> spellbookSlots = new();
+        private int selectedAbility;
         private TalentWindowView talentWindow;
         private RectTransform lootPanel;
         private RectTransform lootGrid;
@@ -88,12 +95,14 @@ namespace Phasebreak.Gameplay
         {
             instance = this;
             build = FindAnyObjectByType<PlayerBuildSystem>();
+            combat = FindAnyObjectByType<PlayerCombat>();
             progression = FindAnyObjectByType<PlayerProgression>();
             cameraController = FindAnyObjectByType<PhasebreakFollowCamera>();
             worldCamera = Camera.main;
             inventoryAction = PhasebreakSettings.Button("inventory", "Inventory");
             characterAction = PhasebreakSettings.Button("character", "Character");
             talentsAction = PhasebreakSettings.Button("talents", "Talents");
+            spellbookAction = PhasebreakSettings.Button("spellbook", "Spellbook");
             escapeAction = KeyAction("Close Menu", "<Keyboard>/escape");
             EnsureEventSystem();
             BuildUi();
@@ -104,8 +113,8 @@ namespace Phasebreak.Gameplay
         private void OnDisable() { SetActions(false); if (build != null) build.BuildChanged -= RefreshOpenPanel; CloseMenu(); }
         private void OnDestroy()
         {
-            PhasebreakSettings.Unregister(inventoryAction); PhasebreakSettings.Unregister(characterAction); PhasebreakSettings.Unregister(talentsAction);
-            inventoryAction?.Dispose(); characterAction?.Dispose(); talentsAction?.Dispose(); escapeAction?.Dispose();
+            PhasebreakSettings.Unregister(inventoryAction); PhasebreakSettings.Unregister(characterAction); PhasebreakSettings.Unregister(talentsAction); PhasebreakSettings.Unregister(spellbookAction);
+            inventoryAction?.Dispose(); characterAction?.Dispose(); talentsAction?.Dispose(); spellbookAction?.Dispose(); escapeAction?.Dispose();
             if (instance == this) instance = null;
         }
 
@@ -115,6 +124,7 @@ namespace Phasebreak.Gameplay
             if (inventoryAction.WasPressedThisFrame()) Toggle(MenuMode.Inventory);
             else if (characterAction.WasPressedThisFrame()) Toggle(MenuMode.Character);
             else if (talentsAction.WasPressedThisFrame()) Toggle(MenuMode.Talents);
+            else if (spellbookAction.WasPressedThisFrame()) Toggle(MenuMode.Spellbook);
             else if (escapeAction.WasPressedThisFrame() && mode != MenuMode.None) { CloseMenu(); GameplayInputFocus.ConsumeFrame(); }
             UpdateCorpseInteraction();
         }
@@ -130,6 +140,7 @@ namespace Phasebreak.Gameplay
             inventoryPanel.gameObject.SetActive(target == MenuMode.Inventory);
             characterPanel.gameObject.SetActive(target == MenuMode.Character);
             talentsPanel.gameObject.SetActive(target == MenuMode.Talents);
+            spellbookPanel.gameObject.SetActive(target == MenuMode.Spellbook);
             lootPanel.gameObject.SetActive(target == MenuMode.Loot);
             itemTooltip.Hide();
             Cursor.lockState = CursorLockMode.None;
@@ -149,6 +160,7 @@ namespace Phasebreak.Gameplay
             if (inventoryPanel != null) inventoryPanel.gameObject.SetActive(false);
             if (characterPanel != null) characterPanel.gameObject.SetActive(false);
             if (talentsPanel != null) talentsPanel.gameObject.SetActive(false);
+            if (spellbookPanel != null) spellbookPanel.gameObject.SetActive(false);
             if (lootPanel != null) lootPanel.gameObject.SetActive(false);
             itemTooltip?.Hide();
             Cursor.lockState = CursorLockMode.None;
@@ -181,6 +193,7 @@ namespace Phasebreak.Gameplay
             BuildInventoryWindow(canvasRect);
             BuildCharacterWindow(canvasRect);
             BuildTalentsWindow(canvasRect);
+            BuildSpellbookWindow(canvasRect);
             BuildLootWindow(canvasRect);
             GameObject tooltipObject = new("Item Tooltip", typeof(RectTransform), typeof(PhasebreakItemTooltipUI));
             tooltipObject.transform.SetParent(canvasRect, false);
@@ -295,6 +308,89 @@ namespace Phasebreak.Gameplay
             talentWindow.Initialize(talentsPanel);
         }
 
+        private void BuildSpellbookWindow(RectTransform root)
+        {
+            spellbookPanel = WindowPanel("Spellbook Panel", root, new Vector2(.15f, .12f), new Vector2(.85f, .88f));
+            BuildTitleBar(spellbookPanel, "FIELD ARCANUM", "SPELLBOOK", MenuMode.Spellbook);
+            RectTransform list = Section("Abilities", spellbookPanel, new Vector2(.035f, .11f), new Vector2(.48f, .87f));
+            Text("List Heading", list, "KNOWN ABILITIES", 14f, TextAlignmentOptions.Left,
+                new Vector2(.04f, .91f), new Vector2(.96f, .98f), TextMuted);
+            RectTransform scrollRoot = Block("Ability Scroll", list, PanelLight);
+            Place(scrollRoot, new Vector2(.035f, .035f), new Vector2(.965f, .9f), 0f);
+            ScrollRect scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.scrollSensitivity = 28f;
+            RectTransform viewport = Block("Viewport", scrollRoot, Color.white);
+            Stretch(viewport, 5f);
+            viewport.GetComponent<Image>().color = new Color(1f, 1f, 1f, .01f);
+            viewport.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            RectTransform content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter)).GetComponent<RectTransform>();
+            content.SetParent(viewport, false);
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = Vector2.one;
+            content.pivot = new Vector2(.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = Vector2.zero;
+            VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(8, 8, 8, 8);
+            layout.spacing = 6f;
+            layout.childControlHeight = false;
+            layout.childForceExpandHeight = false;
+            content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scroll.viewport = viewport;
+            scroll.content = content;
+            int count = combat != null ? combat.CatalogCount : 0;
+            for (int index = 0; index < count; index++)
+            {
+                int captured = index;
+                RectTransform row = Block("Ability " + index, content, PanelLight);
+                row.gameObject.AddComponent<LayoutElement>().preferredHeight = 62f;
+                Button button = row.gameObject.AddComponent<Button>();
+                PhasebreakUiTheme.StyleButton(button);
+                button.onClick.AddListener(() => { selectedAbility = captured; RefreshSpellbook(); });
+                Image icon = IconImage("Icon", row, new Vector2(.025f, .12f), new Vector2(.16f, .88f));
+                icon.sprite = combat.GetAbilityState(index).Icon;
+                icon.preserveAspect = true;
+                spellbookRows.Add(Text("Name", row, string.Empty, 16f, TextAlignmentOptions.Left,
+                    new Vector2(.19f, .05f), new Vector2(.97f, .95f), TextPrimary));
+            }
+            RectTransform details = Section("Ability Details", spellbookPanel, new Vector2(.5f, .11f), new Vector2(.965f, .87f));
+            spellbookDetails = Text("Details", details, string.Empty, 18f, TextAlignmentOptions.TopLeft,
+                new Vector2(.055f, .38f), new Vector2(.945f, .95f), TextPrimary);
+            Text("Assign Heading", details, "ASSIGN SELECTED ABILITY TO SLOT", 12f, TextAlignmentOptions.Left,
+                new Vector2(.055f, .31f), new Vector2(.945f, .37f), TextMuted);
+            for (int slot = 0; slot < (combat != null ? combat.AbilityCount : 0); slot++)
+            {
+                int captured = slot;
+                float x = .055f + slot * .18f;
+                Button button = TextButton("Slot " + (slot + 1), details, string.Empty,
+                    new Vector2(x, .14f), new Vector2(x + .16f, .28f),
+                    () => { CombatAbilityDefinition ability = combat.GetAbilityDefinition(selectedAbility);
+                        if (ability != null) combat.AssignAbilityToSlot(captured, ability.id);
+                        RefreshSpellbook(); }, 15f);
+                spellbookSlots.Add(button.GetComponentInChildren<TextMeshProUGUI>());
+            }
+            Text("Help", details, "Select an ability, then choose an action bar slot.", 12f,
+                TextAlignmentOptions.Left, new Vector2(.055f, .045f), new Vector2(.945f, .12f), TextMuted);
+        }
+
+        private void RefreshSpellbook()
+        {
+            if (combat == null || spellbookDetails == null || spellbookRows.Count == 0) return;
+            selectedAbility = Mathf.Clamp(selectedAbility, 0, spellbookRows.Count - 1);
+            for (int index = 0; index < spellbookRows.Count; index++)
+                spellbookRows[index].text = (index == selectedAbility ? "◆  " : "    ") + combat.GetAbilityState(index).Name;
+            AbilityState state = combat.GetAbilityState(selectedAbility);
+            CombatAbilityDefinition definition = combat.GetAbilityDefinition(selectedAbility);
+            string description = definition != null ? definition.description : string.Empty;
+            spellbookDetails.text = $"<b>{state.Name}</b>\n\n{description}\n\n" +
+                $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}   •   Cooldown {state.CooldownDuration:0.#}s\n" +
+                $"Range {(definition != null ? definition.range : 0f):0.#}   •   Charges {state.MaximumCharges}</color>";
+            for (int slot = 0; slot < spellbookSlots.Count; slot++)
+                spellbookSlots[slot].text = PhasebreakSettings.Display($"ability.{slot + 1}") +
+                    (combat.GetAssignedAbilityIndex(slot) == selectedAbility ? " ◆" : string.Empty);
+        }
+
         private void BuildLootWindow(RectTransform root)
         {
             lootPanel = WindowPanel("Loot Panel", root, new Vector2(.33f, .25f), new Vector2(.67f, .78f));
@@ -311,11 +407,12 @@ namespace Phasebreak.Gameplay
             nav.anchorMin = nav.anchorMax = new Vector2(1f, 0f);
             nav.pivot = new Vector2(1f, 0f);
             nav.anchoredPosition = new Vector2(-22f, 20f);
-            nav.sizeDelta = new Vector2(208f, 70f);
+            nav.sizeDelta = new Vector2(274f, 70f);
             PhasebreakUiTheme.StyleSurface(nav.GetComponent<Image>(), Window);
             NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory", "inventory");
             NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character", "character");
             NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents", "talents");
+            NavButton(nav, MenuMode.Spellbook, EquipmentSlot.Sigil1, 3, "Spellbook", "spellbook");
             navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f, TextAlignmentOptions.Center, new Vector2(.77f, .105f), new Vector2(.99f, .15f), TextPrimary);
             navTooltip.gameObject.SetActive(false);
         }
@@ -352,6 +449,7 @@ namespace Phasebreak.Gameplay
             if (mode == MenuMode.Inventory) RefreshInventory();
             else if (mode == MenuMode.Character) RefreshCharacter();
             else if (mode == MenuMode.Talents) talentWindow?.Refresh();
+            else if (mode == MenuMode.Spellbook) RefreshSpellbook();
             else if (mode == MenuMode.Loot) RefreshLoot();
         }
 
@@ -640,7 +738,7 @@ namespace Phasebreak.Gameplay
         }
 
         private void UpdateNav() { foreach (KeyValuePair<MenuMode, Image> pair in navImages) pair.Value.color = mode == pair.Key ? PhasebreakUiTheme.Active : PanelLight; }
-        private void SetActions(bool enabled) { foreach (InputAction action in new[] { inventoryAction, characterAction, talentsAction, escapeAction }) if (enabled) action.Enable(); else action.Disable(); }
+        private void SetActions(bool enabled) { foreach (InputAction action in new[] { inventoryAction, characterAction, talentsAction, spellbookAction, escapeAction }) if (enabled) action.Enable(); else action.Disable(); }
 
         private static RectTransform CreateScrollGrid(Transform parent, Vector2 min, Vector2 max, int columns, Vector2 cellSize, Vector2 spacing)
         {

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
   id: crushing-blow
   displayName: Crushing Blow
+  description: A heavy close-range attack that spends energy for a stronger hit.
   key: 2
   damage: 10
   range: 2.65
