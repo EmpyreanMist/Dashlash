@@ -1,7 +1,8 @@
 # PHASEBREAK project state
 
-Authoritative baseline: main @ c847a176524787ca5cf9db3fb1218357abfefac9
-Verified: 2026-09-19
+Authoritative branch: main
+Gameplay baseline verified: 2026-09-19
+Initial verified gameplay baseline: c847a176524787ca5cf9db3fb1218357abfefac9
 
 PHASEBREAK is a single-player Unity 6000.6.1f1 vertical slice. This document records implemented capability and verification limits; GitHub Issues hold actionable work.
 
