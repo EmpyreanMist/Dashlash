@@ -51,6 +51,7 @@ namespace Phasebreak.Gameplay
         private Image selectedItemIcon;
         private Button selectedEquipButton;
         private TextMeshProUGUI characterSummary;
+        private TextMeshProUGUI characterDetails;
         private TextMeshProUGUI characterTitle;
         private Image passiveIcon;
         private TextMeshProUGUI lootTitle;
@@ -233,13 +234,42 @@ namespace Phasebreak.Gameplay
         {
             characterPanel = WindowPanel("Character Panel", root, new Vector2(.055f, .055f), new Vector2(.945f, .945f));
             BuildTitleBar(characterPanel, "THE PHASEBOUND", "CHARACTER", MenuMode.Character);
-            characterTitle = Text("Identity", characterPanel, string.Empty, 10.5f, TextAlignmentOptions.Left, new Vector2(.035f, .872f), new Vector2(.55f, .894f), TextMuted);
+            characterTitle = Text("Identity", characterPanel, string.Empty, 14f, TextAlignmentOptions.Left, new Vector2(.035f, .865f), new Vector2(.85f, .892f), TextMuted);
             equipmentStage = Section("Equipment Stage", characterPanel, new Vector2(.025f, .055f), new Vector2(.64f, .87f));
             BuildPaperDoll(equipmentStage);
+            Text("Equipment Header", equipmentStage, "EQUIPMENT", 15f, TextAlignmentOptions.Left, new Vector2(.035f, .935f), new Vector2(.5f, .985f), TextMuted);
             RectTransform analysis = Section("Build Analysis", characterPanel, new Vector2(.66f, .055f), new Vector2(.975f, .87f));
-            Text("Analysis Header", analysis, "CHARACTER ANALYSIS", 13f, TextAlignmentOptions.Left, new Vector2(.06f, .925f), new Vector2(.94f, .985f), TextMuted);
-            characterSummary = Text("Build Summary", analysis, string.Empty, 15f, TextAlignmentOptions.TopLeft, new Vector2(.06f, .13f), new Vector2(.94f, .915f), TextPrimary);
-            RectTransform passiveSurface = FramedIcon("Passive Icon Frame", analysis, new Vector2(.835f, .575f), new Vector2(.925f, .66f), new Color(.36f, .22f, .58f, 1f));
+            Text("Analysis Header", analysis, "CHARACTER ANALYSIS", 15f, TextAlignmentOptions.Left, new Vector2(.06f, .93f), new Vector2(.8f, .985f), TextMuted);
+            characterSummary = Text("Final Stats", analysis, string.Empty, 19f, TextAlignmentOptions.TopLeft, new Vector2(.06f, .54f), new Vector2(.94f, .925f), TextPrimary);
+            RectTransform detailsScroll = Block("Build Details Scroll", analysis, PanelLight);
+            Place(detailsScroll, new Vector2(.04f, .135f), new Vector2(.96f, .525f), 0f);
+            ScrollRect scroll = detailsScroll.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.scrollSensitivity = 26f;
+            RectTransform viewport = Block("Viewport", detailsScroll, Color.white);
+            Stretch(viewport, 7f);
+            viewport.GetComponent<Image>().color = new Color(1f, 1f, 1f, .01f);
+            Mask mask = viewport.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+            RectTransform content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter)).GetComponent<RectTransform>();
+            content.SetParent(viewport, false);
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = Vector2.zero;
+            VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(12, 12, 10, 10);
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            characterDetails = Text("Sets And Modifiers", content, string.Empty, 16f, TextAlignmentOptions.TopLeft, Vector2.zero, Vector2.one, TextPrimary);
+            scroll.viewport = viewport;
+            scroll.content = content;
+            RectTransform passiveSurface = FramedIcon("Passive Icon Frame", analysis, new Vector2(.83f, .93f), new Vector2(.93f, .985f), new Color(.36f, .22f, .58f, 1f));
             passiveIcon = IconImage("Passive Icon", passiveSurface, new Vector2(.08f, .08f), new Vector2(.92f, .92f));
             passiveIcon.preserveAspect = true;
             AddSpecButtons(analysis);
@@ -443,6 +473,7 @@ namespace Phasebreak.Gameplay
             passiveIcon.sprite = progression != null ? progression.PassiveIcon : PhasebreakIconCatalog.Current?.fallbackBuff;
             passiveIcon.color = passiveIcon.sprite == null ? Color.clear : progression != null && progression.HasKeenEdge ? Color.white : new Color(.35f, .4f, .48f, .65f);
             characterSummary.text = BuildCharacterSummary();
+            characterDetails.text = BuildCharacterDetails();
         }
 
         private void CreateEquipmentSlot(EquipmentSlot slot, Vector2 anchor, bool labelOnLeft, bool compact = false)
@@ -470,9 +501,9 @@ namespace Phasebreak.Gameplay
             {
                 Vector2 labelMin = labelOnLeft ? new Vector2(0f, .08f) : new Vector2(.42f, .08f);
                 Vector2 labelMax = labelOnLeft ? new Vector2(.58f, .92f) : new Vector2(1f, .92f);
-                Text("Slot Label", holder, Pretty(slot).ToUpperInvariant(), 11f, labelOnLeft ? TextAlignmentOptions.Right : TextAlignmentOptions.Left, labelMin, labelMax, item != null ? TextPrimary : TextMuted);
+                Text("Slot Label", holder, Pretty(slot).ToUpperInvariant(), 15f, labelOnLeft ? TextAlignmentOptions.Right : TextAlignmentOptions.Left, labelMin, labelMax, item != null ? TextPrimary : TextMuted);
             }
-            else Text("Slot Label", holder, CompactSlotLabel(slot), 9f, TextAlignmentOptions.Center, new Vector2(-.1f, -.2f), new Vector2(1.1f, .02f), item != null ? TextPrimary : TextMuted);
+            else Text("Slot Label", holder, CompactSlotLabel(slot), 12f, TextAlignmentOptions.Center, new Vector2(-.1f, -.2f), new Vector2(1.1f, .02f), item != null ? TextPrimary : TextMuted);
             ItemSlotUI relay = slotRect.gameObject.AddComponent<ItemSlotUI>();
             relay.Configure(
                 () => { if (item != null) itemTooltip.Show(item, null, slotRect); },
@@ -492,7 +523,6 @@ namespace Phasebreak.Gameplay
             float levelPower = progression != null ? progression.PowerMultiplier : 1f;
             int levelHealth = progression != null ? progression.BonusHealth : 0;
             float passiveCrit = progression != null ? progression.CriticalChanceBonus : 0f;
-            string passive = progression != null && progression.HasKeenEdge ? progression.PassiveName : "Locked";
             StringBuilder text = new();
             text.Append("<color=#63D9F2><b>FINAL STATS</b></color>\n");
             StatRow(text, "Power", $"x{levelPower * build.PowerMultiplier:0.00}");
@@ -503,7 +533,14 @@ namespace Phasebreak.Gameplay
             StatRow(text, "Attack speed", $"+{build.AttackSpeedMultiplier - 1f:P0}");
             StatRow(text, "Mobility", $"+{build.MovementSpeedMultiplier - 1f:P0}");
             StatRow(text, "Boss damage", $"+{build.BossDamageMultiplier - 1f:P0}");
-            text.Append($"\n<color=#A984FF><b>SPECIALIZATION</b></color>\n{(build.Specialization == Specialization.Unchosen ? "Choose at level 3" : build.Specialization)}\n");
+            return text.ToString();
+        }
+
+        private string BuildCharacterDetails()
+        {
+            string passive = progression != null && progression.HasKeenEdge ? progression.PassiveName : "Locked";
+            StringBuilder text = new();
+            text.Append($"<color=#A984FF><b>SPECIALIZATION</b></color>\n{(build.Specialization == Specialization.Unchosen ? "Choose at level 3" : build.Specialization)}\n");
             text.Append($"\n<color=#A984FF><b>PASSIVE</b></color>\n{passive}\n");
             text.Append("\n<color=#73D6EE><b>ACTIVE SETS</b></color>\n");
             string sets = BuildSetSummary();
