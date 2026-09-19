@@ -16,7 +16,7 @@ Build a third-person open-world action RPG with readable target-based combat, ex
 
 ## Current milestone
 
-Strengthen the single-player starter-zone vertical slice through focused GitHub Issues. Priorities are repeatable world and dungeon play, reliable input and UI behavior, and regression coverage. The local chat/developer-command design in `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md` is a candidate issue, not an implemented system or automatic next task.
+The current UI milestone moves the prototype toward a compact dark fantasy action RPG presentation: charcoal and translucent black surfaces, forged-metal framing, rounded corners, and restrained accents. Inventory and Character lead the layout pass, followed by a lower-right utility cluster and a consistent treatment for the player frame, action bar, quest tracker, chat, minimap, and other major panels. Keep existing gameplay behavior and system ownership intact. GitHub Issues define the scoped work and verification for each part.
 
 ## Near-term milestones
 

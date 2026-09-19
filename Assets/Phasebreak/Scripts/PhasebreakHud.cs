@@ -52,7 +52,7 @@ namespace Phasebreak.Gameplay
         private float abilityFeedbackUntil = float.NegativeInfinity;
         private float nextRefreshAt;
 
-        private static readonly Color PanelColor = new Color(0.025f, 0.035f, 0.055f, 0.92f);
+        private static readonly Color PanelColor = PhasebreakUiTheme.Panel;
         private static readonly Color BarBackgroundColor = new Color(0.08f, 0.09f, 0.12f, 0.98f);
         private static readonly Color PlayerHealthColor = new Color(0.16f, 0.72f, 0.3f, 1f);
         private static readonly Color EnemyHealthColor = new Color(0.78f, 0.13f, 0.12f, 1f);
@@ -379,7 +379,7 @@ namespace Phasebreak.Gameplay
             root.pivot = new Vector2(0.5f, 0f);
             root.anchoredPosition = new Vector2(0f, 25f);
             root.sizeDelta = new Vector2(414f, 99f);
-            AddImage(root, new Color(0.018f, 0.026f, 0.045f, 0.88f));
+            PhasebreakUiTheme.StyleSurface(AddImage(root, PhasebreakUiTheme.Window), PhasebreakUiTheme.Window);
 
             RectTransform energy = CreateRect("Energy", root);
             energy.anchorMin = energy.anchorMax = new Vector2(0.5f, 0f);
@@ -407,7 +407,8 @@ namespace Phasebreak.Gameplay
                 slot.pivot = new Vector2(0.5f, 0f);
                 slot.anchoredPosition = new Vector2((i - (abilitySlots.Length - 1) * 0.5f) * 72f, 10f);
                 slot.sizeDelta = new Vector2(64f, 64f);
-                UnityEngine.UI.Image panel = AddImage(slot, new Color(0.08f, 0.12f, 0.19f, 0.98f));
+                UnityEngine.UI.Image panel = AddImage(slot, PhasebreakUiTheme.Raised);
+                PhasebreakUiTheme.StyleSurface(panel, PhasebreakUiTheme.Raised);
                 panel.raycastTarget = true;
 
                 RectTransform iconRect = CreateRect("Ability Icon", slot);

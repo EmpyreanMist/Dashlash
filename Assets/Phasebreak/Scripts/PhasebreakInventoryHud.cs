@@ -81,12 +81,12 @@ namespace Phasebreak.Gameplay
         public static bool IsLootWindowOpenFor(CorpseLootContainer corpse) => instance != null && instance.mode == MenuMode.Loot && instance.activeCorpse == corpse;
         public static void NotifyCorpseDespawned(CorpseLootContainer corpse) { if (IsLootWindowOpenFor(corpse)) instance.CloseMenu(); }
 
-        private static readonly Color Window = new(.014f, .022f, .038f, .985f);
-        private static readonly Color Panel = new(.026f, .042f, .068f, .98f);
-        private static readonly Color PanelLight = new(.042f, .065f, .1f, .98f);
-        private static readonly Color Cyan = new(.11f, .72f, .9f, 1f);
-        private static readonly Color TextPrimary = new(.9f, .94f, 1f, 1f);
-        private static readonly Color TextMuted = new(.51f, .6f, .7f, 1f);
+        private static readonly Color Window = PhasebreakUiTheme.Window;
+        private static readonly Color Panel = PhasebreakUiTheme.Panel;
+        private static readonly Color PanelLight = PhasebreakUiTheme.Raised;
+        private static readonly Color Cyan = PhasebreakUiTheme.Accent;
+        private static readonly Color TextPrimary = PhasebreakUiTheme.Text;
+        private static readonly Color TextMuted = PhasebreakUiTheme.MutedText;
 
         private void Awake()
         {
@@ -316,14 +316,12 @@ namespace Phasebreak.Gameplay
 
         private void BuildNavigation(RectTransform root)
         {
-            RectTransform nav = Block("Gameplay Navigation", root, new Color(.012f, .02f, .035f, .94f));
+            RectTransform nav = Block("Gameplay Navigation", root, Window);
             nav.anchorMin = nav.anchorMax = new Vector2(1f, 0f);
             nav.pivot = new Vector2(1f, 0f);
             nav.anchoredPosition = new Vector2(-22f, 20f);
             nav.sizeDelta = new Vector2(208f, 70f);
-            Outline outline = nav.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(.08f, .45f, .62f, .8f);
-            outline.effectDistance = new Vector2(1f, -1f);
+            PhasebreakUiTheme.StyleSurface(nav.GetComponent<Image>(), Window);
             NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory", "inventory");
             NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character", "character");
             NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents", "talents");
@@ -345,7 +343,8 @@ namespace Phasebreak.Gameplay
             icon.color = TextPrimary;
             ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
             relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]"; navTooltip.gameObject.SetActive(true); }, () => navTooltip.gameObject.SetActive(false), () => Toggle(target));
-            relay.ConfigureVisual(background, PanelLight, new Color(.08f, .2f, .29f, 1f), Cyan);
+            PhasebreakUiTheme.StyleSurface(background, PanelLight);
+            relay.ConfigureVisual(background, PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
         }
 
         private void BuildTitleBar(RectTransform window, string subtitle, string title, MenuMode target)
@@ -709,28 +708,31 @@ namespace Phasebreak.Gameplay
         private static RectTransform WindowPanel(string name, Transform parent, Vector2 min, Vector2 max)
         {
             RectTransform panel = Block(name, parent, Window); Place(panel, min, max, 0f);
-            Outline outline = panel.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(.08f, .52f, .7f, .85f); outline.effectDistance = new Vector2(2f, -2f);
+            PhasebreakUiTheme.StyleSurface(panel.GetComponent<Image>(), Window);
             return panel;
         }
 
         private static RectTransform Section(string name, Transform parent, Vector2 min, Vector2 max)
         {
             RectTransform section = Block(name, parent, Panel); Place(section, min, max, 0f);
-            Outline outline = section.gameObject.AddComponent<Outline>(); outline.effectColor = new Color(.1f, .19f, .27f, .9f); outline.effectDistance = new Vector2(1f, -1f);
+            PhasebreakUiTheme.StyleSurface(section.GetComponent<Image>(), Panel);
             return section;
         }
 
         private static RectTransform FramedIcon(string name, Transform parent, Vector2 min, Vector2 max, Color border)
         {
             RectTransform outer = Block(name, parent, border); Place(outer, min, max, 0f);
-            RectTransform inner = Block("Surface", outer, PanelLight); Stretch(inner, 3f); return inner;
+            PhasebreakUiTheme.StyleSurface(outer.GetComponent<Image>(), border);
+            RectTransform inner = Block("Surface", outer, PanelLight); Stretch(inner, 3f);
+            PhasebreakUiTheme.StyleSurface(inner.GetComponent<Image>(), PanelLight, false);
+            return inner;
         }
 
         private static Button TextButton(string name, Transform parent, string value, Vector2 min, Vector2 max, Action click, float fontSize = 12f)
         {
-            RectTransform rect = Block(name, parent, new Color(.07f, .16f, .23f, 1f)); Place(rect, min, max, 0f);
+            RectTransform rect = Block(name, parent, PanelLight); Place(rect, min, max, 0f);
             Button button = rect.gameObject.AddComponent<Button>();
-            ColorBlock colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(.75f, 1f, 1f); colors.pressedColor = new Color(.55f, .8f, .9f); colors.disabledColor = new Color(.35f, .4f, .46f, .65f); button.colors = colors;
+            PhasebreakUiTheme.StyleButton(button);
             Text("Label", rect, value, fontSize, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, TextPrimary);
             if (click != null) button.onClick.AddListener(() => click());
             return button;
