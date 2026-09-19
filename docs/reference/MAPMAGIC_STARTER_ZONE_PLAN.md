@@ -1,6 +1,6 @@
 # The Shattered Frontier: starter zone V2
 
-Status: implemented in the build-first scene. `PROJECT_STATE.md` records current verification and remaining test limits; this file describes the intended layout and rebuild workflow.
+Status: implemented in the build-first scene. `../../PROJECT_STATE.md` records current verification and remaining test limits; this file describes the intended layout and rebuild workflow.
 
 ## World layout
 

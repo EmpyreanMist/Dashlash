@@ -1,6 +1,6 @@
 # World asset catalog for StarterZone_V2
 
-The assets listed here are required by the build-first scene. See `PROJECT_STATE.md` for the verified baseline; retain each asset's `.meta` GUID when moving or updating it.
+The assets listed here are required by the build-first scene. See `../../PROJECT_STATE.md` for the verified baseline; retain each asset's `.meta` GUID when moving or updating it.
 
 | Use | Asset/source | Notes |
 | --- | --- | --- |

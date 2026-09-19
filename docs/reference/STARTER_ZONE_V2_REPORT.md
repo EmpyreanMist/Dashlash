@@ -1,6 +1,6 @@
 # StarterZone_V2 implementation report
 
-This report records the original world-build and QA pass. `PROJECT_STATE.md` records the current committed baseline and the later scene repair. The checks below were made at different times; they are not a fresh end-to-end regression claim.
+This report records the original world-build and QA pass. `../../PROJECT_STATE.md` records the current committed baseline and the later scene repair. The checks below were made at different times; they are not a fresh end-to-end regression claim.
 
 ## World and MapMagic
 
@@ -41,4 +41,4 @@ Local Game view QA captures were written under ignored `STARTER_ZONE_V2_QA/`; th
 
 ## Rebuild and files
 
-Use **Phasebreak > Rebuild Complete Starter Zone V2**. The scene and graph are generated from `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`; runtime terrain and encounter code is in `Assets/Phasebreak/Scripts/FrontierTerrainNode.cs` and `FrontierEncounterZone.cs`. The old scene and gameplay source remain as fallback. The final Git/push state is recorded in `PROJECT_STATE.md` and the repository history.
+Use **Phasebreak > Rebuild Complete Starter Zone V2**. The scene and graph are generated from `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`; runtime terrain and encounter code is in `Assets/Phasebreak/Scripts/FrontierTerrainNode.cs` and `FrontierEncounterZone.cs`. The old scene and gameplay source remain as fallback. The final Git/push state is recorded in `../../PROJECT_STATE.md` and the repository history.

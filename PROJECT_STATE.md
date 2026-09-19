@@ -7,7 +7,7 @@ Baseline reviewed: 2026-09-19 on `codex/phasebreak-ui-quality-rescue`, starting 
 - `Assets/Phasebreak/Scenes/StarterZone_V2.unity` is first in build settings. It contains the southwest starting pocket, four fixed MapMagic terrain tiles across a 2 km square, Northgate, Westmere, Eastwatch, Ancient Ruins, the Rift Crypt entrance, six quest NPCs, and 26 encounter zones. `Assets/dashlash.unity` is the older 420 m starter realm and remains available.
 - The player has third-person movement and camera, targeting, five combat abilities, health/death, Energy, XP and levels 1–10. Inventory/equipment, set bonuses, specialization, talents, quests, Rift Crypt encounters, and local PlayerPrefs persistence exist.
 - Combat includes cooldowns, charges, critical hits, damage feedback, corpse loot, and enemy XP rewards. Movement includes jump, air control, camera steering, and ability-driven dash. Existing debug and editor builders support local iteration; there is no general developer command console.
-- The current UI has player/target frames, an action bar, quest tracker, minimap, Inventory, Character, Talents, Journal, and schematic Map. The UI quality pass and outstanding interface issues are recorded in `UI_AUDIT.md` and `UI_FUNCTIONALITY_FOLLOWUPS.md`.
+- The current UI has player/target frames, an action bar, quest tracker, minimap, Inventory, Character, Talents, Journal, and schematic Map. The UI quality pass and outstanding interface issues are recorded in `docs/reference/UI_AUDIT.md` and `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md`.
 - The zombie population includes ordinary enemies, Brutes, and Skirmishers. V2 activates nearby encounter zones and respawns them on timers. This is not a networked or server-authoritative game.
 - PlayerPrefs stores progression, inventory/equipment, specialization, talents, quest progress, and selected UI placement. The current save model is local prototype state.
 
@@ -15,7 +15,7 @@ Baseline reviewed: 2026-09-19 on `codex/phasebreak-ui-quality-rescue`, starting 
 
 - MapMagic 2.1.19 is vendored under `Assets/MapMagic`. V2 uses `Assets/Phasebreak/Data/StarterZoneV2/ShatteredFrontier.asset` and the builder in `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`. Keep the scene, graph, referenced art, and `.meta` GUIDs together.
 - The obsolete one-off `Assets/Editor/HubForceResolve.cs` bootstrapper and its `.meta` files are absent from the complete snapshot. The active MapMagic package imports and compiles without that forced package resolve script.
-- The project uses URP and the Unity Input System. Source art and licenses are described in `PHASEBREAK_WORLD_ASSET_CATALOG.md` and the scoped `THIRD_PARTY_ASSETS.md` note.
+- The project uses URP and the Unity Input System. Source art and licenses are described in `docs/reference/PHASEBREAK_WORLD_ASSET_CATALOG.md` and the scoped `THIRD_PARTY_ASSETS.md` note.
 - Runtime gameplay code is under `Assets/Phasebreak/Scripts`. The editor builders under `Assets/Phasebreak/Editor` are authoring tools, not duplicate runtime systems.
 
 ## Verification and limits
@@ -27,4 +27,4 @@ Baseline reviewed: 2026-09-19 on `codex/phasebreak-ui-quality-rescue`, starting 
 
 ## Next work
 
-`CHAT_COMMAND_REGISTRY_PROPOSAL.md` specifies a useful focused next step: local chat plus developer commands, with shared input-focus blocking and adapters to existing systems. It has not been implemented. Other future work is tracked in `PHASEBREAK_ROADMAP.md`, `PHASEBREAK_MASTER_FEATURE_CATALOG.md`, and `UI_FUNCTIONALITY_FOLLOWUPS.md`.
+`CHAT_COMMAND_REGISTRY_PROPOSAL.md` describes a possible focused next step: local chat plus developer commands, with shared input-focus blocking and adapters to existing systems. It has not been implemented. GitHub Issues are the actionable backlog; `PHASEBREAK_ROADMAP.md` provides direction, while `PHASEBREAK_MASTER_FEATURE_CATALOG.md` and `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md` are supporting references.

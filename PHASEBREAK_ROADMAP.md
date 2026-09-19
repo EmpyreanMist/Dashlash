@@ -1,6 +1,6 @@
 # Phasebreak Roadmap
 
-Den fullständiga valbara funktions- och statuskatalogen finns i `PHASEBREAK_MASTER_FEATURE_CATALOG.md`. Roadmapen används för den korta fasöversikten; masterkatalogen är projektets detaljerade backlog och beslutslista.
+Den fullständiga valbara funktions- och statuskatalogen finns i `PHASEBREAK_MASTER_FEATURE_CATALOG.md`. Roadmapen används för utvecklingsriktning och milstolpar; GitHub Issues är den handlingsbara backloggen. Masterkatalogen är en designreferens, inte en parallell ticket-lista.
 
 For the verified implementation baseline and test limits, see `PROJECT_STATE.md`. Earlier milestone descriptions below are historical snapshots when a newer section supersedes them.
 
