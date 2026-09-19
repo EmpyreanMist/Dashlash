@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f0dd628d6f4a0b45936b185fe99ac3a, type: 3}
+  m_Name: TalentCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.TalentCatalog
+  saveVersion: 1
+  prototypeBasePoints: 6
+  pointsPerLevelAfterFirst: 1
+  trees:
+  - {fileID: 11400000, guid: c8345b66b2e109c4cbf4b6ac36f5402a, type: 2}
+  - {fileID: 11400000, guid: ae201e0f941cbb949a838b2c206e55d7, type: 2}
+  - {fileID: 11400000, guid: 81bebfdfcf6b96b4fbc362dd807102d0, type: 2}

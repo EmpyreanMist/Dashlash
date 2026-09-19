@@ -17,6 +17,14 @@ namespace Phasebreak.Gameplay
             if (Cache.TryGetValue(slot, out Sprite sprite))
                 return sprite;
 
+            PhasebreakIconCatalog catalog = PhasebreakIconCatalog.Current;
+            Sprite configured = catalog != null ? catalog.GetSlotIcon(slot) : null;
+            if (configured != null)
+            {
+                Cache[slot] = configured;
+                return configured;
+            }
+
             Texture2D texture = NewTexture(Size, Size, $"Phasebreak {slot} Icon");
             DrawSlot(texture, slot);
             texture.Apply(false, true);

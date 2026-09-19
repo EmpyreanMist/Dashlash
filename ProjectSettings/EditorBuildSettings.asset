@@ -6,7 +6,14 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Phasebreak/Scenes/StarterZone_V2.unity
+    guid: 7c348235fc408144599e13a3ad330250
+  - enabled: 1
+    path: Assets/dashlash.unity
+    guid: ae7e8c3b466ce0e4e9c84e0493eebabd
+  - enabled: 1
     path: Assets/Scenes/GetStarted_Scene.unity
     guid: 6888813f2bd9e4521b9b1343abf0c60f
   m_configObjects:
+    com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

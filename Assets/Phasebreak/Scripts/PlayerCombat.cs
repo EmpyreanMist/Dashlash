@@ -15,9 +15,10 @@ namespace Phasebreak.Gameplay
         public readonly bool IsUsable;
         public readonly int Charges;
         public readonly int MaximumCharges;
+        public readonly Sprite Icon;
 
         public AbilityState(string name, string key, float cooldownRemaining, float cooldownDuration,
-            float resourceCost, bool isUsable, int charges, int maximumCharges)
+            float resourceCost, bool isUsable, int charges, int maximumCharges, Sprite icon)
         {
             Name = name;
             Key = key;
@@ -27,6 +28,7 @@ namespace Phasebreak.Gameplay
             IsUsable = isUsable;
             Charges = charges;
             MaximumCharges = maximumCharges;
+            Icon = icon;
         }
     }
 
@@ -60,6 +62,8 @@ namespace Phasebreak.Gameplay
         [SerializeField] private PlayerTargeting targeting;
         [SerializeField] private PlayerProgression progression;
         [SerializeField] private PlayerBuildSystem build;
+        [SerializeField] private TalentSystem talents;
+        [SerializeField] private PlayerHealth health;
         [SerializeField] private Transform slashVisual;
         [SerializeField] private CombatAbilityDefinition[] abilityDefinitions;
 
@@ -137,6 +141,8 @@ namespace Phasebreak.Gameplay
             targeting ??= GetComponent<PlayerTargeting>();
             progression ??= GetComponent<PlayerProgression>();
             build ??= GetComponent<PlayerBuildSystem>() ?? gameObject.AddComponent<PlayerBuildSystem>();
+            talents ??= GetComponent<TalentSystem>() ?? gameObject.AddComponent<TalentSystem>();
+            health ??= GetComponent<PlayerHealth>();
             CreateInputActions();
             currentResource = maximumResource;
             FillCharges();
@@ -176,9 +182,13 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            float pressureRegeneration = talents != null && health != null && health.MaxHealth > 0 && health.CurrentHealth < health.MaxHealth * .5f
+                ? 1f + talents.GetEffect(TalentEffect.ResourceUnderPressure) : 1f;
             currentResource = Mathf.MoveTowards(currentResource, maximumResource,
-                resourceRegeneration * Time.deltaTime);
+                resourceRegeneration * pressureRegeneration * Time.deltaTime);
             UpdateCharges();
+            if (PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
+                return;
             for (int i = 0; i < abilityActions.Length; i++)
                 if (abilityActions[i].WasPressedThisFrame())
                     TryUseAbility(i);
@@ -197,7 +207,7 @@ namespace Phasebreak.Gameplay
             return new AbilityState(GetAbilityName(index), GetKey(index),
                 globalIsLonger ? globalRemaining : abilityRemaining,
                 globalIsLonger ? globalCooldown : GetCooldown(index), GetCost(index),
-                CanUseAbility(index), charges[index], maximumCharges);
+                CanUseAbility(index), charges[index], maximumCharges, GetAbilityIcon(index));
         }
 
         public bool TryUseAbility(int index)
@@ -224,7 +234,9 @@ namespace Phasebreak.Gameplay
                 return false;
             }
 
-            float damage = GetDamage(index) * (progression != null ? progression.PowerMultiplier : 1f) *
+            float talentDamage = talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityDamage, GetAbilityId(index)) + talents.RhythmDamageBonus : 0f;
+            if (index == 1 && talents != null) talentDamage += talents.HeavyImpactBonus;
+            float damage = GetDamage(index) * (1f + talentDamage) * (progression != null ? progression.PowerMultiplier : 1f) *
                            (build != null ? build.PowerMultiplier : 1f);
             if (build != null && target.GetComponent<RiftWardenBoss>() != null)
                 damage *= build.BossDamageMultiplier;
@@ -233,6 +245,8 @@ namespace Phasebreak.Gameplay
                 damage *= CriticalDamageMultiplier;
 
             ConsumeAbility(index);
+            talents?.NotifyAbilityUsed(type is AbilityExecutionType.PhaseDash or AbilityExecutionType.PhaseLunge or AbilityExecutionType.Charge);
+            if (index == 1) talents?.ConsumeHeavyImpact();
             attackRoutine = StartCoroutine(type == AbilityExecutionType.Charge
                 ? PerformCharge(index, target, damage, critical)
                 : PerformAttack(index, target, damage, critical));
@@ -429,12 +443,18 @@ namespace Phasebreak.Gameplay
 
             if (critical && build != null && build.CritEnergyRestore > 0f)
                 currentResource = Mathf.Min(maximumResource, currentResource + build.CritEnergyRestore);
+            if (critical) talents?.NotifyCriticalHit();
             if (index == 1 && build != null && build.CrushingBlowCleave)
                 PerformCleave(target, damage * 0.6f, critical);
             if (GetExecutionType(index) == AbilityExecutionType.PhaseLunge && !target.IsAlive &&
                 build != null && build.TeleportKillRecovery > 0f)
             {
                 currentResource = Mathf.Min(maximumResource, currentResource + build.TeleportKillRecovery);
+                charges[index] = GetMaximumCharges(index);
+                nextChargeReadyAt[index] = 0f;
+            }
+            if (mobilityHit && !target.IsAlive && talents != null && talents.HasEffect(TalentEffect.MobilityKillCircuit))
+            {
                 charges[index] = GetMaximumCharges(index);
                 nextChargeReadyAt[index] = 0f;
             }
@@ -542,10 +562,19 @@ namespace Phasebreak.Gameplay
         private CombatAbilityDefinition Ability(int index) =>
             abilityDefinitions != null && index >= 0 && index < abilityDefinitions.Length
                 ? abilityDefinitions[index] : null;
+        private string GetAbilityId(int index) => !string.IsNullOrWhiteSpace(Ability(index)?.id) ? Ability(index).id : index switch
+        {
+            1 => "crushing-blow", 2 => "phase-lunge", 3 => "phase-dash", 4 => "rift-charge", _ => "strike"
+        };
         private string GetAbilityName(int index) => Ability(index) != null ? Ability(index).displayName : index switch
         {
             1 => "Crushing Blow", 2 => "Phase Lunge", 3 => "Phase Dash", 4 => "Rift Charge", _ => "Strike"
         };
+        private Sprite GetAbilityIcon(int index)
+        {
+            Sprite icon = Ability(index)?.icon;
+            return icon != null ? icon : PhasebreakIconCatalog.Current?.fallbackAbility;
+        }
         private string GetKey(int index) => !string.IsNullOrWhiteSpace(Ability(index)?.key)
             ? Ability(index).key : (index + 1).ToString();
         private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null
@@ -571,12 +600,15 @@ namespace Phasebreak.Gameplay
             {
                 1 => crushingCooldown, 2 => lungeCooldown, 3 => 6f, 4 => 10f, _ => 0f
             };
-            return index == 2 && build != null ? value * build.PhaseLungeCooldownMultiplier : value;
+            if (index == 2 && build != null) value *= build.PhaseLungeCooldownMultiplier;
+            else if (talents != null) value *= Mathf.Clamp01(1f - talents.GetAbilityEffect(TalentEffect.AbilityCooldown, GetAbilityId(index)));
+            return value;
         }
-        private float GetCost(int index) => Ability(index) != null ? Ability(index).resourceCost : index switch
+        private float GetCost(int index)
         {
-            1 => crushingCost, 2 => lungeCost, 4 => 15f, _ => 0f
-        };
+            float value = Ability(index) != null ? Ability(index).resourceCost : index switch { 1 => crushingCost, 2 => lungeCost, 4 => 15f, _ => 0f };
+            return value * Mathf.Clamp01(1f - (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityCost, GetAbilityId(index)) : 0f));
+        }
         private float GetCriticalBonus(int index) => Ability(index) != null ? Ability(index).criticalBonus : index switch
         {
             1 => crushingCriticalBonus, 2 => lungeCriticalBonus, _ => 0f
@@ -602,6 +634,8 @@ namespace Phasebreak.Gameplay
             int value = Ability(index) != null ? Ability(index).maximumCharges : index == 3 ? 2 : 1;
             if (index == 2 && build != null)
                 value += build.PhaseLungeExtraCharges;
+            if (index != 2 && talents != null)
+                value += Mathf.RoundToInt(talents.GetAbilityEffect(TalentEffect.AbilityExtraCharge, GetAbilityId(index)));
             return Mathf.Clamp(value, 1, 3);
         }
         private bool UsesGlobalCooldown(int index) => Ability(index) != null

@@ -15,6 +15,7 @@ MonoBehaviour:
   id: set.riftstalker
   displayName: Riftstalker Circuit
   fantasy: A cross-slot circuit that turns precision into phase momentum.
+  icon: {fileID: 21300000, guid: c0541a613e609ab43acb2dbbca500a77, type: 3}
   bonuses:
   - pieces: 2
     description: Critical hits return 8 Energy.

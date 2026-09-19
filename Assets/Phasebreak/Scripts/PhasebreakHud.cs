@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Phasebreak.Gameplay
 {
@@ -35,6 +36,10 @@ namespace Phasebreak.Gameplay
         private TextMeshProUGUI experienceLabel;
         private TextMeshProUGUI levelUpBanner;
         private TextMeshProUGUI buildLabel;
+        private RectTransform buildPanel;
+        private InputAction debugHudAction;
+        private bool debugHudVisible;
+        private TextMeshProUGUI abilityTooltip;
         private TextMeshProUGUI lootToast;
         private TextMeshProUGUI abilityFeedback;
         private RectTransform dungeonPanel;
@@ -77,12 +82,14 @@ namespace Phasebreak.Gameplay
                     player = health.GetComponent<Targetable>();
             }
             BuildCanvas();
+            debugHudAction = new InputAction("Debug Build Snapshot", InputActionType.Button, "<Keyboard>/f8");
         }
 
         private void Start() => RefreshNameplates();
 
         private void OnEnable()
         {
+            debugHudAction?.Enable();
             if (targeting != null)
                 targeting.TargetChanged += HandleTargetChanged;
             CombatEvents.DamageNumberRequested += HandleDamageNumber;
@@ -96,6 +103,7 @@ namespace Phasebreak.Gameplay
 
         private void OnDisable()
         {
+            debugHudAction?.Disable();
             if (targeting != null)
                 targeting.TargetChanged -= HandleTargetChanged;
             CombatEvents.DamageNumberRequested -= HandleDamageNumber;
@@ -109,6 +117,11 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            if (debugHudAction != null && debugHudAction.WasPressedThisFrame())
+            {
+                debugHudVisible = !debugHudVisible;
+                if (buildPanel != null) buildPanel.gameObject.SetActive(debugHudVisible);
+            }
             if (Time.unscaledTime >= nextRefreshAt)
             {
                 nextRefreshAt = Time.unscaledTime + 1f;
@@ -130,7 +143,11 @@ namespace Phasebreak.Gameplay
             UpdateFloatingDamage();
             if (abilityFeedback != null)
                 abilityFeedback.gameObject.SetActive(Time.unscaledTime < abilityFeedbackUntil);
+            if (PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
+                HideAbilityTooltip();
         }
+
+        private void OnDestroy() => debugHudAction?.Dispose();
 
         private void HandleTargetChanged(Targetable currentTarget) => targetFrame?.Bind(currentTarget);
 
@@ -285,6 +302,7 @@ namespace Phasebreak.Gameplay
         private void CreateBuildDisplay()
         {
             RectTransform panel = CreateRect("Build Panel", canvasRect);
+            buildPanel = panel;
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(1f, 1f);
             panel.anchoredPosition = new Vector2(-28f, -28f);
             panel.sizeDelta = new Vector2(360f, 190f);
@@ -296,6 +314,7 @@ namespace Phasebreak.Gameplay
             buildLabel.rectTransform.offsetMin = new Vector2(16f, 12f);
             buildLabel.rectTransform.offsetMax = new Vector2(-16f, -12f);
             buildLabel.textWrappingMode = TextWrappingModes.Normal;
+            buildPanel.gameObject.SetActive(false);
 
             lootToast = AddText("Loot Toast", canvasRect, 25f, TextAlignmentOptions.Center);
             lootToast.fontStyle = FontStyles.Bold;
@@ -311,7 +330,7 @@ namespace Phasebreak.Gameplay
 
         private void UpdateBuildDisplay()
         {
-            if (buildLabel == null || build == null)
+            if (!debugHudVisible || buildLabel == null || build == null)
                 return;
 
             buildLabel.text = "<b>BUILD SNAPSHOT</b>\n" + build.GetBuildSummary();
@@ -351,15 +370,15 @@ namespace Phasebreak.Gameplay
             RectTransform root = CreateRect("ActionBar", canvasRect);
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0f);
             root.pivot = new Vector2(0.5f, 0f);
-            root.anchoredPosition = new Vector2(0f, 28f);
-            root.sizeDelta = new Vector2(626f, 126f);
-            AddImage(root, new Color(0.018f, 0.026f, 0.045f, 0.94f));
+            root.anchoredPosition = new Vector2(0f, 25f);
+            root.sizeDelta = new Vector2(414f, 99f);
+            AddImage(root, new Color(0.018f, 0.026f, 0.045f, 0.88f));
 
             RectTransform energy = CreateRect("Energy", root);
             energy.anchorMin = energy.anchorMax = new Vector2(0.5f, 0f);
             energy.pivot = new Vector2(0.5f, 0f);
-            energy.anchoredPosition = new Vector2(0f, 98f);
-            energy.sizeDelta = new Vector2(590f, 16f);
+            energy.anchoredPosition = new Vector2(0f, 79f);
+            energy.sizeDelta = new Vector2(388f, 12f);
             AddImage(energy, BarBackgroundColor);
 
             resourceFill = CreateRect("Fill", energy);
@@ -368,7 +387,7 @@ namespace Phasebreak.Gameplay
             resourceFill.offsetMin = resourceFill.offsetMax = Vector2.zero;
             AddImage(resourceFill, ResourceColor);
 
-            resourceLabel = AddText("Resource Label", energy, 13f, TextAlignmentOptions.Center);
+            resourceLabel = AddText("Resource Label", energy, 11f, TextAlignmentOptions.Center);
             Stretch(resourceLabel.rectTransform);
             resourceLabel.fontStyle = FontStyles.Bold;
 
@@ -379,31 +398,44 @@ namespace Phasebreak.Gameplay
                 RectTransform slot = CreateRect($"Ability {i + 1}", root);
                 slot.anchorMin = slot.anchorMax = new Vector2(0.5f, 0f);
                 slot.pivot = new Vector2(0.5f, 0f);
-                slot.anchoredPosition = new Vector2((i - (abilitySlots.Length - 1) * 0.5f) * 118f, 10f);
-                slot.sizeDelta = new Vector2(108f, 78f);
+                slot.anchoredPosition = new Vector2((i - (abilitySlots.Length - 1) * 0.5f) * 72f, 10f);
+                slot.sizeDelta = new Vector2(64f, 64f);
                 UnityEngine.UI.Image panel = AddImage(slot, new Color(0.08f, 0.12f, 0.19f, 0.98f));
+                panel.raycastTarget = true;
+
+                RectTransform iconRect = CreateRect("Ability Icon", slot);
+                iconRect.anchorMin = Vector2.zero;
+                iconRect.anchorMax = Vector2.one;
+                iconRect.offsetMin = new Vector2(3f, 3f);
+                iconRect.offsetMax = new Vector2(-3f, -3f);
+                UnityEngine.UI.Image abilityIcon = AddImage(iconRect, Color.white);
+                abilityIcon.preserveAspect = true;
 
                 TextMeshProUGUI name = AddText("Name", slot, 16f, TextAlignmentOptions.Center);
                 name.fontStyle = FontStyles.Bold;
-                name.rectTransform.anchorMin = new Vector2(0f, 0.28f);
-                name.rectTransform.anchorMax = Vector2.one;
-                name.rectTransform.offsetMin = new Vector2(5f, 0f);
-                name.rectTransform.offsetMax = new Vector2(-5f, -4f);
+                name.fontSize = 11f;
+                name.outlineWidth = .2f;
+                name.outlineColor = new Color32(0, 0, 0, 255);
+                name.rectTransform.anchorMin = Vector2.zero;
+                name.rectTransform.anchorMax = new Vector2(1f, .3f);
+                name.rectTransform.offsetMin = new Vector2(3f, 2f);
+                name.rectTransform.offsetMax = new Vector2(-3f, 0f);
+                name.gameObject.SetActive(false);
 
-                TextMeshProUGUI key = AddText("Key", slot, 18f, TextAlignmentOptions.Center);
+                TextMeshProUGUI key = AddText("Key", slot, 13f, TextAlignmentOptions.Center);
                 key.fontStyle = FontStyles.Bold;
                 key.rectTransform.anchorMin = key.rectTransform.anchorMax = new Vector2(0f, 1f);
                 key.rectTransform.pivot = new Vector2(0f, 1f);
                 key.rectTransform.anchoredPosition = new Vector2(5f, -5f);
-                key.rectTransform.sizeDelta = new Vector2(24f, 24f);
+                key.rectTransform.sizeDelta = new Vector2(18f, 18f);
 
-                TextMeshProUGUI cost = AddText("Cost", slot, 12f, TextAlignmentOptions.BottomRight);
+                TextMeshProUGUI cost = AddText("Cost", slot, 10f, TextAlignmentOptions.BottomRight);
                 cost.rectTransform.anchorMin = Vector2.zero;
                 cost.rectTransform.anchorMax = Vector2.one;
                 cost.rectTransform.offsetMin = new Vector2(4f, 4f);
                 cost.rectTransform.offsetMax = new Vector2(-6f, -4f);
 
-                TextMeshProUGUI charges = AddText("Charges", slot, 12f, TextAlignmentOptions.TopRight);
+                TextMeshProUGUI charges = AddText("Charges", slot, 10f, TextAlignmentOptions.TopRight);
                 charges.rectTransform.anchorMin = Vector2.zero;
                 charges.rectTransform.anchorMax = Vector2.one;
                 charges.rectTransform.offsetMin = new Vector2(4f, 4f);
@@ -419,8 +451,33 @@ namespace Phasebreak.Gameplay
                     TextAlignmentOptions.Center);
                 Stretch(cooldownText.rectTransform);
                 cooldownText.fontStyle = FontStyles.Bold;
-                abilitySlots[i] = new AbilitySlotView(panel, cooldown, name, key, cost, charges, cooldownText);
+                abilitySlots[i] = new AbilitySlotView(panel, abilityIcon, cooldown, name, key, cost, charges, cooldownText);
+                int slotIndex = i;
+                ItemSlotUI hover = slot.gameObject.AddComponent<ItemSlotUI>();
+                hover.Configure(() => ShowAbilityTooltip(slotIndex), HideAbilityTooltip, null);
             }
+            abilityTooltip = AddText("Ability Tooltip", canvasRect, 15f, TextAlignmentOptions.TopLeft);
+            abilityTooltip.rectTransform.anchorMin = abilityTooltip.rectTransform.anchorMax = new Vector2(.5f, 0f);
+            abilityTooltip.rectTransform.pivot = new Vector2(.5f, 0f);
+            abilityTooltip.rectTransform.anchoredPosition = new Vector2(0f, 138f);
+            abilityTooltip.rectTransform.sizeDelta = new Vector2(380f, 66f);
+            abilityTooltip.color = new Color(.91f, .94f, .98f, 1f);
+            abilityTooltip.gameObject.SetActive(false);
+        }
+
+        private void ShowAbilityTooltip(int index)
+        {
+            if (combat == null || abilityTooltip == null || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen) return;
+            AbilityState state = combat.GetAbilityState(index);
+            abilityTooltip.text = $"<b>{state.Name}</b>  <color=#9CAABD>[{state.Key}]</color>\n" +
+                $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}  •  Cooldown {state.CooldownDuration:0.#}s" +
+                (state.MaximumCharges > 1 ? $"  •  Charges {state.MaximumCharges}" : string.Empty) + "</color>";
+            abilityTooltip.gameObject.SetActive(true);
+        }
+
+        private void HideAbilityTooltip()
+        {
+            if (abilityTooltip != null) abilityTooltip.gameObject.SetActive(false);
         }
 
         private void UpdateActionBar()
@@ -441,7 +498,7 @@ namespace Phasebreak.Gameplay
             experience.anchorMin = experience.anchorMax = new Vector2(0.5f, 0f);
             experience.pivot = new Vector2(0.5f, 0f);
             experience.anchoredPosition = new Vector2(0f, 8f);
-            experience.sizeDelta = new Vector2(390f, 14f);
+            experience.sizeDelta = new Vector2(390f, 11f);
             AddImage(experience, BarBackgroundColor);
 
             experienceFill = CreateRect("Fill", experience);
@@ -686,6 +743,7 @@ namespace Phasebreak.Gameplay
             private static readonly Color BlockedColor = new Color(0.12f, 0.075f, 0.085f, 0.98f);
 
             private readonly UnityEngine.UI.Image panel;
+            private readonly UnityEngine.UI.Image icon;
             private readonly RectTransform cooldown;
             private readonly TextMeshProUGUI name;
             private readonly TextMeshProUGUI key;
@@ -693,11 +751,12 @@ namespace Phasebreak.Gameplay
             private readonly TextMeshProUGUI charges;
             private readonly TextMeshProUGUI cooldownText;
 
-            public AbilitySlotView(UnityEngine.UI.Image panel, RectTransform cooldown,
+            public AbilitySlotView(UnityEngine.UI.Image panel, UnityEngine.UI.Image icon, RectTransform cooldown,
                 TextMeshProUGUI name, TextMeshProUGUI key, TextMeshProUGUI cost, TextMeshProUGUI charges,
                 TextMeshProUGUI cooldownText)
             {
                 this.panel = panel;
+                this.icon = icon;
                 this.cooldown = cooldown;
                 this.name = name;
                 this.key = key;
@@ -709,6 +768,8 @@ namespace Phasebreak.Gameplay
             public void UpdateView(AbilityState state)
             {
                 name.text = state.Name;
+                icon.sprite = state.Icon;
+                icon.color = state.Icon == null ? Color.clear : state.IsUsable ? Color.white : new Color(.52f, .52f, .58f, 1f);
                 key.text = state.Key;
                 cost.text = state.ResourceCost > 0f ? Mathf.CeilToInt(state.ResourceCost).ToString() : string.Empty;
                 charges.text = state.MaximumCharges > 1 ? $"x{state.Charges}" : string.Empty;

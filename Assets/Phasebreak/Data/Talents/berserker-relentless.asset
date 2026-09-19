@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767621614a61dbe48a13a17647766051, type: 3}
+  m_Name: berserker-relentless
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.TalentNodeDefinition
+  id: berserker-relentless
+  displayName: Relentless
+  description: Critical pressure feeds Energy while Crushing Blow recovers faster.
+  icon: {fileID: 21300000, guid: 991ffdc4d30d9834da70d25a40a4844d, type: 3}
+  specialization: 1
+  nodeType: 4
+  maximumRank: 1
+  pointCost: 1
+  requiredPlayerLevel: 1
+  prerequisiteIds:
+  - berserker-executioners-rhythm
+  - berserker-fracture
+  choiceGroup: 
+  effect: 12
+  secondaryEffect: 9
+  targetAbilityId: crushing-blow
+  grantedAbilityId: 
+  synergyTag: 0
+  effectValuePerRank: 10
+  secondaryValuePerRank: 0.15
+  presentationPosition: {x: 0.5, y: 0.13}

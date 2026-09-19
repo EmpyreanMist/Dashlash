@@ -1,7 +1,9 @@
 # PHASEBREAK — Master Feature Catalog
 
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
-> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `5ff53dc`; zoom, 420 × 420-startregion, no-knockback och den första återanvändbara zombie-fienden är implementerade men ännu inte committade.
+> Senast uppdaterad: 2026-09-19. Statuspunkterna skiljer mellan implementerat spelinnehåll och förslag; se `CHAT_COMMAND_REGISTRY_PROPOSAL.md` för föreslagen lokal chatt och utvecklarkommandon.
+
+`PROJECT_STATE.md` is the authoritative verified implementation snapshot. This catalog also preserves historical phase goals and future design options; older checkboxes below are not a substitute for the current scene and code audit.
 
 ## Så används dokumentet
 
@@ -81,11 +83,11 @@ Gemensamma krav:
 Nuvarande status:
 
 - [x] Combat.
-- [x] XP till level 3.
+- [x] XP och lokal progression till level 10 i nuvarande spel.
 - [x] Loot och equipment.
 - [x] En dungeonprototyp.
 - [ ] Open-world exploration loop.
-- [ ] Quest loop.
+- [x] Första sex questen med NPC, journal, objektiv och belöningar; mer content återstår.
 - [ ] Craft/dismantle loop.
 - [ ] Endgame loop.
 
@@ -125,7 +127,7 @@ Nuvarande status:
 - Mushjul — zoom.
 - `B` — Inventory.
 - `C` — Character.
-- `T` — Talents-placeholder.
+- `T` — första implementerade talentträden.
 - `Escape` — stäng gameplay-meny/clear target.
 - Högerklick på corpse — loot.
 
@@ -162,8 +164,8 @@ Nuvarande status:
 - [x] HUD-navigation med hover-tooltip.
 - [x] Ingen gameplay-pause via menyer.
 - [ ] Settings-panel.
-- [ ] Quest journal-panel.
-- [ ] Map-panel.
+- [x] Quest journal-panel i separat menufamilj; samma modalflöde som inventory/character/talents.
+- [x] Schematisk Map-panel i samma modalflöde.
 - [ ] Social-panel.
 - [ ] Codex/collection-panel.
 
@@ -236,9 +238,10 @@ Nuvarande status:
 - [x] Cast bar kopplad till nuvarande enemy windup via ett litet presentation-interface.
 - [x] Rare/elite/boss-indikator och bossdetektering.
 - [x] Interruptible cast styling.
-- [ ] Buff/debuff icons.
+- [ ] Live buff/debuff icons bound to target gameplay status state.
 - [ ] Threat/aggro indicator.
 - [ ] Status stacks, durations, dispel type och tooltips.
+- [x] Data- och view-grund för statusikon, duration, stacks och hovertext; live statusbinding till Target Frame återstår.
 - [ ] Nameplate stacking och occlusion.
 - [ ] Friendly/player nameplates för multiplayer.
 - [ ] Target-of-target, focus, party, raid och separat boss frame.
@@ -438,7 +441,7 @@ Rekommenderad första vertical slice:
 ### PROG-01 — Leveling 🟨
 
 - [x] XP från kills.
-- [x] Level 1–3 prototype.
+- [x] Level 1–10 i nuvarande spel; level 3 var den äldre prototypgränsen.
 - [x] Level-based power/health.
 - [x] Passive vid level 2.
 - [x] Specialization vid level 3.
@@ -446,15 +449,15 @@ Rekommenderad första vertical slice:
   - [ ] 30 för tight initial release.
   - [ ] 50.
   - [ ] 60 klassisk MMO-struktur.
-- [ ] XP från quests, exploration och dungeons.
+- [x] XP från quests och fiender; exploration och dungeonbalans återstår.
 - [ ] Rested XP.
 - [ ] Account-wide catch-up.
 
-### TALENT-01 — Talent UI hook ✅
+### TALENT-01 — First talent trees 🟨
 
 - [x] `T` och HUD-knapp.
-- [x] Placeholder panel.
-- [ ] Full talent tree.
+- [x] Första datadrivna specialization-träden, poäng, krav och respec.
+- [ ] Fullt innehåll, balans och spellbook/action-bar-integration.
 
 ### TALENT-02 — Talentmodell 🔀
 
@@ -496,9 +499,9 @@ Möjliga nodtyper:
 - [x] Stable item ID.
 - [x] Name, description, slot, rarity och item level.
 - [x] Stats, tags, set och build effects.
-- [x] Optional Sprite icon.
+- [x] Sprite icon; alla 10 nuvarande items har unik importerad ikon.
 - [x] Optional `visualPrefab` för utrustad 3D-representation.
-- [x] Procedurgenererad, slot-specifik silhuettikon när Sprite saknas.
+- [x] Datadriven slot-specifik fallback när Sprite saknas, med procedurgenererad silhuett endast som sista säkerhetsnät.
 
 ### ITEM-02 — Equipment slots ✅
 
@@ -743,12 +746,13 @@ Kandidater:
 ### WORLD-01 — Open world 🟨
 
 - [x] Första 420 × 420 meter stora startregionen med terrängvariation, vägnät och tydliga combat-/bebyggelseområden.
+- [x] `StarterZone_V2` är nu byggförst: fyra fasta MapMagic-tiles över 2 × 2 km, sydvästlig start, sex quest-NPC:er, tre bosättningar och 26 encounter-zoner.
 - [x] CC0-källpaket: Quaternius Medieval Village MegaKit Standard med 176 importerade FBX-moduler och lokalt bevarad licensfil.
 - [x] Tre bebyggelsekluster, tre ruinområden, Rift Crypt-anslutning, 180 träd och 48 stenformationer.
 - [ ] World streaming/scene partitioning.
 - [ ] Region boundaries och level bands.
 - [x] Första vägnät och navigation landmarks.
-- [ ] Towns/hubs.
+- [x] Northgate, Westmere och Eastwatch som första bosättningar; vendors och komplett hub-ekonomi återstår.
 - [ ] Wilderness camps.
 - [x] Första dungeonentrén från regionen genom Rift Crypt.
 - [x] Första utforskningsruinerna; secrets/rewards återstår.
@@ -785,13 +789,13 @@ Kandidater:
 - [ ] Bounties.
 - [ ] Invasions/rift storms.
 
-### WORLD-04 — Map och navigation ⬜
+### WORLD-04 — Map och navigation 🟨
 
-- [ ] World map.
-- [ ] Minimap eller compass.
+- [x] Schematisk world map.
+- [x] Minimap och compass-markörer.
 - [ ] Fog of war.
 - [ ] Pins och custom markers.
-- [ ] Quest tracking.
+- [x] Quest tracking i HUD och map-markörer.
 - [ ] Dungeon difficulty/loot preview.
 - [ ] Party member markers.
 - [ ] Coordinates.
@@ -932,23 +936,23 @@ Kandidater:
 
 ## 15. Quests, narrative och world state
 
-### QUEST-01 — Quest system ⬜
+### QUEST-01 — Quest system 🟨
 
-- [ ] QuestDefinition ScriptableObject/data.
-- [ ] Main quest.
+- [x] QuestDefinition ScriptableObject/data och sex skapade quests.
+- [x] Första sekventiella questkedjan.
 - [ ] Side quests.
 - [ ] Class quests.
-- [ ] Dungeon quests.
+- [x] Första Rift Crypt-questen.
 - [ ] Daily/weekly quests.
 - [ ] Bounties.
-- [ ] Multi-step objectives.
+- [x] Questkedja med NPC-, strids-, upptäckts- och dungeonobjektiv.
 - [ ] Branching choices.
-- [ ] Rewards och prerequisites.
-- [ ] Quest tracker/journal/map pins.
+- [x] Rewards och prerequisites i första questkedjan.
+- [x] Quest tracker, journal och map pins.
 
-### NARRATIVE-01 — Presentation ⬜
+### NARRATIVE-01 — Presentation 🟨
 
-- [ ] Dialogue boxes.
+- [x] Grundläggande NPC-dialog/questinteraktion; produktionsdialog återstår.
 - [ ] In-world dialogue.
 - [ ] Cinematics.
 - [ ] Camera sequences.
@@ -1006,6 +1010,8 @@ Krav för riktig MMO:
 
 ### CHAT-01 — Communication ⬜
 
+- [ ] Lokal textchatt för den nuvarande single-player-versionen, tydligt märkt som lokal och utan nätverksleverans.
+- [ ] Kompakt bottom-left-fält med scrollback, Enter för fokus/skicka, Escape för avbryt/stäng, historik och kommandoförslag.
 - [ ] Local/say.
 - [ ] Party/raid.
 - [ ] Guild.
@@ -1015,6 +1021,14 @@ Krav för riktig MMO:
 - [ ] Text filters och reporting.
 - [ ] Voice chat.
 - [ ] Speech-to-text/text-to-speech accessibility.
+
+### CHAT-DEV-01 — Local command registry and input focus ⬜
+
+- [ ] Gemensam input-focus gate för movement, camera, combat, targeting, menyer, NPC/dungeon interaction och arena reset medan chatten skriver text.
+- [ ] Registry per command: namn, aliases, beskrivning, usage, kategori, `developerOnly` och callback; genererad `/help` och `/help <command>`.
+- [ ] Läsbara lokala meddelanden och fel; säkra argument/koordinater; developer commands avstängda i release utan uttrycklig behörighet.
+- [ ] Föreslagna kommandogrupper: general, player, movement, world, progression och debug enligt `CHAT_COMMAND_REGISTRY_PROPOSAL.md`.
+- [ ] Systemadaptrar för debug invulnerability, Energy, progression/level, teleport/respawn, fly/noclip och reward-free enemy/encounter reset. Befintlig gameplay-state behåller ägarskap.
 
 ### MATCH-01 — Group finding ⬜
 
@@ -1052,6 +1066,7 @@ Krav för riktig MMO:
 - [x] Dungeon status.
 - [x] Build snapshot.
 - [x] Gameplay navigation icons.
+- [x] Fem unika action-barikoner kopplade från ability-definitionerna med cooldown, charges och usability-feedback ovanpå.
 - [ ] Final responsive layout och visual language.
 - [ ] Gemensam HUD layout-versionering och migrering av sparade positioner.
 - [ ] HUD-skala, safe-area-stöd och färdiga profiler för 16:9, ultrawide och handhållet.
@@ -1061,11 +1076,11 @@ Krav för riktig MMO:
 
 - [x] Inventory med dark sci-fi/fantasy-window, filter, scroll-grid, selection och icon-first items.
 - [x] Character/equipment med paper doll, 16 tydligt namngivna slots och separerad build analysis.
-- [x] Talents placeholder.
+- [x] Talents first-pass trees and respec.
 - [x] Corpse loot delar samma slot- och tooltip-presentation som inventory.
-- [ ] Talents complete.
-- [ ] Map.
-- [ ] Quest journal.
+- [ ] Talents production-complete.
+- [x] Schematic world map.
+- [x] Six-quest journal.
 - [ ] Social/guild.
 - [ ] Crafting.
 - [ ] Collections/codex.
@@ -1079,6 +1094,7 @@ Krav för riktig MMO:
 - [x] Shared inventory/equipment/loot pattern.
 - [x] Side-by-side equipped comparison med grön/röd deltafärg.
 - [x] Kandidat-tooltip och vald item-inspection visar `UPGRADE`, tom slot eller uppskattad positiv build-score-delta.
+- [x] Set-tooltip visar aktuell progress, samtliga 2/3/4/6-trösklar och ACTIVE/LOCKED-status.
 - [ ] Ability tooltips.
 - [ ] Buff/debuff tooltips.
 - [ ] Advanced comparison modifier key.
@@ -1169,21 +1185,21 @@ Krav för riktig MMO:
 
 ### ART-05 — Item visuals 🟨
 
-- [ ] 2D item icon template.
-- [ ] Icons per weapon/armor/core/relic/sigil/artifact.
+- [ ] Slutlig egen 2D item icon template/art bible.
+- [x] Unika importerade ikoner för alla nuvarande weapon/armor/core/relic/sigil/artifact-items.
 - [x] Procedural placeholder-silhuetter per weapon/armor/core/relic/sigil/artifact-kategori.
-- [x] Central icon-resolver använder itemets authored Sprite när den finns och kategorispecifik procedural fallback annars.
+- [x] Central icon-resolver använder itemets authored Sprite, därefter katalogiserad slotspecifik art och sist procedural fallback.
 - [x] Rarity borders, inte bara färgad bakgrund.
-- [ ] Set emblem.
+- [x] Riftstalker Circuit set-emblem.
 - [ ] Tag icons.
 - [ ] Affix icons vid behov.
 - [ ] 3D equipped models.
 - [ ] Ground/corpse loot representation.
-- [ ] Inventory icon atlas.
+- [ ] Inventory Sprite Atlas/batching pass när ikonbiblioteket växer.
 
 Iconalternativ:
 
-- [ ] Handmålade rastericons.
+- [x] Kuraterade rastericons för nuvarande prototypinnehåll; slutlig egen produktionsstil återstår.
 - [ ] Renderade 3D-item thumbnails.
 - [x] Stiliserade silhuetticons som placeholder-system.
 - [ ] Hybrid: 3D render + handmålad finish. **Rekommenderad.**
@@ -1199,9 +1215,10 @@ Iconalternativ:
 - [ ] Nameplate frames.
 - [ ] Map markers.
 - [ ] Cursor set: default, target, loot, interact, invalid.
-- [ ] Status icons.
-- [ ] Ability icons.
-- [ ] Class/spec icons.
+- [x] Fem initiala statusikoner plus generiska buff/debuff/status-fallbacks; live statusbinding återstår.
+- [x] Unika ikoner för Strike, Crushing Blow, Phase Lunge, Phase Dash och Rift Charge.
+- [x] Unika ikoner för Berserker, Bulwark och Riftblade.
+- [x] Keen Edge har en datadriven passive-ikon och visas i Character analysis.
 - [ ] Faction och dungeon emblems.
 
 ### VFX-01 — Combat VFX 🟨
@@ -1583,16 +1600,16 @@ Guardrails att välja:
   - Ranged, caster och bruiser först; därefter assassin/support.
   - Interruptible telegraphs, leash, group aggro och elite modifiers.
   - Rift Crypt som 10–15 minuters vertical slice med riskrum, bossfaser och unik reward.
-- [ ] **Fas 8 — Open-world foundation.**
+- [ ] **Fas 8 — Utöka den befintliga open-world-grunden.**
   - Zoner/streaming, vägar, landmarks, spawn-områden och dungeonentréer.
   - Safe hub, vendors, stash, fast travel samt world map/minimap.
   - World events och quest/objective foundation; dag/natt och väder efter att content finns.
-- [ ] **Fas 9 — Talent tree, status effects och full Vanguard identity.**
+- [ ] **Fas 9 — Utöka de första talentträden, status effects och full Vanguard identity.**
   - Berserker, Bulwark och Riftblade som kompletta spelstilar.
   - Aktiva val, passives, ability modifiers, respec och fler ability-slots.
   - Bleed, Burn, Vulnerable och Void-mark med item/tag/set-synergier.
 - [ ] **Fas 10 — Item instances, affixes, loot tables och dismantling.**
-- [ ] **Fas 11 — Quests, NPCs, narrative och hub-content.**
+- [ ] **Fas 11 — Utöka den första questkedjan, NPCs, narrative och hub-content.**
 - [ ] **Fas 12 — Co-op networking vertical slice.**
 - [ ] **Fas 13 — Content pipeline, polish och performance.**
 - [ ] **Fas 14 — MMO backend/social systems**, endast efter att co-op och core loop är stabila.

@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad3130d7d15aaaa4384e8a949c63ff89, type: 3}
+  m_Name: QuestCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.QuestCatalog
+  saveVersion: 1
+  quests:
+  - {fileID: 11400000, guid: 12ec9317e3819214e98be17a17032f80, type: 2}
+  - {fileID: 11400000, guid: 4ac46f8ff5ee33c4197fc16191cf6cf4, type: 2}
+  - {fileID: 11400000, guid: e6a697597d5d5f14e96b83f4b8c447eb, type: 2}
+  - {fileID: 11400000, guid: c2e73d758192ca74bbe0e10c1a82d830, type: 2}
+  - {fileID: 11400000, guid: 1d7080bc30b3e1541b3d7a58ad339442, type: 2}
+  - {fileID: 11400000, guid: 7c66508196645264f875b8c17e9df993, type: 2}

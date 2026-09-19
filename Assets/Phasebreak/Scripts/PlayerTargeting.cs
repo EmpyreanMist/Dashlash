@@ -58,6 +58,9 @@ namespace Phasebreak.Gameplay
             if (CurrentTarget != null && (!CurrentTarget.IsAlive || !IsWithinRange(CurrentTarget)))
                 SetTarget(null);
 
+            if (PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
+                return;
+
             if (clearTargetAction.WasPressedThisFrame())
                 SetTarget(null);
 

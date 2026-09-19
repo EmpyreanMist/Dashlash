@@ -17,35 +17,38 @@ namespace Phasebreak.Gameplay
         private readonly List<PhasebreakItemDefinition> inventory = new();
         private readonly Dictionary<EquipmentSlot, PhasebreakItemDefinition> equipped = new();
         private readonly Dictionary<string, PhasebreakItemDefinition> byId = new();
-        private PlayerHealth health; private PlayerProgression progression; private BuildStats stats;
+        private PlayerHealth health; private PlayerProgression progression; private TalentSystem talents; private BuildStats stats;
         private BuildEffect effects; private float critEnergy, lungeReduction, teleportRecovery; private int enemiesDefeated;
 
         public IReadOnlyList<PhasebreakItemDefinition> Inventory => inventory;
         public Specialization Specialization { get; private set; }
         public int EnemiesDefeated => enemiesDefeated;
-        public float PowerMultiplier => 1f + stats.power + (Specialization == Specialization.Berserker ? .12f : 0f);
-        public float CriticalChanceBonus => stats.criticalChance + (Specialization == Specialization.Berserker ? .06f : 0f);
-        public float CriticalDamageBonus => .1f + stats.criticalDamage;
-        public int BonusHealth => stats.maxHealth + (Specialization == Specialization.Bulwark ? 8 : 0);
-        public float Defense => stats.defense + (Specialization == Specialization.Bulwark ? .12f : 0f);
-        public float AttackSpeedMultiplier => 1f + stats.attackSpeed;
-        public float MovementSpeedMultiplier => 1f + stats.movementSpeed;
+        public float PowerMultiplier => 1f + stats.power + (Specialization == Specialization.Berserker ? .12f : 0f) + (talents != null ? talents.GetEffect(TalentEffect.Power) + talents.DynamicPowerBonus : 0f);
+        public float CriticalChanceBonus => stats.criticalChance + (Specialization == Specialization.Berserker ? .06f : 0f) + (talents != null ? talents.GetEffect(TalentEffect.CriticalChance) : 0f);
+        public float CriticalDamageBonus => .1f + stats.criticalDamage + (talents != null ? talents.GetEffect(TalentEffect.CriticalDamage) : 0f);
+        public int BonusHealth => stats.maxHealth + (Specialization == Specialization.Bulwark ? 8 : 0) + Mathf.RoundToInt(talents != null ? talents.GetEffect(TalentEffect.MaximumHealth) : 0f);
+        public float Defense => stats.defense + (Specialization == Specialization.Bulwark ? .12f : 0f) + (talents != null ? talents.GetEffect(TalentEffect.Defense) + talents.DynamicDefenseBonus : 0f);
+        public float AttackSpeedMultiplier => 1f + stats.attackSpeed + (talents != null ? talents.GetEffect(TalentEffect.AttackSpeed) + talents.DynamicAttackSpeedBonus : 0f);
+        public float MovementSpeedMultiplier => 1f + stats.movementSpeed + (talents != null ? talents.GetEffect(TalentEffect.MovementSpeed) : 0f);
         public float BossDamageMultiplier => 1f + stats.bossDamage;
-        public float CritEnergyRestore => Has(BuildEffect.CritRestoresEnergy) ? Mathf.Max(6f, critEnergy) : 0f;
-        public float PhaseLungeCooldownMultiplier => Has(BuildEffect.PhaseLungeCooldown) ? Mathf.Clamp01(1f - Mathf.Max(.15f, lungeReduction)) : (Specialization == Specialization.Riftblade ? .82f : 1f);
-        public int PhaseLungeExtraCharges => Has(BuildEffect.PhaseLungeExtraCharge) ? 1 : 0;
-        public bool CrushingBlowCleave => Has(BuildEffect.CrushingBlowCleave);
-        public float TeleportKillRecovery => Has(BuildEffect.TeleportKillRecovery) ? Mathf.Max(20f, teleportRecovery) : 0f;
+        public float CritEnergyRestore => Mathf.Max(Has(BuildEffect.CritRestoresEnergy) ? Mathf.Max(6f, critEnergy) : 0f, talents != null ? talents.GetEffect(TalentEffect.CriticalEnergy) : 0f);
+        public float PhaseLungeCooldownMultiplier => Mathf.Clamp01((Has(BuildEffect.PhaseLungeCooldown) ? 1f - Mathf.Max(.15f, lungeReduction) : (Specialization == Specialization.Riftblade ? .82f : 1f)) * (1f - (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityCooldown, "phase-lunge") : 0f)));
+        public int PhaseLungeExtraCharges => (Has(BuildEffect.PhaseLungeExtraCharge) ? 1 : 0) + Mathf.RoundToInt(talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityExtraCharge, "phase-lunge") : 0f);
+        public bool CrushingBlowCleave => Has(BuildEffect.CrushingBlowCleave) || (talents != null && talents.HasEffect(TalentEffect.CrushingCleave));
+        public float TeleportKillRecovery => Mathf.Max(Has(BuildEffect.TeleportKillRecovery) ? Mathf.Max(20f, teleportRecovery) : 0f, talents != null ? talents.GetEffect(TalentEffect.TeleportKillRecovery) : 0f);
         public event Action BuildChanged;
         public event Action<PhasebreakItemDefinition> LootAcquired;
 
         private void Awake()
         {
             health = GetComponent<PlayerHealth>(); progression = GetComponent<PlayerProgression>();
+            talents = GetComponent<TalentSystem>() ?? gameObject.AddComponent<TalentSystem>();
             foreach (PhasebreakItemDefinition item in itemCatalog) if (item != null && !string.IsNullOrWhiteSpace(item.id)) byId[item.id] = item;
             LoadOrSeed(); Recalculate();
         }
         public PhasebreakItemDefinition GetEquipped(EquipmentSlot slot) => equipped.GetValueOrDefault(slot);
+
+        public void RefreshTalentModifiers() { Recalculate(); BuildChanged?.Invoke(); }
 
         public bool Equip(PhasebreakItemDefinition item)
         {
@@ -122,7 +125,12 @@ namespace Phasebreak.Gameplay
         }
         private IEnumerable<string> ActiveSetLines()
         {
-            foreach (IGrouping<PhasebreakItemSetDefinition, PhasebreakItemDefinition> group in equipped.Values.Where(i => i != null && i.itemSet != null).GroupBy(i => i.itemSet)) yield return $"{group.Key.displayName}  {group.Count()}/6";
+            foreach (IGrouping<PhasebreakItemSetDefinition, PhasebreakItemDefinition> group in equipped.Values.Where(i => i != null && i.itemSet != null).GroupBy(i => i.itemSet))
+            {
+                int maximum = (group.Key.bonuses ?? Array.Empty<SetBonusDefinition>()).Select(bonus => bonus.pieces).DefaultIfEmpty(0).Max();
+                int count = maximum > 0 ? Mathf.Min(group.Count(), maximum) : group.Count();
+                yield return $"{group.Key.displayName}  {count}/{maximum}";
+            }
         }
         private void Changed() { Recalculate(); Save(); BuildChanged?.Invoke(); }
         private void LoadOrSeed()

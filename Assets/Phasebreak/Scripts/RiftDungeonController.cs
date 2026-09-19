@@ -140,7 +140,8 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            if (interactAction.WasPressedThisFrame())
+            if (!PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen &&
+                interactAction.WasPressedThisFrame())
                 TryInteract();
 
             if (State != RiftDungeonState.InProgress)

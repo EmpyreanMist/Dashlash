@@ -1,0 +1,93 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Phasebreak.Gameplay
+{
+    public sealed class FrontierEncounterZone : MonoBehaviour
+    {
+        [SerializeField] private string zoneId;
+        [SerializeField] private GameObject enemyPrefab;
+        [SerializeField] private int count = 3;
+        [SerializeField] private float radius = 10;
+        [SerializeField] private float respawnDelay = 180;
+        [SerializeField] private float safeRespawnDistance = 48;
+        [SerializeField] private float activationDistance = 230;
+        [SerializeField] private float unloadDistance = 300;
+        [SerializeField] private int dangerTier = 1;
+        private readonly List<MeleeEnemy> enemies = new List<MeleeEnemy>();
+        private readonly List<float> deaths = new List<float>();
+        private Transform player;
+
+        public void Configure(string id, GameObject prefab, int population, float spread, float delay, int tier)
+        {
+            zoneId = id; enemyPrefab = prefab; count = population; radius = spread;
+            respawnDelay = delay; dangerTier = tier;
+        }
+
+        private void Start()
+        {
+            player = FindAnyObjectByType<PlayerHealth>()?.transform;
+            for (int i = 0; i < count; i++) { enemies.Add(null); deaths.Add(-1); }
+        }
+
+        private void Update()
+        {
+            if (player == null) { player = FindAnyObjectByType<PlayerHealth>()?.transform; return; }
+            float distance = Vector3.Distance(player.position, transform.position);
+            if (distance > unloadDistance)
+            {
+                for (int i = 0; i < enemies.Count; i++)
+                {
+                    if (enemies[i] == null) continue;
+                    if (!enemies[i].IsAlive && deaths[i] < 0) deaths[i] = Time.time;
+                    Destroy(enemies[i].gameObject);
+                    enemies[i] = null;
+                }
+                return;
+            }
+            if (distance > activationDistance) return;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i] != null && enemies[i].IsAlive) continue;
+                if (enemies[i] != null && deaths[i] < 0) deaths[i] = Time.time;
+                if (deaths[i] >= 0 && Time.time - deaths[i] < respawnDelay) continue;
+                if (deaths[i] >= 0 && distance < safeRespawnDistance) continue;
+                if (enemies[i] != null) Destroy(enemies[i].gameObject);
+                Spawn(i);
+                deaths[i] = -1;
+            }
+        }
+
+        private void Spawn(int index)
+        {
+            if (enemyPrefab == null) return;
+            int hash = 0;
+            foreach (char c in zoneId) hash = (hash * 31 + c) % 997;
+            float angle = index * 2.39996f + hash * .11f;
+            float distance = radius * (.38f + .52f * ((index % 3) / 2f));
+            Vector3 point = transform.position + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance;
+            Terrain terrain = Terrain.activeTerrain;
+            if (terrain != null)
+            {
+                Terrain[] terrains = Terrain.activeTerrains;
+                foreach (Terrain candidate in terrains)
+                {
+                    Vector3 p = candidate.transform.position;
+                    Vector3 s = candidate.terrainData.size;
+                    if (point.x >= p.x && point.x <= p.x + s.x && point.z >= p.z && point.z <= p.z + s.z)
+                    { terrain = candidate; break; }
+                }
+                point.y = terrain.SampleHeight(point) + terrain.transform.position.y + .15f;
+            }
+            GameObject enemy = Instantiate(enemyPrefab, point, Quaternion.Euler(0, angle * Mathf.Rad2Deg, 0), transform);
+            enemy.name = enemyPrefab.name;
+            enemies[index] = enemy.GetComponent<MeleeEnemy>();
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = dangerTier > 2 ? new Color(.6f, .2f, .8f) : new Color(.9f, .6f, .2f);
+            Gizmos.DrawWireSphere(transform.position, radius);
+        }
+    }
+}

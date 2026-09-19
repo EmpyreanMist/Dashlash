@@ -98,7 +98,7 @@ namespace Phasebreak.Gameplay
         {
             LeftClickReleasedThisFrame = false;
             RightClickStartedThisFrame = false;
-            if (PhasebreakInventoryHud.IsMajorMenuOpen)
+            if (PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
             {
                 SetPointerCaptured(false);
                 return;

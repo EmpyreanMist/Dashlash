@@ -31,4 +31,4 @@ MonoBehaviour:
   movementDistance: 0
   movementDuration: 0.16
   stopDistance: 1.35
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1eddb9169ba24d64b83bb8053a587d49, type: 3}

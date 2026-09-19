@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d539b3ba919cba74a9a2d3c1a7e2aac5, type: 3}
+  m_Name: Bulwark
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.TalentTreeDefinition
+  id: bulwark
+  displayName: Bulwark
+  identity: 'Stability under pressure: Health and Defense turn incoming force into a controlled counterattack.'
+  specialization: 2
+  icon: {fileID: 21300000, guid: 943f130d58fb675428b9ff7755a30df0, type: 3}
+  nodes:
+  - {fileID: 11400000, guid: 3ce8a2e65664d5942a0df3c5601c66a6, type: 2}
+  - {fileID: 11400000, guid: 0f5feef3577d55244935e2b907acd513, type: 2}
+  - {fileID: 11400000, guid: 65dbf454e0c3d38458ae1e5db136cd6f, type: 2}
+  - {fileID: 11400000, guid: cb5957656e3a252439f116fdf4d87d52, type: 2}
+  - {fileID: 11400000, guid: 3fe1e2259e5f3dc4aa3ead8b5ebd6155, type: 2}
+  - {fileID: 11400000, guid: 3e8eb1c7fa7b5e549af3fddb8cbd517e, type: 2}

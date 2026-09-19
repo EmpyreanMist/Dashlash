@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14fedeab37328fd4c93ba057108a1c5a, type: 3}
+  m_Name: PhasebreakIconCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.PhasebreakIconCatalog
+  fallbackItem: {fileID: 21300000, guid: d16af5ce9f4e2054fb1e2510721a2242, type: 3}
+  fallbackAbility: {fileID: 21300000, guid: 56ffeaf3820e45f44b522085fd5748ac, type: 3}
+  fallbackBuff: {fileID: 21300000, guid: 433ce4558f625d245b1ece249dcb381e, type: 3}
+  fallbackDebuff: {fileID: 21300000, guid: 239f0ea6a1520cd44b1b8e10f4a315f8, type: 3}
+  equipmentSlots:
+  - slot: 0
+    icon: {fileID: 21300000, guid: d9802b28a7488b44f8bc86270efe3c37, type: 3}
+  - slot: 1
+    icon: {fileID: 21300000, guid: 44d43ea40636222438b67f31507ffe64, type: 3}
+  - slot: 2
+    icon: {fileID: 21300000, guid: 54997a6feda2e5449a728f8cef3721c8, type: 3}
+  - slot: 3
+    icon: {fileID: 21300000, guid: 2535123b4b2f3a04ba832344fe1b7c83, type: 3}
+  - slot: 4
+    icon: {fileID: 21300000, guid: 496a57f117abe884d9bd722962b18325, type: 3}
+  - slot: 5
+    icon: {fileID: 21300000, guid: 39d3de44eeed5b14b8ddb43a28cf124a, type: 3}
+  - slot: 6
+    icon: {fileID: 21300000, guid: e8b1c953859797141b1f6060e14aa016, type: 3}
+  - slot: 7
+    icon: {fileID: 21300000, guid: 9180e041434469d4c8d3ac68fd713238, type: 3}
+  - slot: 8
+    icon: {fileID: 21300000, guid: d16af5ce9f4e2054fb1e2510721a2242, type: 3}
+  - slot: 9
+    icon: {fileID: 21300000, guid: 4d89c44403374154abe9022b0d4414e9, type: 3}
+  - slot: 10
+    icon: {fileID: 21300000, guid: ab8b82e808dc3b9418968a8d5c1b19dc, type: 3}
+  - slot: 11
+    icon: {fileID: 21300000, guid: 7f9290ebeeb0f95488b3b5dfc7f3a058, type: 3}
+  - slot: 12
+    icon: {fileID: 21300000, guid: 43055442cb7239b4e9c81af7a639befc, type: 3}
+  - slot: 13
+    icon: {fileID: 21300000, guid: 43055442cb7239b4e9c81af7a639befc, type: 3}
+  - slot: 14
+    icon: {fileID: 21300000, guid: 43055442cb7239b4e9c81af7a639befc, type: 3}
+  - slot: 15
+    icon: {fileID: 21300000, guid: 7399f4055a04beb47b52a48b70a0d654, type: 3}
+  specializations:
+  - specialization: 1
+    icon: {fileID: 21300000, guid: 1b94c63004cc9a9408346603edff96e3, type: 3}
+  - specialization: 2
+    icon: {fileID: 21300000, guid: 943f130d58fb675428b9ff7755a30df0, type: 3}
+  - specialization: 3
+    icon: {fileID: 21300000, guid: 798bcf1fc52b0a546a03ad87edf0aca1, type: 3}
+  passives:
+  - id: Keen Edge
+    icon: {fileID: 21300000, guid: 15fb4850d2e73ac44a3ff9797cd71f0d, type: 3}

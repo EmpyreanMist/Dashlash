@@ -15,6 +15,8 @@ MonoBehaviour:
   id: sigil.emberglass
   displayName: Emberglass Sigil
   description: A volatile sigil; can occupy any Sigil socket.
+  icon: {fileID: 21300000, guid: 046bc27ca9c936e489ee0455676e2ef1, type: 3}
+  visualPrefab: {fileID: 0}
   slot: 12
   rarity: 2
   itemLevel: 5
