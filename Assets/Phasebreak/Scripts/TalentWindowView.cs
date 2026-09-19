@@ -10,6 +10,7 @@ namespace Phasebreak.Gameplay
     public sealed class TalentWindowView : MonoBehaviour
     {
         private readonly Dictionary<Specialization, UnityEngine.UI.Image> tabSurfaces = new();
+        private readonly Dictionary<Specialization, TextMeshProUGUI> tabStates = new();
         private readonly List<GameObject> generated = new();
         private TalentSystem talents;
         private PlayerBuildSystem build;
@@ -18,6 +19,9 @@ namespace Phasebreak.Gameplay
         private RectTransform connectionLayer;
         private RectTransform nodeLayer;
         private TextMeshProUGUI pointsLabel;
+        private TextMeshProUGUI activeSpecializationLabel;
+        private UnityEngine.UI.Button activateButton;
+        private TextMeshProUGUI activateLabel;
         private TextMeshProUGUI identityLabel;
         private TextMeshProUGUI detailsTitle;
         private TextMeshProUGUI detailsBody;
@@ -59,9 +63,21 @@ namespace Phasebreak.Gameplay
         public void Refresh()
         {
             if (treeArea == null) return;
-            pointsLabel.text = talents == null ? "TALENT DATA UNAVAILABLE" : $"AVAILABLE  <color=#6BE7FF><b>{talents.AvailablePoints}</b></color>     SPENT  <b>{talents.SpentPoints}</b> / {talents.TotalPoints}";
+            int spent = talents != null ? talents.GetSpentPoints(viewed) : 0;
+            int available = talents != null ? talents.GetAvailablePoints(viewed) : 0;
+            pointsLabel.text = talents == null ? "TALENT DATA UNAVAILABLE" :
+                $"{viewed.ToString().ToUpperInvariant()} POINTS     AVAILABLE  <b>{available}</b>     SPENT  <b>{spent}</b> / {talents.TotalPoints}";
+            Specialization active = build != null ? build.Specialization : Specialization.Unchosen;
+            activeSpecializationLabel.text = $"ACTIVE SPECIALIZATION  <b>{active.ToString().ToUpperInvariant()}</b>";
             foreach (KeyValuePair<Specialization, UnityEngine.UI.Image> pair in tabSurfaces)
-                pair.Value.color = pair.Key == viewed ? new Color(.09f, .34f, .48f, 1f) : SurfaceRaised;
+            {
+                bool isActive = pair.Key == active;
+                pair.Value.color = isActive ? PhasebreakUiTheme.Active : pair.Key == viewed ? PhasebreakUiTheme.Raised : PhasebreakUiTheme.Panel;
+                tabStates[pair.Key].text = isActive ? "ACTIVE" : "SWITCH";
+                tabStates[pair.Key].color = isActive ? PhasebreakUiTheme.Text : PhasebreakUiTheme.MutedText;
+            }
+            activateButton.interactable = viewed != active && build != null;
+            activateLabel.text = viewed == active ? "CURRENTLY ACTIVE" : $"ACTIVATE {viewed.ToString().ToUpperInvariant()}";
             TalentTreeDefinition tree = talents?.GetTree(viewed);
             identityLabel.text = tree == null ? "Talent data is not installed." : tree.identity;
             if (tree != null && (selected == null || !tree.nodes.Contains(selected)))
@@ -74,6 +90,11 @@ namespace Phasebreak.Gameplay
         {
             RectTransform tabs = Block("Specialization Navigation", root, Surface);
             Place(tabs, new Vector2(.025f, .79f), new Vector2(.975f, .885f));
+            activeSpecializationLabel = AddText("Active Specialization", root, string.Empty, 14f,
+                TextAlignmentOptions.MidlineLeft, new Vector2(.03f, .895f), new Vector2(.68f, .96f), PhasebreakUiTheme.Text);
+            activateButton = Button("Activate Specialization", root, string.Empty,
+                new Vector2(.71f, .897f), new Vector2(.97f, .957f), ActivateViewed, out activateLabel);
+            PhasebreakUiTheme.StyleButton(activateButton);
             Specialization[] specs = { Specialization.Berserker, Specialization.Bulwark, Specialization.Riftblade };
             for (int i = 0; i < specs.Length; i++)
             {
@@ -81,12 +102,16 @@ namespace Phasebreak.Gameplay
                 RectTransform tab = Block(spec + " Tab", tabs, SurfaceRaised);
                 Place(tab, new Vector2(.012f + i * .332f, .12f), new Vector2(.322f + i * .332f, .88f));
                 tabSurfaces[spec] = tab.GetComponent<UnityEngine.UI.Image>();
+                PhasebreakUiTheme.StyleSurface(tabSurfaces[spec], PhasebreakUiTheme.Panel);
                 UnityEngine.UI.Button button = tab.gameObject.AddComponent<UnityEngine.UI.Button>();
                 button.onClick.AddListener(() => { viewed = spec; selected = null; feedback.text = string.Empty; Refresh(); });
                 UnityEngine.UI.Image icon = Image("Icon", tab, new Vector2(.035f, .16f), new Vector2(.23f, .84f));
                 icon.sprite = PhasebreakIconCatalog.Current?.GetSpecializationIcon(spec);
                 icon.preserveAspect = true;
-                AddText("Label", tab, spec.ToString().ToUpperInvariant(), 13f, TextAlignmentOptions.MidlineLeft, new Vector2(.27f, .05f), new Vector2(.96f, .95f), Text);
+                AddText("Label", tab, spec.ToString().ToUpperInvariant(), 13f, TextAlignmentOptions.MidlineLeft,
+                    new Vector2(.27f, .05f), new Vector2(.76f, .95f), PhasebreakUiTheme.Text);
+                tabStates[spec] = AddText("State", tab, string.Empty, 10f, TextAlignmentOptions.Center,
+                    new Vector2(.76f, .1f), new Vector2(.98f, .9f), PhasebreakUiTheme.MutedText);
             }
 
             RectTransform center = Block("Talent Constellation", root, new Color(.012f, .021f, .038f, .97f));
@@ -204,6 +229,21 @@ namespace Phasebreak.Gameplay
             TalentPurchaseResult result = talents.Purchase(selected);
             feedback.text = result == TalentPurchaseResult.Purchased ? "<color=#6BE7FF>Talent awakened.</color>" : RequirementText(selected, result);
             Refresh();
+        }
+
+        private void ActivateViewed()
+        {
+            if (build == null) return;
+            SpecializationChangeResult result = build.SetSpecialization(viewed);
+            Refresh();
+            feedback.text = result switch
+            {
+                SpecializationChangeResult.Changed => $"{viewed} is now active. Its saved talents are in effect.",
+                SpecializationChangeResult.AbilityInProgress => "Finish the current ability before switching specialization.",
+                SpecializationChangeResult.Defeated => "Recover before switching specialization.",
+                SpecializationChangeResult.AlreadyActive => $"{viewed} is already active.",
+                _ => "This specialization cannot be activated."
+            };
         }
 
         private void ResetViewed()

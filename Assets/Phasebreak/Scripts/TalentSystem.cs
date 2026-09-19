@@ -24,6 +24,7 @@ namespace Phasebreak.Gameplay
         private PlayerProgression progression;
         private PlayerBuildSystem build;
         private PlayerHealth health;
+        private PlayerCombat combat;
         private float criticalMomentumUntil;
         private float braceUntil;
         private float mobilityMomentumUntil;
@@ -32,9 +33,12 @@ namespace Phasebreak.Gameplay
         private float rhythmUntil;
 
         public TalentCatalog Catalog => catalog;
-        public int AvailablePoints => Mathf.Max(0, TotalPoints - SpentPoints);
+        public int AvailablePoints => GetAvailablePoints(build != null ? build.Specialization : Specialization.Unchosen);
         public int TotalPoints => catalog != null ? catalog.PointsForLevel(progression != null ? progression.Level : 1) : 0;
-        public int SpentPoints => nodes.Values.Sum(n => GetRank(n.id) * Mathf.Max(1, n.pointCost));
+        public int SpentPoints => GetSpentPoints(build != null ? build.Specialization : Specialization.Unchosen);
+        public int GetAvailablePoints(Specialization specialization) => Mathf.Max(0, TotalPoints - GetSpentPoints(specialization));
+        public int GetSpentPoints(Specialization specialization) => nodes.Values
+            .Where(n => n.specialization == specialization).Sum(n => GetRank(n.id) * Mathf.Max(1, n.pointCost));
         public event Action Changed;
         public event Action AbilityAvailabilityChanged;
 
@@ -44,6 +48,7 @@ namespace Phasebreak.Gameplay
             progression = GetComponent<PlayerProgression>();
             build = GetComponent<PlayerBuildSystem>();
             health = GetComponent<PlayerHealth>();
+            combat = GetComponent<PlayerCombat>();
             IndexCatalog();
             Load();
         }
@@ -63,13 +68,16 @@ namespace Phasebreak.Gameplay
 
         public TalentNodeDefinition GetNode(string id) => !string.IsNullOrWhiteSpace(id) && nodes.TryGetValue(id, out TalentNodeDefinition node) ? node : null;
         public int GetRank(string id) => !string.IsNullOrWhiteSpace(id) && ranks.TryGetValue(id, out int rank) ? rank : 0;
-        public bool HasEffect(TalentEffect effect) => nodes.Values.Any(n => GetRank(n.id) > 0 && (n.effect == effect || n.secondaryEffect == effect));
+        private bool IsActive(TalentNodeDefinition node) => build != null && node.specialization == build.Specialization;
+        public bool HasEffect(TalentEffect effect) => nodes.Values.Any(n => IsActive(n) && GetRank(n.id) > 0 &&
+            (n.effect == effect || n.secondaryEffect == effect));
 
         public float GetEffect(TalentEffect effect)
         {
             float total = 0f;
             foreach (TalentNodeDefinition node in nodes.Values)
             {
+                if (!IsActive(node)) continue;
                 int rank = GetRank(node.id);
                 if (node.effect == effect) total += node.effectValuePerRank * rank;
                 if (node.secondaryEffect == effect) total += node.secondaryValuePerRank * rank;
@@ -82,7 +90,7 @@ namespace Phasebreak.Gameplay
             float total = 0f;
             foreach (TalentNodeDefinition node in nodes.Values)
             {
-                if (GetRank(node.id) <= 0 || !string.Equals(node.targetAbilityId, abilityId, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!IsActive(node) || GetRank(node.id) <= 0 || !string.Equals(node.targetAbilityId, abilityId, StringComparison.OrdinalIgnoreCase)) continue;
                 if (node.effect == effect) total += node.effectValuePerRank * GetRank(node.id);
                 if (node.secondaryEffect == effect) total += node.secondaryValuePerRank * GetRank(node.id);
             }
@@ -99,12 +107,14 @@ namespace Phasebreak.Gameplay
         public TalentPurchaseResult CanPurchase(TalentNodeDefinition node)
         {
             if (node == null || string.IsNullOrWhiteSpace(node.id)) return TalentPurchaseResult.MissingDefinition;
-            if (build != null && build.Specialization != Specialization.Unchosen && build.Specialization != node.specialization) return TalentPurchaseResult.WrongSpecialization;
+            if (!IsActive(node)) return TalentPurchaseResult.WrongSpecialization;
             if (GetRank(node.id) >= node.maximumRank) return TalentPurchaseResult.MaximumRank;
-            if (AvailablePoints < Mathf.Max(1, node.pointCost)) return TalentPurchaseResult.InsufficientPoints;
+            if (GetAvailablePoints(node.specialization) < Mathf.Max(1, node.pointCost)) return TalentPurchaseResult.InsufficientPoints;
             if (progression != null && progression.Level < node.requiredPlayerLevel) return TalentPurchaseResult.LevelRequired;
             if ((node.prerequisiteIds ?? Array.Empty<string>()).Any(id => GetRank(id) <= 0)) return TalentPurchaseResult.PrerequisiteRequired;
-            if (!string.IsNullOrWhiteSpace(node.choiceGroup) && nodes.Values.Any(other => other != node && other.choiceGroup == node.choiceGroup && GetRank(other.id) > 0)) return TalentPurchaseResult.ChoiceConflict;
+            if (!string.IsNullOrWhiteSpace(node.choiceGroup) && nodes.Values.Any(other => other != node &&
+                other.specialization == node.specialization && other.choiceGroup == node.choiceGroup && GetRank(other.id) > 0))
+                return TalentPurchaseResult.ChoiceConflict;
             return TalentPurchaseResult.Purchased;
         }
 
@@ -112,8 +122,9 @@ namespace Phasebreak.Gameplay
         {
             TalentPurchaseResult result = CanPurchase(node);
             if (result != TalentPurchaseResult.Purchased) return result;
+            int[] previousMaximumCharges = combat?.CaptureMaximumCharges();
             ranks[node.id] = GetRank(node.id) + 1;
-            PersistAndNotify(!string.IsNullOrWhiteSpace(node.grantedAbilityId));
+            PersistAndNotify(!string.IsNullOrWhiteSpace(node.grantedAbilityId), previousMaximumCharges);
             return TalentPurchaseResult.Purchased;
         }
 
@@ -121,17 +132,19 @@ namespace Phasebreak.Gameplay
         {
             TalentTreeDefinition tree = GetTree(specialization);
             if (tree == null) return;
-            bool abilitiesChanged = tree.nodes.Any(n => n != null && GetRank(n.id) > 0 && !string.IsNullOrWhiteSpace(n.grantedAbilityId));
+            bool active = build != null && build.Specialization == specialization;
+            int[] previousMaximumCharges = active ? combat?.CaptureMaximumCharges() : null;
+            bool abilitiesChanged = active && tree.nodes.Any(n => n != null && GetRank(n.id) > 0 && !string.IsNullOrWhiteSpace(n.grantedAbilityId));
             foreach (TalentNodeDefinition node in tree.nodes) if (node != null) ranks.Remove(node.id);
-            ResetTransientEffects();
-            PersistAndNotify(abilitiesChanged);
+            if (active) ResetTransientEffects();
+            PersistAndNotify(abilitiesChanged, previousMaximumCharges);
         }
 
         public bool IsAbilityUnlocked(string abilityId, bool isBaseAbility = true) => isBaseAbility ||
-            nodes.Values.Any(n => GetRank(n.id) > 0 && string.Equals(n.grantedAbilityId, abilityId, StringComparison.OrdinalIgnoreCase));
+            nodes.Values.Any(n => IsActive(n) && GetRank(n.id) > 0 && string.Equals(n.grantedAbilityId, abilityId, StringComparison.OrdinalIgnoreCase));
 
         public IReadOnlyList<string> GetTalentGrantedAbilities() => nodes.Values
-            .Where(n => GetRank(n.id) > 0 && !string.IsNullOrWhiteSpace(n.grantedAbilityId))
+            .Where(n => IsActive(n) && GetRank(n.id) > 0 && !string.IsNullOrWhiteSpace(n.grantedAbilityId))
             .Select(n => n.grantedAbilityId).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
         public void NotifyCriticalHit()
@@ -156,6 +169,13 @@ namespace Phasebreak.Gameplay
         }
 
         public void ConsumeHeavyImpact() => heavyImpactUntil = 0f;
+
+        public void OnSpecializationChanged()
+        {
+            ResetTransientEffects();
+            Changed?.Invoke();
+            AbilityAvailabilityChanged?.Invoke();
+        }
 
         private void HandleProgressChanged() => Changed?.Invoke();
 
@@ -183,10 +203,11 @@ namespace Phasebreak.Gameplay
             PlayerPrefs.Save();
         }
 
-        private void PersistAndNotify(bool abilitiesChanged)
+        private void PersistAndNotify(bool abilitiesChanged, int[] previousMaximumCharges)
         {
             Save();
             build?.RefreshTalentModifiers();
+            combat?.ReconcileAbilityModifiers(previousMaximumCharges);
             Changed?.Invoke();
             if (abilitiesChanged) AbilityAvailabilityChanged?.Invoke();
         }

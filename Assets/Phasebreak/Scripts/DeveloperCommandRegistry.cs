@@ -70,7 +70,7 @@ namespace Phasebreak.Gameplay
             Register(new("resetencounters", "/resetencounters", "Reset encounters through their owners.", "Debug", true, ResetEncounters));
             Register(new("xp", "/xp <amount>", "Grant nonnegative XP through progression.", "Progression", true, Xp));
             Register(new("level", "/level <level>", "Set a level within the current progression range.", "Progression", true, Level));
-            Register(new("riftbuild", "/riftbuild apply", "Save a level-10 Riftblade test loadout with existing talents and six Circuit items. Preserves owned gear; refuses other specializations.", "Progression", true, RiftBuild));
+            Register(new("riftbuild", "/riftbuild apply", "Save a level-10 Riftblade test loadout with existing talents and six Circuit items; preserve other specialization talents.", "Progression", true, RiftBuild));
             Register(new("riftpack", "/riftpack", "Reset the Riftblade practice pack and travel to its starting point.", "Debug", true, RiftPack));
         }
 
@@ -82,12 +82,14 @@ namespace Phasebreak.Gameplay
             PlayerBuildSystem build = Combat != null ? Combat.GetComponent<PlayerBuildSystem>() : null;
             TalentSystem talents = Combat != null ? Combat.GetComponent<TalentSystem>() : null;
             if (build == null || talents == null || Progression == null) return Missing;
-            if (build.Specialization != Specialization.Unchosen && build.Specialization != Specialization.Riftblade)
-                return "Use a Riftblade character; existing specializations are preserved.";
-            if (talents.Catalog.trees.Where(t => t.specialization != Specialization.Riftblade).Any(t => t.nodes.Any(n => talents.GetRank(n.id) > 0)))
-                return "Reset other talent trees through the Talents window before applying this loadout.";
+            SpecializationChangeResult specialization = build.SetSpecialization(Specialization.Riftblade);
+            if (specialization == SpecializationChangeResult.AbilityInProgress)
+                return "Finish the current ability before applying the Riftblade loadout.";
+            if (specialization == SpecializationChangeResult.Defeated)
+                return "Recover before applying the Riftblade loadout.";
+            if (specialization is not (SpecializationChangeResult.Changed or SpecializationChangeResult.AlreadyActive))
+                return "Riftblade specialization is unavailable.";
             Progression.SetDebugLevel(Progression.MaximumLevel);
-            if (build.Specialization == Specialization.Unchosen) build.ChooseSpecialization(Specialization.Riftblade);
             string[] path = { "phase-efficiency", "lunge-mastery", "rift-momentum", "echo-step", "rift-execution", "void-circuit" };
             foreach (string id in path)
             {
