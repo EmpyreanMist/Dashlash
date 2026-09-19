@@ -42,6 +42,8 @@ namespace Phasebreak.Gameplay
         private TextMeshProUGUI abilityTooltip;
         private TextMeshProUGUI lootToast;
         private TextMeshProUGUI abilityFeedback;
+        private TextMeshProUGUI riftChain;
+        private RectTransform riftChainPanel;
         private RectTransform dungeonPanel;
         private TextMeshProUGUI dungeonLabel;
         private TextMeshProUGUI interactionPrompt;
@@ -135,6 +137,18 @@ namespace Phasebreak.Gameplay
             foreach (WorldNameplateUI view in nameplates.Values)
                 view.Refresh(worldCamera, player, currentTarget, canvasRect, nameplateRange);
             UpdateActionBar();
+            if (riftChain != null && combat != null)
+            {
+                int count = combat.RiftChainCount;
+                riftChainPanel.gameObject.SetActive(count >= 2);
+                if (count >= 2)
+                {
+                    string recovery = combat.LastChainEnergyRestored > .05f ? $"+{combat.LastChainEnergyRestored:0} Energy" : "";
+                    if (combat.LastChainChargeRestored) recovery += (recovery.Length > 0 ? "  /  " : "") + "+1 movement charge";
+                    riftChain.text = $"RIFT CHAIN x{count}\n<size=14>{recovery}</size>";
+                    riftChain.alpha = Mathf.Clamp01(combat.RiftChainRemaining / .6f);
+                }
+            }
             UpdateProgressionBar();
             UpdateLevelUpBanner();
             UpdateBuildDisplay();
@@ -188,6 +202,21 @@ namespace Phasebreak.Gameplay
             abilityFeedback.rectTransform.anchoredPosition = new Vector2(0f, -210f);
             abilityFeedback.rectTransform.sizeDelta = new Vector2(520f, 42f);
             abilityFeedback.gameObject.SetActive(false);
+            riftChainPanel = CreateRect("Rift Chain Toast", canvasRect);
+            riftChainPanel.anchorMin = riftChainPanel.anchorMax = new Vector2(.5f, 0f);
+            riftChainPanel.anchoredPosition = new Vector2(0f, 200f);
+            riftChainPanel.sizeDelta = new Vector2(330f, 58f);
+            UnityEngine.UI.Image chainSurface = riftChainPanel.gameObject.AddComponent<UnityEngine.UI.Image>();
+            PhasebreakUiTheme.StyleSurface(chainSurface, PhasebreakUiTheme.Panel);
+            chainSurface.raycastTarget = false;
+            riftChain = AddText("Rift Chain", riftChainPanel, 21f, TextAlignmentOptions.Center);
+            riftChain.color = PhasebreakUiTheme.Accent;
+            riftChain.fontStyle = FontStyles.Bold;
+            riftChain.raycastTarget = false;
+            riftChain.rectTransform.anchorMin = riftChain.rectTransform.anchorMax = new Vector2(.5f, .5f);
+            riftChain.rectTransform.anchoredPosition = Vector2.zero;
+            riftChain.rectTransform.sizeDelta = new Vector2(330f, 58f);
+            riftChainPanel.gameObject.SetActive(false);
 
             combatTextLayer = CreateRect("Combat Text", canvasRect);
             Stretch(combatTextLayer);

@@ -56,6 +56,8 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            if (CurrentTarget == null && !ReferenceEquals(CurrentTarget, null))
+                SetTarget(null);
             if (CurrentTarget != null && (!CurrentTarget.IsAlive || !IsWithinRange(CurrentTarget)))
                 SetTarget(null);
 
@@ -79,14 +81,14 @@ namespace Phasebreak.Gameplay
 
         public void SetTarget(Targetable newTarget)
         {
-            if (newTarget == CurrentTarget)
+            if (ReferenceEquals(newTarget, CurrentTarget))
                 return;
             if (newTarget != null && (!newTarget.IsHostile || !newTarget.IsAlive || !IsWithinRange(newTarget)))
                 return;
 
-            CurrentTarget?.SetSelected(false);
+            if (CurrentTarget != null) CurrentTarget.SetSelected(false);
             CurrentTarget = newTarget;
-            CurrentTarget?.SetSelected(true);
+            if (CurrentTarget != null) CurrentTarget.SetSelected(true);
             TargetChanged?.Invoke(CurrentTarget);
         }
 

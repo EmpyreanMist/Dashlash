@@ -13,6 +13,7 @@ namespace Phasebreak.Gameplay
         private TrailRenderer trail;
         private Material trailMaterial;
         private Coroutine stopRoutine;
+        private ParticleSystem sparks;
 
         private void Awake()
         {
@@ -27,27 +28,52 @@ namespace Phasebreak.Gameplay
             trail.endWidth = 0f;
             trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             trail.receiveShadows = false;
-            Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default");
+            Shader shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Particles/Unlit");
             if (shader != null)
             {
                 trailMaterial = new Material(shader);
                 trail.material = trailMaterial;
             }
             trail.emitting = false;
+            GameObject burst = new("Rift Kill Sparks");
+            burst.transform.SetParent(transform, false);
+            burst.transform.localPosition = Vector3.up;
+            sparks = burst.AddComponent<ParticleSystem>();
+            sparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = sparks.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.startLifetime = .24f;
+            main.startSpeed = 2.2f;
+            main.startSize = .065f;
+            main.maxParticles = 32;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startColor = dashColor;
+            var emission = sparks.emission;
+            emission.enabled = false;
+            if (trailMaterial != null) sparks.GetComponent<ParticleSystemRenderer>().sharedMaterial = trailMaterial;
         }
 
         private void OnEnable()
         {
             if (combat != null)
+            {
                 combat.AbilityStarted += HandleAbilityStarted;
+                combat.RiftChainKill += HandleChainKill;
+            }
         }
 
         private void OnDisable()
         {
             if (combat != null)
+            {
                 combat.AbilityStarted -= HandleAbilityStarted;
+                combat.RiftChainKill -= HandleChainKill;
+            }
             if (stopRoutine != null)
                 StopCoroutine(stopRoutine);
+            if (trail != null) trail.emitting = false;
+            if (sparks != null) sparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         private void OnDestroy()
@@ -63,12 +89,17 @@ namespace Phasebreak.Gameplay
             if (stopRoutine != null)
                 StopCoroutine(stopRoutine);
             Color color = value.Type == AbilityExecutionType.Charge ? chargeColor : dashColor;
+            int intensity = Mathf.Min(combat.RiftChainCount, 4);
+            trail.time = .12f + intensity * .015f;
+            trail.startWidth = .2f + intensity * .025f;
             trail.startColor = color;
             trail.endColor = new Color(color.r, color.g, color.b, 0f);
             trail.Clear();
             trail.emitting = true;
             stopRoutine = StartCoroutine(StopAfter(Mathf.Max(0.08f, value.Duration)));
         }
+
+        private void HandleChainKill(int count) => sparks.Emit(6 + Mathf.Min(count, 4) * 3);
 
         private IEnumerator StopAfter(float duration)
         {

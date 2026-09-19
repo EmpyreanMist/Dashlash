@@ -26,10 +26,10 @@ MonoBehaviour:
   - riftblade-rift-execution
   choiceGroup: 
   effect: 22
-  secondaryEffect: 0
-  targetAbilityId: 
+  secondaryEffect: 8
+  targetAbilityId: phase-lunge
   grantedAbilityId: 
   synergyTag: 0
   effectValuePerRank: 1
-  secondaryValuePerRank: 0
+  secondaryValuePerRank: 0.35
   presentationPosition: {x: 0.5, y: 0.13}

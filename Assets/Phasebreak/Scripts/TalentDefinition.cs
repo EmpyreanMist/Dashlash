@@ -38,7 +38,7 @@ namespace Phasebreak.Gameplay
             TalentEffect.HeavyImpact => $"After taking damage, your next Crushing Blow deals {value:P0} more damage.",
             TalentEffect.LastBastion => $"At low Health, gain {value:P0} Defense and offensive stability.",
             TalentEffect.MobilityMomentum => $"Movement abilities grant {value:P0} Power for 4 seconds.",
-            TalentEffect.TeleportKillRecovery => $"Mobility kills restore {value:0} Energy and refresh movement pressure.",
+            TalentEffect.TeleportKillRecovery => $"Mobility kills restore {value:0} Energy. Riftblade charge recovery requires Void Circuit or equipment.",
             TalentEffect.MobilityKillCircuit => "Mobility kills immediately restore a movement charge.",
             _ => string.Empty
         };

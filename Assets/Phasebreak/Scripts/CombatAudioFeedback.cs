@@ -68,6 +68,8 @@ namespace Phasebreak.Gameplay
         private void HandleImpact(AbilityPresentationEvent value)
         {
             source.pitch = value.Critical ? 0.72f : value.Index == 1 ? 0.82f : 1f;
+            if (value.Type is AbilityExecutionType.PhaseLunge or AbilityExecutionType.Charge && combat.RiftChainCount > 0)
+                source.pitch = 1f + Mathf.Min(combat.RiftChainCount, 5) * .07f;
             source.PlayOneShot(impact, value.Critical ? volume * 1.5f : volume);
         }
 
