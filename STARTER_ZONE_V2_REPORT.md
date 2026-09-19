@@ -1,5 +1,7 @@
 # StarterZone_V2 implementation report
 
+This report records the original world-build and QA pass. `PROJECT_STATE.md` records the current committed baseline and the later scene repair. The checks below were made at different times; they are not a fresh end-to-end regression claim.
+
 ## World and MapMagic
 
 - Scene: `Assets/Phasebreak/Scenes/StarterZone_V2.unity`, first in build settings. `Assets/dashlash.unity` remains second as a fallback.
@@ -28,7 +30,7 @@
 - The one-command **Phasebreak > Rebuild Complete Starter Zone V2** workflow was run successfully after the final builder changes. The saved scene reloaded with four terrain tiles, three terrain layers, 13 Northgate cottages, one market/training square, disabled runtime MapMagic generation, and an 1800 m camera clip. It entered Play Mode with 26 encounter zones and no live console errors.
 - Terrain tile expansion is disabled at runtime, pine materials use URP cutout rendering, and nearby encounter activation limits live enemy components. A sampled Editor Play view reported 1,238 draw calls and about 2.68 million triangles. These are Editor statistics, not a standalone performance verdict.
 
-Game view QA captures: `STARTER_ZONE_V2_QA/v2-final-spawn.png`, `v2-final-combat.png`, `v2-skytest.png` (vista), and `v2-final-northgate.png`.
+Local Game view QA captures were written under ignored `STARTER_ZONE_V2_QA/`; they are not part of the Git baseline.
 
 ## Known issues
 
@@ -39,4 +41,4 @@ Game view QA captures: `STARTER_ZONE_V2_QA/v2-final-spawn.png`, `v2-final-combat
 
 ## Rebuild and files
 
-Use **Phasebreak > Rebuild Complete Starter Zone V2**. The scene and graph are generated from `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`; runtime terrain and encounter code is in `Assets/Phasebreak/Scripts/FrontierTerrainNode.cs` and `FrontierEncounterZone.cs`. The old scene and gameplay source remain as fallback. No remote push or local commit was made.
+Use **Phasebreak > Rebuild Complete Starter Zone V2**. The scene and graph are generated from `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`; runtime terrain and encounter code is in `Assets/Phasebreak/Scripts/FrontierTerrainNode.cs` and `FrontierEncounterZone.cs`. The old scene and gameplay source remain as fallback. The final Git/push state is recorded in `PROJECT_STATE.md` and the repository history.

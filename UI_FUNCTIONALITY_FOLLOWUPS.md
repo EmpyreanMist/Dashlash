@@ -1,5 +1,7 @@
 # PHASEBREAK UI and functionality follow-ups — 2026-09-19
 
+`PROJECT_STATE.md` is the current implementation baseline. This list tracks work and regression coverage still open after the UI pass.
+
 This is the honest remainder after the UI quality pass, not a claim that the systems below failed.
 
 ## Missing interfaces

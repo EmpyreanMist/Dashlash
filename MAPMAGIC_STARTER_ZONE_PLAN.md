@@ -1,5 +1,7 @@
 # The Shattered Frontier: starter zone V2
 
+Status: implemented in the build-first scene. `PROJECT_STATE.md` records current verification and remaining test limits; this file describes the intended layout and rebuild workflow.
+
 ## World layout
 
 - Four fixed 1 km MapMagic tiles form a 2 km by 2 km region, with southwest spawn at approximately (145, 155). The accepted seed is `PHASEBREAK_STARTER_V2_SEED = 271828`.

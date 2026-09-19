@@ -2,6 +2,8 @@
 
 Den fullständiga valbara funktions- och statuskatalogen finns i `PHASEBREAK_MASTER_FEATURE_CATALOG.md`. Roadmapen används för den korta fasöversikten; masterkatalogen är projektets detaljerade backlog och beslutslista.
 
+For the verified implementation baseline and test limits, see `PROJECT_STATE.md`. Earlier milestone descriptions below are historical snapshots when a newer section supersedes them.
+
 ## Vision
 
 Third-person open-world action RPG with target-based MMO readability, instanced dungeons, expressive class builds and a future multiplayer path. Core, Relics, Sigils, tags, cross-slot sets and a Wildcard Artifact form Phasebreak's own build identity.
@@ -31,7 +33,7 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 
 - `B` — Inventory bag.
 - `C` — Character, equipment, final stats, specialization, active sets and build modifiers.
-- `T` — Talents placeholder; the full talent tree is intentionally deferred.
+- `T` — open the implemented first-pass specialization talent trees. Balance and further talent content remain open.
 - `Escape` — close the active gameplay menu.
 - Right mouse button on a corpse — open that corpse's private loot container.
 - Corpses stop combat participation immediately, retain their own generated drops and remain for 60 seconds by default. Items or Take All transfer through the existing inventory/save path.
@@ -85,7 +87,7 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 ## Current small update — medieval starter realm and first monster
 
 - Camera zoom is normalized across common mouse-wheel input scales, moves 3.5 world units per notch and supports a 0.05–18 range so the camera can pass into the player model while retaining camera collision.
-- The prototype arena has been replaced visually by a 420 × 420 metre medieval starter realm built from the CC0 Quaternius Medieval Village MegaKit Standard. It includes rolling terrain, roads, three settlement clusters, three ruins, woodland, field stones and the existing Rift Crypt connection.
+- The earlier prototype arena was replaced visually by a 420 × 420 metre medieval starter realm built from the CC0 Quaternius Medieval Village MegaKit Standard. That scene remains as `dashlash.unity`; the build-first scene is now `StarterZone_V2.unity`.
 - Ordinary melee-enemy hits retain flash, animation event and camera feedback but no longer displace the player. Explicit special/boss knockback remains supported.
 - `Risen Zombie` is the first imported production-style monster visual. One reusable prefab powers 36 ground-aligned, individually rotated instances grouped around ruins, roads, forests, fields and outer-region encounter pockets; the player start and settlement interiors remain quiet.
 - Zombie AI supports idle, aggro, chase, readable windup/attack/recovery, stagger, immediate death, corpse loot, leash and return-to-spawn with health reset.
@@ -97,7 +99,7 @@ The first data-driven talent trees, point spending and respec flow are now imple
 
 ## Goal 6 — Living Starter Zone foundation
 
-- The player starts in Northgate rather than the old test clearing. Six named, visually differentiated NPCs connect Northgate, Westmere and Eastwatch.
+- In the older `dashlash.unity` scene the player starts in Northgate. In build-first `StarterZone_V2.unity`, the player starts in the southwest opening pocket and travels to Northgate. Six named NPCs connect Northgate, Westmere and Eastwatch.
 - The existing zombie population now includes five heavier Brutes and five faster Skirmishers, with distinct health, speed, attack cadence, rewards and target rank.
 - Six sequential quests now cover NPC dialogue, overworld zombie combat, ruin discovery and the Rift Crypt completion/reward loop. Objectives, discovered locations, completed quests and Rift Marks persist locally.
 - `E` interacts with nearby NPCs; `J` opens the field journal and `M` opens a schematic world map. The HUD shows the active objective, NPC interaction prompt and map/compass markers.

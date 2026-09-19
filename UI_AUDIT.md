@@ -1,5 +1,7 @@
 # Phasebreak UI audit — 2026-09-19
 
+This is a before/after audit of the UI quality pass. The baseline classification table below describes the pre-pass UI; the outcome section describes what changed. See `PROJECT_STATE.md` and `UI_FUNCTIONALITY_FOLLOWUPS.md` for current status and remaining QA.
+
 Baseline: `dashlash` in Play Mode at 1280×720. Screenshots and runtime hierarchy were inspected before edits; code paths were checked for screens that require combat or loot state. Classification is for the current presentation, not a claim about underlying gameplay completeness.
 
 | Interface | Status | Evidence / action |

@@ -3,6 +3,8 @@
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
 > Senast uppdaterad: 2026-09-19. Statuspunkterna skiljer mellan implementerat spelinnehåll och förslag; se `CHAT_COMMAND_REGISTRY_PROPOSAL.md` för föreslagen lokal chatt och utvecklarkommandon.
 
+`PROJECT_STATE.md` is the authoritative verified implementation snapshot. This catalog also preserves historical phase goals and future design options; older checkboxes below are not a substitute for the current scene and code audit.
+
 ## Så används dokumentet
 
 Det här är projektets centrala lista över befintliga system, planerade system och rimliga alternativ som kan väljas senare. Den beskriver både gameplay, content, UX, grafik, sprites, animation, ljud, teknik, multiplayer och produktion.
@@ -81,11 +83,11 @@ Gemensamma krav:
 Nuvarande status:
 
 - [x] Combat.
-- [x] XP till level 3.
+- [x] XP och lokal progression till level 10 i nuvarande spel.
 - [x] Loot och equipment.
 - [x] En dungeonprototyp.
 - [ ] Open-world exploration loop.
-- [ ] Quest loop.
+- [x] Första sex questen med NPC, journal, objektiv och belöningar; mer content återstår.
 - [ ] Craft/dismantle loop.
 - [ ] Endgame loop.
 
@@ -125,7 +127,7 @@ Nuvarande status:
 - Mushjul — zoom.
 - `B` — Inventory.
 - `C` — Character.
-- `T` — Talents-placeholder.
+- `T` — första implementerade talentträden.
 - `Escape` — stäng gameplay-meny/clear target.
 - Högerklick på corpse — loot.
 
@@ -162,8 +164,8 @@ Nuvarande status:
 - [x] HUD-navigation med hover-tooltip.
 - [x] Ingen gameplay-pause via menyer.
 - [ ] Settings-panel.
-- [ ] Quest journal-panel.
-- [ ] Map-panel.
+- [x] Quest journal-panel i separat menufamilj; samma modalflöde som inventory/character/talents.
+- [x] Schematisk Map-panel i samma modalflöde.
 - [ ] Social-panel.
 - [ ] Codex/collection-panel.
 
@@ -439,7 +441,7 @@ Rekommenderad första vertical slice:
 ### PROG-01 — Leveling 🟨
 
 - [x] XP från kills.
-- [x] Level 1–3 prototype.
+- [x] Level 1–10 i nuvarande spel; level 3 var den äldre prototypgränsen.
 - [x] Level-based power/health.
 - [x] Passive vid level 2.
 - [x] Specialization vid level 3.
@@ -447,15 +449,15 @@ Rekommenderad första vertical slice:
   - [ ] 30 för tight initial release.
   - [ ] 50.
   - [ ] 60 klassisk MMO-struktur.
-- [ ] XP från quests, exploration och dungeons.
+- [x] XP från quests och fiender; exploration och dungeonbalans återstår.
 - [ ] Rested XP.
 - [ ] Account-wide catch-up.
 
-### TALENT-01 — Talent UI hook ✅
+### TALENT-01 — First talent trees 🟨
 
 - [x] `T` och HUD-knapp.
-- [x] Placeholder panel.
-- [ ] Full talent tree.
+- [x] Första datadrivna specialization-träden, poäng, krav och respec.
+- [ ] Fullt innehåll, balans och spellbook/action-bar-integration.
 
 ### TALENT-02 — Talentmodell 🔀
 
@@ -744,12 +746,13 @@ Kandidater:
 ### WORLD-01 — Open world 🟨
 
 - [x] Första 420 × 420 meter stora startregionen med terrängvariation, vägnät och tydliga combat-/bebyggelseområden.
+- [x] `StarterZone_V2` är nu byggförst: fyra fasta MapMagic-tiles över 2 × 2 km, sydvästlig start, sex quest-NPC:er, tre bosättningar och 26 encounter-zoner.
 - [x] CC0-källpaket: Quaternius Medieval Village MegaKit Standard med 176 importerade FBX-moduler och lokalt bevarad licensfil.
 - [x] Tre bebyggelsekluster, tre ruinområden, Rift Crypt-anslutning, 180 träd och 48 stenformationer.
 - [ ] World streaming/scene partitioning.
 - [ ] Region boundaries och level bands.
 - [x] Första vägnät och navigation landmarks.
-- [ ] Towns/hubs.
+- [x] Northgate, Westmere och Eastwatch som första bosättningar; vendors och komplett hub-ekonomi återstår.
 - [ ] Wilderness camps.
 - [x] Första dungeonentrén från regionen genom Rift Crypt.
 - [x] Första utforskningsruinerna; secrets/rewards återstår.
@@ -786,13 +789,13 @@ Kandidater:
 - [ ] Bounties.
 - [ ] Invasions/rift storms.
 
-### WORLD-04 — Map och navigation ⬜
+### WORLD-04 — Map och navigation 🟨
 
-- [ ] World map.
-- [ ] Minimap eller compass.
+- [x] Schematisk world map.
+- [x] Minimap och compass-markörer.
 - [ ] Fog of war.
 - [ ] Pins och custom markers.
-- [ ] Quest tracking.
+- [x] Quest tracking i HUD och map-markörer.
 - [ ] Dungeon difficulty/loot preview.
 - [ ] Party member markers.
 - [ ] Coordinates.
@@ -933,23 +936,23 @@ Kandidater:
 
 ## 15. Quests, narrative och world state
 
-### QUEST-01 — Quest system ⬜
+### QUEST-01 — Quest system 🟨
 
-- [ ] QuestDefinition ScriptableObject/data.
-- [ ] Main quest.
+- [x] QuestDefinition ScriptableObject/data och sex skapade quests.
+- [x] Första sekventiella questkedjan.
 - [ ] Side quests.
 - [ ] Class quests.
-- [ ] Dungeon quests.
+- [x] Första Rift Crypt-questen.
 - [ ] Daily/weekly quests.
 - [ ] Bounties.
-- [ ] Multi-step objectives.
+- [x] Questkedja med NPC-, strids-, upptäckts- och dungeonobjektiv.
 - [ ] Branching choices.
-- [ ] Rewards och prerequisites.
-- [ ] Quest tracker/journal/map pins.
+- [x] Rewards och prerequisites i första questkedjan.
+- [x] Quest tracker, journal och map pins.
 
-### NARRATIVE-01 — Presentation ⬜
+### NARRATIVE-01 — Presentation 🟨
 
-- [ ] Dialogue boxes.
+- [x] Grundläggande NPC-dialog/questinteraktion; produktionsdialog återstår.
 - [ ] In-world dialogue.
 - [ ] Cinematics.
 - [ ] Camera sequences.
@@ -1073,11 +1076,11 @@ Krav för riktig MMO:
 
 - [x] Inventory med dark sci-fi/fantasy-window, filter, scroll-grid, selection och icon-first items.
 - [x] Character/equipment med paper doll, 16 tydligt namngivna slots och separerad build analysis.
-- [x] Talents placeholder.
+- [x] Talents first-pass trees and respec.
 - [x] Corpse loot delar samma slot- och tooltip-presentation som inventory.
-- [ ] Talents complete.
-- [ ] Map.
-- [ ] Quest journal.
+- [ ] Talents production-complete.
+- [x] Schematic world map.
+- [x] Six-quest journal.
 - [ ] Social/guild.
 - [ ] Crafting.
 - [ ] Collections/codex.
@@ -1597,16 +1600,16 @@ Guardrails att välja:
   - Ranged, caster och bruiser först; därefter assassin/support.
   - Interruptible telegraphs, leash, group aggro och elite modifiers.
   - Rift Crypt som 10–15 minuters vertical slice med riskrum, bossfaser och unik reward.
-- [ ] **Fas 8 — Open-world foundation.**
+- [ ] **Fas 8 — Utöka den befintliga open-world-grunden.**
   - Zoner/streaming, vägar, landmarks, spawn-områden och dungeonentréer.
   - Safe hub, vendors, stash, fast travel samt world map/minimap.
   - World events och quest/objective foundation; dag/natt och väder efter att content finns.
-- [ ] **Fas 9 — Talent tree, status effects och full Vanguard identity.**
+- [ ] **Fas 9 — Utöka de första talentträden, status effects och full Vanguard identity.**
   - Berserker, Bulwark och Riftblade som kompletta spelstilar.
   - Aktiva val, passives, ability modifiers, respec och fler ability-slots.
   - Bleed, Burn, Vulnerable och Void-mark med item/tag/set-synergier.
 - [ ] **Fas 10 — Item instances, affixes, loot tables och dismantling.**
-- [ ] **Fas 11 — Quests, NPCs, narrative och hub-content.**
+- [ ] **Fas 11 — Utöka den första questkedjan, NPCs, narrative och hub-content.**
 - [ ] **Fas 12 — Co-op networking vertical slice.**
 - [ ] **Fas 13 — Content pipeline, polish och performance.**
 - [ ] **Fas 14 — MMO backend/social systems**, endast efter att co-op och core loop är stabila.
