@@ -1,7 +1,7 @@
 # PHASEBREAK — Master Feature Catalog
 
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
-> Senast uppdaterad: 2026-09-18. Senast committade baslinje: `5ff53dc`; zoom, 420 × 420-startregion, no-knockback och den första återanvändbara zombie-fienden är implementerade men ännu inte committade.
+> Senast uppdaterad: 2026-09-19. Statuspunkterna skiljer mellan implementerat spelinnehåll och förslag; se `CHAT_COMMAND_REGISTRY_PROPOSAL.md` för föreslagen lokal chatt och utvecklarkommandon.
 
 ## Så används dokumentet
 
@@ -1007,6 +1007,8 @@ Krav för riktig MMO:
 
 ### CHAT-01 — Communication ⬜
 
+- [ ] Lokal textchatt för den nuvarande single-player-versionen, tydligt märkt som lokal och utan nätverksleverans.
+- [ ] Kompakt bottom-left-fält med scrollback, Enter för fokus/skicka, Escape för avbryt/stäng, historik och kommandoförslag.
 - [ ] Local/say.
 - [ ] Party/raid.
 - [ ] Guild.
@@ -1016,6 +1018,14 @@ Krav för riktig MMO:
 - [ ] Text filters och reporting.
 - [ ] Voice chat.
 - [ ] Speech-to-text/text-to-speech accessibility.
+
+### CHAT-DEV-01 — Local command registry and input focus ⬜
+
+- [ ] Gemensam input-focus gate för movement, camera, combat, targeting, menyer, NPC/dungeon interaction och arena reset medan chatten skriver text.
+- [ ] Registry per command: namn, aliases, beskrivning, usage, kategori, `developerOnly` och callback; genererad `/help` och `/help <command>`.
+- [ ] Läsbara lokala meddelanden och fel; säkra argument/koordinater; developer commands avstängda i release utan uttrycklig behörighet.
+- [ ] Föreslagna kommandogrupper: general, player, movement, world, progression och debug enligt `CHAT_COMMAND_REGISTRY_PROPOSAL.md`.
+- [ ] Systemadaptrar för debug invulnerability, Energy, progression/level, teleport/respawn, fly/noclip och reward-free enemy/encounter reset. Befintlig gameplay-state behåller ägarskap.
 
 ### MATCH-01 — Group finding ⬜
 

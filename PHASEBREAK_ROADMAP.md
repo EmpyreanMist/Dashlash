@@ -95,6 +95,10 @@ Third-person open-world action RPG with target-based MMO readability, instanced 
 
 Build the first real combat-content slice: ranged, caster and bruiser enemies; interruptible telegraphs, leash/group aggro and an elite modifier; then turn Rift Crypt into a polished 10–15 minute dungeon with an optional risk room, boss phases and a unique reward. Item-instance loot tables should follow before broad open-world expansion.
 
+## Proposed focused next step — local chat and developer commands
+
+The current single-player slice would benefit from a compact local chat/command console before more content work. This is a proposal, not an implemented milestone. `CHAT_COMMAND_REGISTRY_PROPOSAL.md` records the requested command set, shared input-focus gate, registry contract, existing gameplay systems to reuse, developer access policy, and regression checks. Build the focus gate and registry first; flight, noclip, forced level changes, and reward-free mass enemy actions need explicit system adapters. Plain chat text remains local until multiplayer chat is built.
+
 ## Multiplayer guardrails
 
 Keep authoritative combat results, inventory mutations and loot grants behind replaceable service boundaries. Local saves are suitable for the prototype only; an MMO version must move character state, drops and validation to the server.

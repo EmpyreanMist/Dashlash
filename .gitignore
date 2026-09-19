@@ -23,6 +23,11 @@
 /[Uu]ser[Ss]ettings/
 *.log
 
+# Local visual QA captures and temporary in-Assets camera screenshots
+/STARTER_ZONE_V2_QA/
+/Assets/Phasebreak/Scenes/v2-*.png
+/Assets/Phasebreak/Scenes/v2-*.png.meta
+
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
 *.blend1.meta
