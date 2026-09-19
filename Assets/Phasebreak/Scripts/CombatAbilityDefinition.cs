@@ -15,6 +15,7 @@ namespace Phasebreak.Gameplay
     {
         public string id;
         public string displayName;
+        [TextArea(2, 4)] public string description;
         public string key = "1";
         [Min(0f)] public float damage = 5f;
         [Min(0.1f)] public float range = 2.5f;

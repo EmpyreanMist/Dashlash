@@ -42,6 +42,9 @@ namespace Phasebreak.Gameplay
         private InputAction moveAction;
         private InputAction strafeAction;
         private InputAction jumpAction;
+        private InputAction autoRunAction;
+        private bool autoRun;
+        public bool AutoRun => autoRun;
         private InputAction teleportAction;
         private InputAction descendAction;
         private Vector3 planarVelocity;
@@ -237,6 +240,7 @@ namespace Phasebreak.Gameplay
             PhasebreakSettings.RegisterCompositePart("strafe.right", strafeAction, 2);
 
             jumpAction = PhasebreakSettings.Button("jump", "Jump");
+            autoRunAction = PhasebreakSettings.Button("autorun", "Toggle auto run");
             teleportAction = PhasebreakSettings.Button("teleport", "Godmode cursor teleport");
             descendAction = PhasebreakSettings.Button("strafe.left", "Fly descend");
             airDashesRemaining = airDashesPerJump;
@@ -247,6 +251,7 @@ namespace Phasebreak.Gameplay
             moveAction.Enable();
             strafeAction.Enable();
             jumpAction.Enable();
+            autoRunAction.Enable();
             teleportAction.Enable();
             descendAction.Enable();
         }
@@ -263,6 +268,8 @@ namespace Phasebreak.Gameplay
             moveAction.Disable();
             strafeAction.Disable();
             jumpAction.Disable();
+            autoRunAction.Disable();
+            autoRun = false;
             teleportAction.Disable();
             descendAction.Disable();
         }
@@ -272,11 +279,13 @@ namespace Phasebreak.Gameplay
             PhasebreakSettings.Unregister(moveAction);
             PhasebreakSettings.Unregister(strafeAction);
             PhasebreakSettings.Unregister(jumpAction);
+            PhasebreakSettings.Unregister(autoRunAction);
             PhasebreakSettings.Unregister(teleportAction);
             PhasebreakSettings.Unregister(descendAction);
             moveAction.Dispose();
             strafeAction.Dispose();
             jumpAction.Dispose();
+            autoRunAction.Dispose();
             teleportAction.Dispose();
             descendAction.Dispose();
         }
@@ -311,7 +320,13 @@ namespace Phasebreak.Gameplay
             if (blocked && !inputWasBlocked)
                 ResetMotion();
             inputWasBlocked = blocked;
+            if (!blocked && autoRunAction.WasPressedThisFrame()) autoRun = !autoRun;
             Vector2 input = blocked ? Vector2.zero : Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
+            if (!blocked && autoRun)
+            {
+                if (input.y < -.01f) autoRun = false;
+                else input.y = 1f;
+            }
             float strafeInput = blocked ? 0f : strafeAction.ReadValue<float>();
             if ((debugFly || debugNoClip) && descendAction.IsPressed())
                 strafeInput = Mathf.Max(0f, strafeInput);

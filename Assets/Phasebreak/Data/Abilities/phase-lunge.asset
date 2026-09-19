@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
   id: phase-lunge
   displayName: Phase Lunge
+  description: Lunge through the rift to strike a nearby target.
   key: 3
   damage: 6
   range: 7

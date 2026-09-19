@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
   id: strike
   displayName: Strike
+  description: A quick close-range weapon strike.
   key: 1
   damage: 5
   range: 2.4

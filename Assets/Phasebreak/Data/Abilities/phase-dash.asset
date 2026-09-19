@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
   id: phase-dash
   displayName: Phase Dash
+  description: Dash in your movement direction without requiring a target.
   key: 4
   damage: 0
   range: 0.1
