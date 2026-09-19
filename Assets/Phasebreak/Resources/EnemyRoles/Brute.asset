@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e30f0665052877241ba7fc8248b9d57a, type: 3}
+  m_Name: Brute
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.EnemyRoleDefinition
+  role: 1
+  displayName: Puglin
+  localModelName: Puglin
+  health: 85
+  damage: 3
+  experience: 28
+  moveSpeed: 2.25
+  awarenessRange: 10
+  leashRange: 18
+  attackRange: 2.25
+  windup: 1.15
+  active: 0.2
+  recovery: 1.35
+  ranks:
+  - rank: 0
+    healthMultiplier: 1
+    damageMultiplier: 1
+    experienceMultiplier: 1
+    scaleMultiplier: 1
+    colorVariant: 1
+  - rank: 1
+    healthMultiplier: 1.4
+    damageMultiplier: 1.2
+    experienceMultiplier: 1.2
+    scaleMultiplier: 1.07
+    colorVariant: 2
+  - rank: 2
+    healthMultiplier: 2
+    damageMultiplier: 1.4
+    experienceMultiplier: 1.5
+    scaleMultiplier: 1.16
+    colorVariant: 3

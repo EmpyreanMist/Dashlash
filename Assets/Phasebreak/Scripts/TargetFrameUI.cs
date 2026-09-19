@@ -83,7 +83,9 @@ namespace Phasebreak.Gameplay
             if (rankLabel != null)
             {
                 bool boss = target.GetComponent<RiftWardenBoss>() != null || target.Rank == UnitRank.Boss;
-                rankLabel.text = boss ? "BOSS" : target.Rank == UnitRank.Normal ? string.Empty : target.Rank.ToString().ToUpperInvariant();
+                MeleeEnemy enemy = target.GetComponent<MeleeEnemy>();
+                rankLabel.text = boss ? "BOSS" : enemy != null && enemy.Rank == EnemyRank.Veteran ? "VETERAN" :
+                    target.Rank == UnitRank.Normal ? string.Empty : target.Rank.ToString().ToUpperInvariant();
                 rankLabel.gameObject.SetActive(!string.IsNullOrEmpty(rankLabel.text));
             }
             healthBar?.SetValue(target.CurrentHealth, target.MaxHealth);

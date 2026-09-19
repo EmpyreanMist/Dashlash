@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace Phasebreak.Gameplay
 {
+    public enum EnemyRole { Zombie, Brute, Skirmisher }
+    public enum EnemyRank { Normal, Veteran, Elite }
+
     [RequireComponent(typeof(CharacterController))]
     public sealed class MeleeEnemy : MonoBehaviour, ICombatTarget, ICombatCastSource
     {
@@ -51,17 +54,27 @@ namespace Phasebreak.Gameplay
         private Quaternion spawnRotation;
         private Vector3 spawnScale;
         private Vector3 telegraphBaseScale = Vector3.one;
+        private Vector3 telegraphOriginalScale = Vector3.one;
         private bool attackFired;
         private bool defeatRewardGranted;
         private Coroutine reactionRoutine;
+        private EnemyRole role;
+        private EnemyRank enemyRank;
+        private float nextSidestepAt;
+        private int sidestepDirection = 1;
+        private EnemyRoleDefinition roleDefinition;
 
         public int CurrentHealth { get; private set; }
         public int MaxHealth => maxHealth;
+        public int AttackDamage => attackDamage;
+        public EnemyRole Role => role;
+        public EnemyRank Rank => enemyRank;
         public bool IsAlive => state != EnemyState.Dead;
         public string StateName => state.ToString();
         public int AttackCount { get; private set; }
         public bool IsCasting => state == EnemyState.Windup;
-        public string CastName => "Savage Strike";
+        public string CastName => role == EnemyRole.Brute ? "Crushing Swing" :
+            role == EnemyRole.Skirmisher ? "Ember Bolt" : "Savage Strike";
         public float CastProgress => !IsCasting || windupDuration <= 0f
             ? 0f : 1f - Mathf.Clamp01(stateRemaining / windupDuration);
         public bool IsCastInterruptible => true;
@@ -72,6 +85,45 @@ namespace Phasebreak.Gameplay
         public bool IsDead => state == EnemyState.Dead;
 
         public void SetRespawnEnabled(bool enabled) => respawnEnabled = enabled;
+
+        public void ConfigureRole(EnemyRole newRole, EnemyRank newRank)
+        {
+            role = newRole;
+            enemyRank = newRank;
+            roleDefinition = newRole == EnemyRole.Zombie ? null :
+                Resources.Load<EnemyRoleDefinition>("EnemyRoles/" + newRole);
+            if (roleDefinition != null)
+            {
+                maxHealth = roleDefinition.health;
+                attackDamage = roleDefinition.damage;
+                experienceReward = roleDefinition.experience;
+                moveSpeed = roleDefinition.moveSpeed;
+                awarenessRange = roleDefinition.awarenessRange;
+                leashRange = roleDefinition.leashRange;
+                attackRange = roleDefinition.attackRange;
+                windupDuration = roleDefinition.windup;
+                activeDuration = roleDefinition.active;
+                recoveryDuration = roleDefinition.recovery;
+            }
+            EnemyRoleDefinition.RankTuning tuning = roleDefinition != null ? roleDefinition.Tuning(newRank) :
+                new EnemyRoleDefinition.RankTuning { healthMultiplier = 1f, damageMultiplier = 1f,
+                    experienceMultiplier = 1f };
+            maxHealth = Mathf.RoundToInt(maxHealth * tuning.healthMultiplier);
+            attackDamage = Mathf.Max(1, Mathf.CeilToInt(attackDamage * tuning.damageMultiplier));
+            experienceReward = Mathf.RoundToInt(experienceReward * tuning.experienceMultiplier);
+            CurrentHealth = maxHealth;
+            telegraphBaseScale = telegraphOriginalScale * (role == EnemyRole.Brute ? 1.45f : 1f);
+            Targetable identity = GetComponent<Targetable>();
+            string name = roleDefinition != null ? roleDefinition.displayName : "Zombie";
+            identity?.Configure((newRank == EnemyRank.Normal ? "" : newRank + " ") + name,
+                TargetFaction.Hostile, newRank == EnemyRank.Elite ? 3 : newRank == EnemyRank.Veteran ? 2 : 1);
+            identity?.SetRank(newRank == EnemyRank.Elite ? UnitRank.Elite : newRank == EnemyRank.Veteran ? UnitRank.Rare : UnitRank.Normal);
+            if (newRole != EnemyRole.Zombie)
+            {
+                (GetComponent<EnemyRoleVisual>() ?? gameObject.AddComponent<EnemyRoleVisual>()).Configure(newRole, newRank, roleDefinition);
+                renderers = GetComponentsInChildren<Renderer>(true);
+            }
+        }
 
         public void Configure(Transform newTarget, Transform telegraph)
         {
@@ -90,7 +142,7 @@ namespace Phasebreak.Gameplay
             spawnRotation = transform.rotation;
             spawnScale = transform.localScale;
             if (telegraphVisual != null)
-                telegraphBaseScale = telegraphVisual.localScale;
+                telegraphOriginalScale = telegraphBaseScale = telegraphVisual.localScale;
             CurrentHealth = maxHealth;
             if (target == null)
             {
@@ -210,6 +262,21 @@ namespace Phasebreak.Gameplay
 
         private void TickChase(Vector3 toTarget, float distance)
         {
+            if (role == EnemyRole.Skirmisher)
+            {
+                RotateToward(toTarget);
+                Vector3 direction = Vector3.zero;
+                if (distance < 5f) direction = -toTarget.normalized;
+                else if (distance > 9f) direction = toTarget.normalized;
+                else if (Time.time >= nextSidestepAt)
+                { nextSidestepAt = Time.time + 1.6f; sidestepDirection = -sidestepDirection; }
+                if (direction == Vector3.zero)
+                    direction = Vector3.Cross(Vector3.up, toTarget.normalized) * sidestepDirection * .55f;
+                controller.Move(direction * (moveSpeed * Time.deltaTime));
+                if (distance >= 5f && distance <= attackRange && HasLineOfSight())
+                    SetState(EnemyState.Windup, windupDuration);
+                return;
+            }
             if (distance <= attackRange)
             {
                 SetState(EnemyState.Windup, windupDuration);
@@ -265,6 +332,15 @@ namespace Phasebreak.Gameplay
             if (playerHealth == null || !playerHealth.IsAlive)
                 return;
 
+            if (role == EnemyRole.Skirmisher)
+            {
+                Vector3 origin = transform.position + Vector3.up * 1.25f + transform.forward * .7f;
+                Vector3 direction = (target.position + Vector3.up * .45f - origin).normalized;
+                EnemyProjectile.Spawn(origin, direction, this, attackDamage);
+                AttackCount++;
+                return;
+            }
+
             Vector3 toPlayer = target.position - transform.position;
             toPlayer.y = 0f;
             if (toPlayer.magnitude > attackRange + 0.35f || Vector3.Angle(transform.forward, toPlayer) > attackArc * 0.5f)
@@ -272,6 +348,16 @@ namespace Phasebreak.Gameplay
 
             if (playerHealth.TakeHit(attackDamage, toPlayer.normalized))
                 AttackCount++;
+        }
+
+        private bool HasLineOfSight()
+        {
+            if (target == null) return false;
+            Vector3 origin = transform.position + Vector3.up * 1.25f;
+            Vector3 direction = target.position + Vector3.up - origin;
+            if (!Physics.Raycast(origin, direction.normalized, out RaycastHit hit, direction.magnitude,
+                ~0, QueryTriggerInteraction.Ignore)) return true;
+            return hit.transform == target || hit.transform.IsChildOf(target);
         }
 
         private void TickTimer(EnemyState nextState)
