@@ -7,7 +7,7 @@
 - Scene: `Assets/Phasebreak/Scenes/StarterZone_V2.unity`. The older `Assets/dashlash.unity` remains available as the builder source and fallback.
 - MapMagic 2.1.19 is vendored under `Assets/MapMagic`. The V2 graph is `Assets/Phasebreak/Data/StarterZoneV2/ShatteredFrontier.asset`; the editor builder is `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`.
 - `FrontierTerrainNode` feeds `HeightOutput200`; fixed-seed `Noise200` and `TexturesOutput200` supply the terrain surface. Seed: `PHASEBREAK_STARTER_V2_SEED = 271828`. Four pinned 1 km tiles cover a 2 km square, with 513-sample heightmaps and a 320 m height scale. MapMagic generates terrain in the Editor; the fixed runtime scene retains the graph for regeneration.
-- `Assets/Phasebreak/Scripts/FrontierEncounterZone.cs` owns local encounter activation and respawn. V2 reuses the existing Player, camera, combat, inventory, XP, quests, NPCs, zombie prefab, and Rift Crypt systems. `WorldQuestHud` uses V2-specific map bounds and markers while this scene is active.
+- `Assets/Phasebreak/Scripts/FrontierEncounterZone.cs` owns local encounter activation and respawn. V2 reuses the existing Player, camera, combat, inventory, XP, quests, NPCs, zombie prefab, and Rift Crypt systems. `WorldQuestHud` reads the V2 `WorldMapDefinition`; terrain bounds come from the bake, and landmark markers follow scene QuestLocation transforms.
 
 ## Layout and encounters
 
@@ -25,4 +25,5 @@
 ## Rebuild and limits
 
 - Use Unity's **Phasebreak > Rebuild Complete Starter Zone V2** editor menu only when regeneration is needed. It copies `dashlash.unity`, builds the V2 graph and authored layout, waits for terrain generation, applies surface/art passes, and saves the V2 scene. It replaces the generated scene, so verify the saved scene before committing: Player, four terrains, MapMagic graph, 26 zones, opening route, Northgate interaction, and Rift entrance.
+- After terrain, splat, or vegetation changes, open V2 and run **Phasebreak > Maps > Bake Current World Map**. The selected `WorldMapDefinition` (or the one matching the open scene) updates `Assets/Phasebreak/Generated/Maps/StarterZone_V2_Terrain.png` and `_Roads.png`. Commit the generated sprites with their `.meta` files and definition. The world map and minimap both read these assets; player and quest markers stay live. The road layer uses high Earth splat weights because the final V2 surface pass removes temporary road meshes.
 - Settlement architecture, ruins, and distant slopes are prototype art. Westmere has no modeled water; Old Mine and onward routes have no destination scenes. Full quest, boss, loot, level-grind, and packaged-build performance regression remains open.

@@ -14,6 +14,10 @@ namespace Phasebreak.Gameplay
         private static WorldQuestHud instance;
         private readonly List<(RectTransform marker, Vector2 world)> miniLocations = new();
         private readonly List<(RectTransform line, Vector2 from, Vector2 to)> mapRoads = new();
+        private WorldMapDefinition mapDefinition;
+        private QuestLocation[] mapLocations;
+        private QuestNpc[] mapNpcs;
+        private FrontierEncounterZone[] mapEncounters;
         private readonly List<GameObject> journalRows = new();
         private QuestJournal journal;
         private Transform player;
@@ -30,6 +34,9 @@ namespace Phasebreak.Gameplay
         private RectTransform toastPanel;
         private RectTransform journalList;
         private RectTransform minimap;
+        private UnityEngine.UI.RawImage minimapTerrain;
+        private UnityEngine.UI.RawImage minimapRoads;
+        private Rect minimapWorldView;
         private RectTransform minimapPlayer;
         private RectTransform minimapObjective;
         private RectTransform mapPlayer;
@@ -63,6 +70,11 @@ namespace Phasebreak.Gameplay
         {
             instance = this;
             journal = FindAnyObjectByType<QuestJournal>();
+            mapDefinition = Resources.LoadAll<WorldMapDefinition>("Maps")
+                .FirstOrDefault(map => map.sceneName == SceneManager.GetActiveScene().name);
+            mapLocations = FindObjectsByType<QuestLocation>();
+            mapNpcs = FindObjectsByType<QuestNpc>();
+            mapEncounters = FindObjectsByType<FrontierEncounterZone>();
             player = journal != null ? journal.transform : FindAnyObjectByType<PlayerProgression>()?.transform;
             mapAction = PhasebreakSettings.Button("worldmap", "World Map");
             journalAction = PhasebreakSettings.Button("journal", "Quest Journal");
@@ -119,12 +131,17 @@ namespace Phasebreak.Gameplay
             if (player != null && minimapPlayer != null)
             {
                 Vector2 playerXZ = new(player.position.x, player.position.z);
-                PositionMarker(minimapPlayer, new Vector2(.5f, .5f));
+                if (minimapTerrain != null) UpdateMinimapView(playerXZ);
+                PositionMarker(minimapPlayer, minimapTerrain != null ? MinimapPosition(playerXZ) : new Vector2(.5f, .5f));
                 PositionMarker(mapPlayer, WorldToMap(playerXZ));
                 foreach ((RectTransform marker, Vector2 world) in miniLocations)
-                    PositionMarker(marker, MiniPosition(playerXZ, world));
+                    PositionMarker(marker, minimapTerrain != null ? MinimapPosition(world) : MiniPosition(playerXZ, world));
                 QuestDefinition active = journal?.ActiveQuest;
-                if (active != null) PositionMarker(minimapObjective, MiniPosition(playerXZ, V2Objective(active)));
+                if (active != null)
+                {
+                    Vector2 objective = ObjectivePosition(active);
+                    PositionMarker(minimapObjective, minimapTerrain != null ? MinimapPosition(objective) : MiniPosition(playerXZ, objective));
+                }
                 minimapPlayer.localRotation = Quaternion.Euler(0f, 0f, -player.eulerAngles.y);
             }
             if (mapOpen && mapSurface != null)
@@ -148,28 +165,32 @@ namespace Phasebreak.Gameplay
             miniPanel = Block("Zone Compass", canvas, Back);
             Pin(miniPanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(310f, 224f));
             PhasebreakUiTheme.StyleSurface(miniPanel.GetComponent<UnityEngine.UI.Image>(), Back);
-            Label("Mini Title", miniPanel, "NORTHGATE FRONTIER", 11f, TextAlignmentOptions.Center,
+            Label("Mini Title", miniPanel, mapDefinition != null ? mapDefinition.displayName.ToUpperInvariant() : "NORTHGATE FRONTIER", 11f, TextAlignmentOptions.Center,
                 new Vector2(.06f, .86f), new Vector2(.94f, .97f), Text);
             Label("North Cue", miniPanel, "N", 11f, TextAlignmentOptions.Center,
                 new Vector2(.46f, .75f), new Vector2(.54f, .84f), Cyan);
             minimap = Block("Mini Map", miniPanel, Raised);
             Stretch(minimap, new Vector2(12f, 12f), new Vector2(-12f, -34f));
             PhasebreakUiTheme.StyleSurface(minimap.GetComponent<UnityEngine.UI.Image>(), Raised, false);
-            if (IsFrontierV2)
+            if (mapDefinition != null && mapDefinition.generatedTerrain != null)
             {
-                MiniLandmark("Northgate", new Vector2(850, 870), new Color(.36f, .75f, .77f));
-                MiniLandmark("Westmere", new Vector2(470, 985), new Color(.36f, .75f, .77f));
-                MiniLandmark("Eastwatch", new Vector2(1390, 1010), new Color(.36f, .75f, .77f));
-                MiniLandmark("Rift Crypt", new Vector2(1450, 480), new Color(.65f, .43f, .82f));
-                MiniLandmark("Ancient Ruins", new Vector2(1020, 1420), new Color(.75f, .52f, .36f));
+                minimap.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
+                minimapTerrain = MiniImage("Terrain", mapDefinition.generatedTerrain);
+                if (mapDefinition.generatedRoads != null)
+                    minimapRoads = MiniImage("Roads", mapDefinition.generatedRoads);
+            }
+            if (mapDefinition != null)
+            {
+                foreach (QuestLocation location in mapLocations)
+                    MiniLandmark(location.DisplayName, new Vector2(location.transform.position.x, location.transform.position.z), Cyan);
             }
             else
             {
-            MiniLandmark("Northgate", new Vector2(-55f, 75f), new Color(.36f, .75f, .77f));
-            MiniLandmark("Westmere", new Vector2(-103f, -47f), new Color(.36f, .75f, .77f));
-            MiniLandmark("Eastwatch", new Vector2(105f, 53f), new Color(.36f, .75f, .77f));
-            MiniLandmark("Rift Crypt", new Vector2(-8f, 8f), new Color(.65f, .43f, .82f));
-            MiniLandmark("Northwest Ruins", new Vector2(-120f, 101f), new Color(.75f, .52f, .36f));
+                MiniLandmark("Northgate", new Vector2(-55f, 75f), new Color(.36f, .75f, .77f));
+                MiniLandmark("Westmere", new Vector2(-103f, -47f), new Color(.36f, .75f, .77f));
+                MiniLandmark("Eastwatch", new Vector2(105f, 53f), new Color(.36f, .75f, .77f));
+                MiniLandmark("Rift Crypt", new Vector2(-8f, 8f), new Color(.65f, .43f, .82f));
+                MiniLandmark("Northwest Ruins", new Vector2(-120f, 101f), new Color(.75f, .52f, .36f));
             }
             minimapObjective = Diamond("Objective Marker", minimap, new Color(1f, .72f, .28f), 12f);
             minimapPlayer = Diamond("Player Marker", minimap, new Color(.76f, .95f, 1f), 12f);
@@ -198,42 +219,45 @@ namespace Phasebreak.Gameplay
             modalBackdrop.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
             modalBackdrop.gameObject.SetActive(false);
 
-            mapWindow = Window("World Map", "NORTHGATE FRONTIER", new Vector2(.12f, .09f), new Vector2(.88f, .91f));
+            mapWindow = Window("World Map", mapDefinition != null ? mapDefinition.displayName.ToUpperInvariant() : "NORTHGATE FRONTIER", new Vector2(.12f, .09f), new Vector2(.88f, .91f));
             mapSurface = Block("Map Surface", mapWindow, new Color(.046f, .068f, .071f, 1f));
-            Place(mapSurface, new Vector2(.035f, .095f), new Vector2(.965f, .87f));
-            Label("Map Region", mapSurface, "THE FRONTIER", 34f, TextAlignmentOptions.Center,
-                new Vector2(.28f, .7f), new Vector2(.72f, .82f), new Color(.18f, .29f, .28f, 1f));
-            Label("Map South", mapSurface, "LOWLANDS", 26f, TextAlignmentOptions.Center,
-                new Vector2(.34f, .16f), new Vector2(.66f, .27f), new Color(.18f, .29f, .28f, 1f));
-            if (IsFrontierV2)
+            Place(mapSurface, mapDefinition != null ? new Vector2(.265f, .095f) : new Vector2(.035f, .095f),
+                mapDefinition != null ? new Vector2(.735f, .87f) : new Vector2(.965f, .87f));
+            if (mapDefinition != null)
             {
-                MapRoad(new Vector2(145, 155), new Vector2(435, 522));
-                MapRoad(new Vector2(435, 522), new Vector2(850, 870));
-                MapRoad(new Vector2(850, 870), new Vector2(470, 985));
-                MapRoad(new Vector2(850, 870), new Vector2(1390, 1010));
-                MapRoad(new Vector2(850, 870), new Vector2(1020, 1420));
-                MapRoad(new Vector2(1040, 830), new Vector2(1450, 480));
-                MapPoint(mapSurface, "NORTHGATE", new Vector2(850, 870), Cyan);
-                MapPoint(mapSurface, "WESTMERE", new Vector2(470, 985), Cyan);
-                MapPoint(mapSurface, "EASTWATCH", new Vector2(1390, 1010), Cyan);
-                MapPoint(mapSurface, "ANCIENT RUINS", new Vector2(1020, 1420), new Color(.93f, .55f, .31f));
-                MapPoint(mapSurface, "RIFT CRYPT", new Vector2(1450, 480), new Color(.7f, .4f, .92f));
+                mapSurface.anchorMin = new Vector2(.5f, .095f);
+                mapSurface.anchorMax = new Vector2(.5f, .87f);
+                var aspect = mapSurface.gameObject.AddComponent<UnityEngine.UI.AspectRatioFitter>();
+                aspect.aspectMode = UnityEngine.UI.AspectRatioFitter.AspectMode.HeightControlsWidth;
+                aspect.aspectRatio = mapDefinition.worldBounds.width / mapDefinition.worldBounds.height;
+            }
+            if (mapDefinition != null && mapDefinition.generatedTerrain != null)
+            {
+                MapImage("Terrain", mapDefinition.generatedTerrain);
+                if (mapDefinition.generatedRoads != null) MapImage("Roads", mapDefinition.generatedRoads);
+                foreach (QuestLocation location in mapLocations)
+                    MapPoint(mapSurface, location.DisplayName.ToUpperInvariant(),
+                        new Vector2(location.transform.position.x, location.transform.position.z), Cyan);
             }
             else
             {
-            MapRoad(new Vector2(-55f, 75f), new Vector2(-103f, -47f));
-            MapRoad(new Vector2(-55f, 75f), new Vector2(105f, 53f));
-            MapRoad(new Vector2(-55f, 75f), new Vector2(-120f, 101f));
-            MapRoad(new Vector2(-103f, -47f), new Vector2(-78f, -108f));
-            MapRoad(new Vector2(105f, 53f), new Vector2(117f, -94f));
-            MapRoad(new Vector2(-55f, 75f), new Vector2(-8f, 8f));
-            MapPoint(mapSurface, "NORTHGATE", new Vector2(-55f, 75f), Cyan);
-            MapPoint(mapSurface, "WESTMERE", new Vector2(-103f, -47f), Cyan);
-            MapPoint(mapSurface, "EASTWATCH", new Vector2(105f, 53f), Cyan);
-            MapPoint(mapSurface, "NORTHWEST RUINS", new Vector2(-120f, 101f), new Color(.93f, .55f, .31f));
-            MapPoint(mapSurface, "SOUTHERN WATCH", new Vector2(-78f, -108f), new Color(.93f, .55f, .31f));
-            MapPoint(mapSurface, "SOUTHEAST RUINS", new Vector2(117f, -94f), new Color(.93f, .55f, .31f));
-            MapPoint(mapSurface, "RIFT CRYPT", new Vector2(-8f, 8f), new Color(.7f, .4f, .92f));
+                Label("Map Region", mapSurface, "THE FRONTIER", 34f, TextAlignmentOptions.Center,
+                    new Vector2(.28f, .7f), new Vector2(.72f, .82f), new Color(.18f, .29f, .28f, 1f));
+                Label("Map South", mapSurface, "LOWLANDS", 26f, TextAlignmentOptions.Center,
+                    new Vector2(.34f, .16f), new Vector2(.66f, .27f), new Color(.18f, .29f, .28f, 1f));
+                MapRoad(new Vector2(-55f, 75f), new Vector2(-103f, -47f));
+                MapRoad(new Vector2(-55f, 75f), new Vector2(105f, 53f));
+                MapRoad(new Vector2(-55f, 75f), new Vector2(-120f, 101f));
+                MapRoad(new Vector2(-103f, -47f), new Vector2(-78f, -108f));
+                MapRoad(new Vector2(105f, 53f), new Vector2(117f, -94f));
+                MapRoad(new Vector2(-55f, 75f), new Vector2(-8f, 8f));
+                MapPoint(mapSurface, "NORTHGATE", new Vector2(-55f, 75f), Cyan);
+                MapPoint(mapSurface, "WESTMERE", new Vector2(-103f, -47f), Cyan);
+                MapPoint(mapSurface, "EASTWATCH", new Vector2(105f, 53f), Cyan);
+                MapPoint(mapSurface, "NORTHWEST RUINS", new Vector2(-120f, 101f), new Color(.93f, .55f, .31f));
+                MapPoint(mapSurface, "SOUTHERN WATCH", new Vector2(-78f, -108f), new Color(.93f, .55f, .31f));
+                MapPoint(mapSurface, "SOUTHEAST RUINS", new Vector2(117f, -94f), new Color(.93f, .55f, .31f));
+                MapPoint(mapSurface, "RIFT CRYPT", new Vector2(-8f, 8f), new Color(.7f, .4f, .92f));
             }
             mapObjective = Diamond("Objective Marker", mapSurface, new Color(1f, .74f, .21f), 20f);
             mapPlayer = Diamond("Player Marker", mapSurface, new Color(.75f, .95f, 1f), 18f);
@@ -277,6 +301,44 @@ namespace Phasebreak.Gameplay
             label.rectTransform.sizeDelta = new Vector2(150f, 20f);
         }
 
+        private void MapImage(string name, Sprite sprite)
+        {
+            RectTransform layer = Block(name, mapSurface, Color.white);
+            Place(layer, Vector2.zero, Vector2.one);
+            layer.GetComponent<UnityEngine.UI.Image>().sprite = sprite;
+        }
+
+        private UnityEngine.UI.RawImage MiniImage(string name, Sprite sprite)
+        {
+            GameObject layer = new(name, typeof(RectTransform), typeof(UnityEngine.UI.RawImage));
+            layer.transform.SetParent(minimap, false);
+            RectTransform rect = layer.GetComponent<RectTransform>();
+            Place(rect, Vector2.zero, Vector2.one);
+            UnityEngine.UI.RawImage image = layer.GetComponent<UnityEngine.UI.RawImage>();
+            image.texture = sprite.texture;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private void UpdateMinimapView(Vector2 playerWorld)
+        {
+            Rect bounds = mapDefinition.worldBounds;
+            float aspect = Mathf.Max(.01f, minimap.rect.width / Mathf.Max(1f, minimap.rect.height));
+            float height = Mathf.Min(mapDefinition.minimapViewHeight, bounds.height, bounds.width / aspect);
+            float width = height * aspect;
+            float x = Mathf.Clamp(playerWorld.x - width * .5f, bounds.xMin, bounds.xMax - width);
+            float z = Mathf.Clamp(playerWorld.y - height * .5f, bounds.yMin, bounds.yMax - height);
+            minimapWorldView = new Rect(x, z, width, height);
+            Rect uv = new((x - bounds.xMin) / bounds.width, (z - bounds.yMin) / bounds.height,
+                width / bounds.width, height / bounds.height);
+            minimapTerrain.uvRect = uv;
+            if (minimapRoads != null) minimapRoads.uvRect = uv;
+        }
+
+        private Vector2 MinimapPosition(Vector2 world) => new(
+            Mathf.Clamp((world.x - minimapWorldView.xMin) / minimapWorldView.width, .08f, .92f),
+            Mathf.Clamp((world.y - minimapWorldView.yMin) / minimapWorldView.height, .08f, .92f));
+
         private void MiniLandmark(string name, Vector2 world, Color color)
         {
             RectTransform marker = Diamond(name + " Mini Marker", minimap, color, 7f);
@@ -318,7 +380,7 @@ namespace Phasebreak.Gameplay
             mapObjective.gameObject.SetActive(hasObjective);
             if (hasObjective)
             {
-                PositionMarker(mapObjective, WorldToMap(V2Objective(active)));
+                PositionMarker(mapObjective, WorldToMap(ObjectivePosition(active)));
             }
             trackerHeading.text = active == null ? "NO ACTIVE QUEST" : active.title.ToUpperInvariant();
             string journalKey = PhasebreakSettings.Display("journal");
@@ -416,25 +478,40 @@ namespace Phasebreak.Gameplay
             Refresh();
         }
 
-        private static bool IsFrontierV2 => SceneManager.GetActiveScene().name == "StarterZone_V2";
-
-        private static Vector2 V2Objective(QuestDefinition quest)
+        private Vector2 ObjectivePosition(QuestDefinition quest)
         {
-            if (!IsFrontierV2 || quest == null) return quest != null ? quest.mapPosition : Vector2.zero;
-            switch (quest.id)
+            if (quest == null) return Vector2.zero;
+            if (mapDefinition == null) return quest.mapPosition;
+            string target = journal != null && journal.ObjectiveReady ? quest.turnInNpcId : quest.targetId;
+            foreach (QuestLocation location in mapLocations)
+                if (location.Id == target) return new Vector2(location.transform.position.x, location.transform.position.z);
+            foreach (QuestNpc npc in mapNpcs)
+                if (npc.Id == target) return new Vector2(npc.transform.position.x, npc.transform.position.z);
+            if (quest.objectiveKind == QuestObjectiveKind.CompleteDungeon)
             {
-                case "frontier-01": return new Vector2(850, 870);
-                case "frontier-02": return new Vector2(600, 740);
-                case "frontier-03": return new Vector2(1020, 1420);
-                case "frontier-04": return new Vector2(1110, 1480);
-                case "frontier-05": return new Vector2(1390, 1010);
-                case "frontier-06": return new Vector2(1450, 480);
-                default: return quest.mapPosition;
+                QuestLocation nearest = mapLocations
+                    .FirstOrDefault(location => location.Id.IndexOf("rift", StringComparison.OrdinalIgnoreCase) >= 0);
+                if (nearest != null) return new Vector2(nearest.transform.position.x, nearest.transform.position.z);
             }
+            if (quest.objectiveKind == QuestObjectiveKind.Defeat && player != null)
+            {
+                FrontierEncounterZone nearest = null;
+                float distance = float.MaxValue;
+                foreach (FrontierEncounterZone zone in mapEncounters)
+                {
+                    if (zone == null) continue;
+                    float next = (zone.transform.position - player.position).sqrMagnitude;
+                    if (next >= distance) continue;
+                    nearest = zone;
+                    distance = next;
+                }
+                if (nearest != null) return new Vector2(nearest.transform.position.x, nearest.transform.position.z);
+            }
+            return quest.mapPosition;
         }
 
-        private static Vector2 WorldToMap(Vector2 world) => IsFrontierV2
-            ? new Vector2(Mathf.Clamp01(world.x / 2000f), Mathf.Clamp01(world.y / 2000f))
+        private Vector2 WorldToMap(Vector2 world) => mapDefinition != null
+            ? mapDefinition.WorldToMap(new Vector3(world.x, 0f, world.y))
             : new Vector2(Mathf.Clamp01((world.x + 210f) / 420f), Mathf.Clamp01((world.y + 210f) / 420f));
 
         private static Vector2 MiniPosition(Vector2 player, Vector2 world) => new(
