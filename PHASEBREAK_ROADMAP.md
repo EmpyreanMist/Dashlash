@@ -13,6 +13,7 @@ Build a third-person open-world action RPG with readable target-based combat, ex
 - Inventory, corpse loot, 16 equipment slots, comparison, sets, specialization, first talent trees, and local persistence.
 - Five-slot action bar, Phase Dash, Rift Charge, and first equipment visuals.
 - Living starter-world foundation: quests and NPCs, zombie variants, world/map HUD, and build-first `StarterZone_V2` with MapMagic terrain and local encounter zones.
+- Rebuildable outdoor map foundation: Editor-baked terrain and road layers shared by the world map and player-centered minimap, with scene-owned landmarks and live player/objective markers.
 
 ## Current milestone
 
@@ -22,7 +23,7 @@ The current UI milestone moves the prototype toward a compact dark fantasy actio
 
 - Validate the Riftblade "fighter to anomaly" direction through the implemented chain-kill lane: build investment sustains Energy, then charges, then short flicker sequences. The mechanical prototype supports a 12-kill chain; hands-on feel, audio and balance validation should precede any global Phasebreak meter or world-wide Phasebreach expansion.
 - Add a useful Rift Marks vendor/supply sink and more readable ranged, caster, and bruiser enemy roles with camp behavior.
-- Improve the schematic map with authored zone art and make the Rift Crypt a paced 10–15 minute dungeon with boss phases and a distinctive reward.
+- Improve Rift Crypt pacing toward a 10–15 minute dungeon with boss phases and a distinctive reward. Map marker interaction and visual polish remain separate scoped work.
 - Replace prototype world geometry and fallback animation where they limit readability; validate quest, loot, talent, dungeon, and save flows in Play Mode and a packaged build.
 - Add focused automated tests for stable gameplay contracts and input-focus transitions as those systems change.
 

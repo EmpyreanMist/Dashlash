@@ -13,7 +13,7 @@ This is the honest remainder after the UI quality pass, not a claim that the sys
 
 ## Presentation still worth improving
 
-- The minimap and world map are readable schematics but still lack authored terrain art and per-marker hover/selection information. Use a coherent, explicitly licensed map art family if later added.
+- The minimap and world map now use Editor-baked terrain and road layers from scene data. Per-marker hover/selection information and a full hands-on visual pass remain open.
 - Character analysis becomes small at 1280×720 because many stats share a narrow panel. A compact two-column stat layout would improve legibility without changing equipment logic.
 - World nameplates at distance and the strong cyan Player/Target frame outlines deserve a focused visual pass in a real gameplay run.
 - Journal currently presents at most seven rows. The six-quest authored campaign fits; add a ScrollRect before expanding quest count.
