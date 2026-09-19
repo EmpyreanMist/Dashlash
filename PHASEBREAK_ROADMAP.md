@@ -4,7 +4,11 @@
 
 ## Vision
 
-Build a third-person open-world action RPG with readable target-based combat, expressive class builds, meaningful loot, and instanced dungeons. Core, Relics, Sigils, item tags, cross-slot sets, and a Wildcard Artifact distinguish PHASEBREAK. Preserve a future path to authoritative multiplayer without building MMO services for the current single-player slice.
+"You start as a fighter. You end as an anomaly." PHASEBREAK is a third-person action RPG where talents, abilities, equipment, and sets increasingly change combat rules, not just numbers. Strong mechanical synergies should let sufficiently invested builds feel intentionally powerful, even borderline broken; discovering those interactions should reward replay. Berserker aims toward self-sustaining offensive pressure through crits and momentum, Bulwark toward turning defense and incoming pressure into offense, and Riftblade toward movement-driven damage and controlled teleport chains. These are design directions, not claims that all three transformations exist today.
+
+The Riftblade chain-kill slice is the first mechanical proof. Berserker and Bulwark still need similarly transformative paths. Specializations are freely switchable, with independent saved talent allocations, so players can experiment without permanently committing a character. Core, Relics, Sigils, item tags, cross-slot sets, and a Wildcard Artifact support that build discovery. Keep a future path to authoritative multiplayer without building MMO services for this single-player prototype.
+
+Judge major additions by combat feel, build discovery and transformation, meaningful loot, escalating power, and replayable encounters. Borrow useful MMO/ARPG structure without chasing MMO content volume.
 
 ## Completed major milestones
 
@@ -13,23 +17,26 @@ Build a third-person open-world action RPG with readable target-based combat, ex
 - Inventory, corpse loot, 16 equipment slots, comparison, sets, specialization, first talent trees, and local persistence.
 - Five-slot action bar, Phase Dash, Rift Charge, and first equipment visuals.
 - Living starter-world foundation: quests and NPCs, zombie variants, world/map HUD, and build-first `StarterZone_V2` with MapMagic terrain and local encounter zones.
+- First Riftblade mobility chain prototype, with an authored 12-enemy practice lane and build-dependent Energy/charge recovery; free specialization switching with independent saved talent trees.
 - Rebuildable outdoor map foundation: Editor-baked terrain and road layers shared by the world map and player-centered minimap, with scene-owned landmarks and live player/objective markers.
 
 ## Current milestone
 
-The current UI milestone moves the prototype toward a compact dark fantasy action RPG presentation: charcoal and translucent black surfaces, forged-metal framing, rounded corners, and restrained accents. Inventory and Character lead the layout pass, followed by a lower-right utility cluster and a consistent treatment for the player frame, action bar, quest tracker, chat, minimap, and other major panels. Keep existing gameplay behavior and system ownership intact. GitHub Issues define the scoped work and verification for each part.
+**Core Build Identity — Fighter to Anomaly.** Validate whether the Riftblade chain-kill prototype feels fun with real keyboard and mouse input, clear combat feedback, audible escalation, and satisfying progression from ordinary attacks to invested flicker chains. Free specialization switching supports comparison and experimentation. Prove that build investment changes how combat plays before adding a global Phasebreak meter or world-wide Phasebreach system. The existing API-driven 12-kill chain establishes mechanical feasibility; it does not establish play-feel or final balance.
 
 ## Near-term milestones
 
-- Validate the Riftblade "fighter to anomaly" direction through the implemented chain-kill lane: build investment sustains Energy, then charges, then short flicker sequences. The mechanical prototype supports a 12-kill chain; hands-on feel, audio and balance validation should precede any global Phasebreak meter or world-wide Phasebreach expansion.
-- Add a useful Rift Marks vendor/supply sink and more readable ranged, caster, and bruiser enemy roles with camp behavior.
-- Improve Rift Crypt pacing toward a 10–15 minute dungeon with boss phases and a distinctive reward. Map marker interaction and visual polish remain separate scoped work.
-- Replace prototype world geometry and fallback animation where they limit readability; validate quest, loot, talent, dungeon, and save flows in Play Mode and a packaged build.
-- Add focused automated tests for stable gameplay contracts and input-focus transitions as those systems change.
+- Finish hands-on Riftblade validation: keyboard/mouse feel, audio listening, balance, and readability in the practice lane; adjust only where the chain is less fun or clear than intended.
+- Regress Berserker, Bulwark, and Riftblade talent effects, ability behavior, persistence, and repeated switching, including inactive-tree isolation.
+- Continue forged-metal UI cohesion as supporting presentation work: remaining major panels, utility cluster, action bar/HUD, tooltips, and combat readability.
+- Develop readable ranged, caster, and bruiser enemies with camp/leash behavior so builds face more varied decisions.
+- Improve authored points of interest and world presentation where prototype geometry or animation obscures encounters.
+- Improve Rift Crypt pacing, boss phases, and reward distinction. Revisit the Rift Marks vendor/supply sink and map marker interaction as separate scoped work.
+- Add focused automated checks for stable gameplay contracts and input-focus transitions as those systems change; verify broader quest, loot, talent, dungeon, and save flows in a packaged build.
 
 ## Long-term direction
 
-Expand class identity, active talents, status effects, item instances and affixes, crafting/economy, world activities, and endgame content as separate milestones. Group play and online services follow only after the local combat and persistence boundaries are ready.
+Give Berserker and Bulwark transformative build paths after the core loop is proven. Expand active talents, status effects, item instances and affixes, crafting/economy, world activities, and endgame content as separate milestones. Group play and online services follow only after the local combat and persistence boundaries are ready.
 
 ## Multiplayer architecture guardrails
 

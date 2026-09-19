@@ -497,7 +497,7 @@ namespace Phasebreak.Gameplay
         {
             string passive = progression != null && progression.HasKeenEdge ? progression.PassiveName : "Locked";
             StringBuilder text = new();
-            text.Append($"<color=#A984FF><b>SPECIALIZATION</b></color>\n{(build.Specialization == Specialization.Unchosen ? "Choose at level 3" : build.Specialization)}\n");
+            text.Append($"<color=#A984FF><b>SPECIALIZATION</b></color>\n{(build.Specialization == Specialization.Unchosen ? "Choose in Talents" : build.Specialization)}\n");
             text.Append($"\n<color=#A984FF><b>PASSIVE</b></color>\n{passive}\n");
             text.Append("\n<color=#73D6EE><b>ACTIVE SETS</b></color>\n");
             string sets = BuildSetSummary();
@@ -626,7 +626,7 @@ namespace Phasebreak.Gameplay
             foreach (Specialization spec in new[] { Specialization.Berserker, Specialization.Bulwark, Specialization.Riftblade })
             {
                 Specialization captured = spec;
-                Button button = TextButton(spec.ToString(), root, spec.ToString().ToUpperInvariant(), new Vector2(x, .035f), new Vector2(x + .28f, .105f), () => { if (build.ChooseSpecialization(captured)) RefreshCharacter(); }, 10.5f);
+                Button button = TextButton(spec.ToString(), root, spec.ToString().ToUpperInvariant(), new Vector2(x, .035f), new Vector2(x + .28f, .105f), () => { if (build.SetSpecialization(captured) == SpecializationChangeResult.Changed) RefreshCharacter(); }, 10.5f);
                 Image specIcon = IconImage("Specialization Icon", button.transform, new Vector2(.035f, .13f), new Vector2(.23f, .87f));
                 specIcon.sprite = PhasebreakIconCatalog.Current?.GetSpecializationIcon(spec);
                 specIcon.color = specIcon.sprite != null ? Color.white : Color.clear;

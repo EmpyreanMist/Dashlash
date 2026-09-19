@@ -5,6 +5,8 @@ using UnityEngine;
 
 namespace Phasebreak.Gameplay
 {
+    public enum SpecializationChangeResult { Changed, AlreadyActive, InvalidChoice, Defeated, AbilityInProgress }
+
     [Serializable] internal sealed class BuildSaveData { public List<string> inventory = new(); public List<string> slots = new(); public List<string> gear = new(); public Specialization specialization; }
 
     [RequireComponent(typeof(PlayerHealth)), DisallowMultipleComponent]
@@ -17,7 +19,7 @@ namespace Phasebreak.Gameplay
         private readonly List<PhasebreakItemDefinition> inventory = new();
         private readonly Dictionary<EquipmentSlot, PhasebreakItemDefinition> equipped = new();
         private readonly Dictionary<string, PhasebreakItemDefinition> byId = new();
-        private PlayerHealth health; private PlayerProgression progression; private TalentSystem talents; private BuildStats stats;
+        private PlayerHealth health; private PlayerProgression progression; private TalentSystem talents; private PlayerCombat combat; private BuildStats stats;
         private BuildEffect effects; private float critEnergy, lungeReduction, teleportRecovery; private int enemiesDefeated;
 
         public IReadOnlyList<PhasebreakItemDefinition> Inventory => inventory;
@@ -42,7 +44,7 @@ namespace Phasebreak.Gameplay
 
         private void Awake()
         {
-            health = GetComponent<PlayerHealth>(); progression = GetComponent<PlayerProgression>();
+            health = GetComponent<PlayerHealth>(); progression = GetComponent<PlayerProgression>(); combat = GetComponent<PlayerCombat>();
             talents = GetComponent<TalentSystem>() ?? gameObject.AddComponent<TalentSystem>();
             foreach (PhasebreakItemDefinition item in itemCatalog) if (item != null && !string.IsNullOrWhiteSpace(item.id)) byId[item.id] = item;
             LoadOrSeed(); Recalculate();
@@ -63,10 +65,21 @@ namespace Phasebreak.Gameplay
             if (!equipped.Remove(slot, out PhasebreakItemDefinition item) || item == null) return false;
             inventory.Add(item); Changed(); return true;
         }
-        public bool ChooseSpecialization(Specialization choice)
+        public SpecializationChangeResult SetSpecialization(Specialization choice)
         {
-            if (choice == Specialization.Unchosen || Specialization != Specialization.Unchosen || progression == null || progression.Level < 3) return false;
-            Specialization = choice; Changed(); return true;
+            if (choice is not (Specialization.Berserker or Specialization.Bulwark or Specialization.Riftblade))
+                return SpecializationChangeResult.InvalidChoice;
+            if (choice == Specialization) return SpecializationChangeResult.AlreadyActive;
+            if (health != null && !health.IsAlive) return SpecializationChangeResult.Defeated;
+            if (combat != null && combat.IsAttacking) return SpecializationChangeResult.AbilityInProgress;
+            int[] previousMaximumCharges = combat?.CaptureMaximumCharges();
+            Specialization = choice;
+            talents?.OnSpecializationChanged();
+            Recalculate();
+            combat?.ReconcileAbilityModifiers(previousMaximumCharges);
+            Save();
+            BuildChanged?.Invoke();
+            return SpecializationChangeResult.Changed;
         }
         public bool GrantRewardById(string id)
         {
@@ -91,7 +104,7 @@ namespace Phasebreak.Gameplay
         public int GetTagCount(ItemTag tag) => equipped.Values.Count(i => i != null && (i.tags & tag) != 0);
         public string GetBuildSummary()
         {
-            string spec = Specialization == Specialization.Unchosen ? "Choose at level 3" : Specialization.ToString();
+            string spec = Specialization == Specialization.Unchosen ? "Choose in Talents" : Specialization.ToString();
             string sets = string.Join("\n", ActiveSetLines());
             float levelPower = progression != null ? progression.PowerMultiplier : 1f;
             int levelHealth = progression != null ? progression.BonusHealth : 0;
@@ -138,8 +151,8 @@ namespace Phasebreak.Gameplay
         {
             if (!PlayerPrefs.HasKey(SaveKey)) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
             BuildSaveData data = JsonUtility.FromJson<BuildSaveData>(PlayerPrefs.GetString(SaveKey)) ?? new BuildSaveData();
-            if (data.inventory.Count == 0 && data.gear.Count == 0) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
             Specialization = data.specialization;
+            if (data.inventory.Count == 0 && data.gear.Count == 0) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
             foreach (string id in data.inventory) if (byId.TryGetValue(id, out PhasebreakItemDefinition item)) inventory.Add(item);
             for (int i = 0; i < Mathf.Min(data.slots.Count, data.gear.Count); i++) if (Enum.TryParse(data.slots[i], out EquipmentSlot slot) && byId.TryGetValue(data.gear[i], out PhasebreakItemDefinition item)) equipped[slot] = item;
         }
