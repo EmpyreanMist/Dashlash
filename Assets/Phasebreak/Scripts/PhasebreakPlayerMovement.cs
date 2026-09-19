@@ -55,6 +55,7 @@ namespace Phasebreak.Gameplay
         private bool dashStartedAirborne;
         private bool isDashing;
         private bool isAbilityDriven;
+        private bool inputWasBlocked;
 
         public bool IsDashing => isDashing;
         public bool CanDashNow => !isDashing && !isAbilityDriven && CanDash(controller != null && controller.isGrounded);
@@ -106,7 +107,7 @@ namespace Phasebreak.Gameplay
 
         public CollisionFlags MoveAbility(Vector3 planarDisplacement)
         {
-            if (!isAbilityDriven)
+            if (!isAbilityDriven || GameplayInputFocus.GameplayInputBlocked)
                 return CollisionFlags.None;
             return controller.Move(planarDisplacement + Vector3.up * (-2f * Time.deltaTime));
         }
@@ -192,9 +193,13 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            Vector2 input = Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
-            float strafeInput = strafeAction.ReadValue<float>();
-            bool mouseSteering = followCamera != null && followCamera.IsRightMouseHeld;
+            bool blocked = GameplayInputFocus.GameplayInputBlocked;
+            if (blocked && !inputWasBlocked)
+                ResetMotion();
+            inputWasBlocked = blocked;
+            Vector2 input = blocked ? Vector2.zero : Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
+            float strafeInput = blocked ? 0f : strafeAction.ReadValue<float>();
+            bool mouseSteering = !blocked && followCamera != null && followCamera.IsRightMouseHeld;
             if (!mouseSteering && Mathf.Abs(input.x) > 0.001f)
                 transform.Rotate(0f, input.x * keyboardTurnSpeed * Time.deltaTime, 0f);
 
@@ -210,7 +215,7 @@ namespace Phasebreak.Gameplay
                     verticalVelocity = -2f;
             }
 
-            if (jumpAction.WasPressedThisFrame())
+            if (!blocked && jumpAction.WasPressedThisFrame())
                 QueueJump();
 
             if (Time.time <= jumpBufferedUntil)

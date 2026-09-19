@@ -14,7 +14,7 @@ PHASEBREAK is a single-player Unity 6000.6.1f1 vertical slice. This document rec
 ## Implemented systems and ownership
 
 - `Assets/Phasebreak/Scripts` owns third-person movement, jump/air control, camera, targeting, interaction, five combat abilities, Energy, health/death, XP/levels 1–10, inventory/equipment, set effects, specialization, talents, quests, enemy encounters, and Rift Crypt checkpoint recovery. UI and debug tools should use these owners rather than duplicate gameplay state.
-- The UI includes player/target frames, action bar, Inventory, Character, Talents, Journal, quest tracker, minimap, and schematic world map. `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md` records remaining interface and regression work.
+- The UI includes player/target frames, action bar, Inventory, Character, Talents, Journal, quest tracker, minimap, schematic world map, and a local chat hub with shared gameplay input focus. `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md` records remaining interface and regression work.
 - PlayerPrefs stores progression, inventory/equipment, specialization, talents, quest progress, and selected UI positions. This is local prototype persistence, not an authoritative multiplayer save service.
 - Editor authoring tools live under `Assets/Phasebreak/Editor`; MapMagic 2.1.19 is under `Assets/MapMagic`. Third-party attribution and license files remain with their assets.
 
@@ -22,4 +22,4 @@ PHASEBREAK is a single-player Unity 6000.6.1f1 vertical slice. This document rec
 
 - Unity compilation completed without current errors. V2 reopened with the Player, four terrains, MapMagic, and 26 encounter zones; Play Mode started with five nearby enemies and no new runtime errors. Its 195 dependency paths and scene scripts resolved, the required `.meta` audit found no gaps, and `git lfs fsck` passed.
 - There is no meaningful automated Unity test suite or packaged-build regression pass yet. Full quest, loot, talent, dungeon, persistence, and performance regression remains open.
-- Settlements and world art are prototype quality; the world map is schematic. There is no local chat/command registry, unified Settings menu, Spellbook, or multiplayer service. Chat and developer commands remain a proposal in `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md`.
+- Settlements and world art are prototype quality; the world map is schematic. Local chat has no networking or command execution. There is no command registry, unified Settings menu, Spellbook, or multiplayer service. Developer commands remain a proposal in `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md`.

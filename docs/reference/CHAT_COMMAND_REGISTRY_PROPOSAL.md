@@ -1,8 +1,8 @@
 # Proposed next step: local chat and developer commands
 
-This proposal follows the implemented baseline in `../../PROJECT_STATE.md`. It is future work and does not change the current controls.
+This proposal follows the implemented baseline in `../../PROJECT_STATE.md`. The local chat hub and shared input focus are implemented; command behavior below is future work.
 
-Status: proposal only. No chat, command registry, or developer command from this document is implemented yet.
+Status: chat hub and shared input focus implemented. No command registry or developer command from this document is implemented yet.
 
 ## Recommendation
 

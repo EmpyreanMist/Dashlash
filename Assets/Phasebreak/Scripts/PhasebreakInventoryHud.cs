@@ -113,6 +113,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            if (GameplayInputFocus.GameplayInputBlocked) { SetHoveredCorpse(null); return; }
             if (inventoryAction.WasPressedThisFrame()) Toggle(MenuMode.Inventory);
             else if (characterAction.WasPressedThisFrame()) Toggle(MenuMode.Character);
             else if (talentsAction.WasPressedThisFrame()) Toggle(MenuMode.Talents);

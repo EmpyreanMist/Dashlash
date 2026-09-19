@@ -93,9 +93,12 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            if (mapAction.WasPressedThisFrame()) ToggleMap();
-            else if (journalAction.WasPressedThisFrame()) ToggleJournal();
-            else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen)) CloseWindows();
+            if (!GameplayInputFocus.GameplayInputBlocked)
+            {
+                if (mapAction.WasPressedThisFrame()) ToggleMap();
+                else if (journalAction.WasPressedThisFrame()) ToggleJournal();
+                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen)) CloseWindows();
+            }
             bool modal = IsWorldMenuOpen || PhasebreakInventoryHud.IsMajorMenuOpen;
             if (trackerPanel != null) trackerPanel.gameObject.SetActive(!modal);
             if (miniPanel != null) miniPanel.gameObject.SetActive(!modal);

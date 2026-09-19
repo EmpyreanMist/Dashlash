@@ -117,7 +117,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            if (debugHudAction != null && debugHudAction.WasPressedThisFrame())
+            if (!GameplayInputFocus.GameplayInputBlocked && debugHudAction != null && debugHudAction.WasPressedThisFrame())
             {
                 debugHudVisible = !debugHudVisible;
                 if (buildPanel != null) buildPanel.gameObject.SetActive(debugHudVisible);
@@ -191,6 +191,10 @@ namespace Phasebreak.Gameplay
 
             combatTextLayer = CreateRect("Combat Text", canvasRect);
             Stretch(combatTextLayer);
+
+            PhasebreakChatHub chat = GetComponent<PhasebreakChatHub>();
+            if (chat == null) chat = gameObject.AddComponent<PhasebreakChatHub>();
+            chat.Initialize(canvasRect);
         }
 
         private void HandleAbilityFailed(string message)

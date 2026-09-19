@@ -140,7 +140,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            if (!PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen &&
+            if (!GameplayInputFocus.GameplayInputBlocked && !PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen &&
                 interactAction.WasPressedThisFrame())
                 TryInteract();
 

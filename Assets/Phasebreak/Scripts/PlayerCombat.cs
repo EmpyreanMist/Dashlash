@@ -187,7 +187,7 @@ namespace Phasebreak.Gameplay
             currentResource = Mathf.MoveTowards(currentResource, maximumResource,
                 resourceRegeneration * pressureRegeneration * Time.deltaTime);
             UpdateCharges();
-            if (PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
+            if (GameplayInputFocus.GameplayInputBlocked || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
                 return;
             for (int i = 0; i < abilityActions.Length; i++)
                 if (abilityActions[i].WasPressedThisFrame())
