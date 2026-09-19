@@ -1,9 +1,11 @@
 # PHASEBREAK — Master Feature Catalog
 
+> Non-authoritative design and idea catalog. `../../PROJECT_STATE.md` defines what exists, `../../PHASEBREAK_ROADMAP.md` defines current direction, and GitHub Issues define actionable work. Codex should read this catalog only when an active issue explicitly needs it.
+
 > Levande funktionskatalog, designmeny och statuslista för hela projektet.  
 > Senast uppdaterad: 2026-09-19. Statuspunkterna skiljer mellan implementerat spelinnehåll och förslag; se `CHAT_COMMAND_REGISTRY_PROPOSAL.md` för föreslagen lokal chatt och utvecklarkommandon.
 
-`PROJECT_STATE.md` is the authoritative verified implementation snapshot. This catalog also preserves historical phase goals and future design options; older checkboxes below are not a substitute for the current scene and code audit.
+`../../PROJECT_STATE.md` is the authoritative verified implementation snapshot. This catalog preserves historical phase goals and future design options; older checkboxes below are not current implementation status.
 
 ## Så används dokumentet
 

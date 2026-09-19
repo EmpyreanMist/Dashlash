@@ -1,30 +1,24 @@
 # PHASEBREAK project state
 
-Baseline reviewed: 2026-09-19 on `codex/phasebreak-ui-quality-rescue`, starting from the complete safety snapshot `42e7f6d` (`backup/pre-workflow-reconciliation`). This is a single-player Unity vertical slice. Status below describes the working project, not future MMO scope.
+Authoritative baseline: main @ c847a176524787ca5cf9db3fb1218357abfefac9
+Verified: 2026-09-19
 
-## Current playable content
+PHASEBREAK is a single-player Unity 6000.6.1f1 vertical slice. This document records implemented capability and verification limits; GitHub Issues hold actionable work.
 
-- `Assets/Phasebreak/Scenes/StarterZone_V2.unity` is first in build settings. It contains the southwest starting pocket, four fixed MapMagic terrain tiles across a 2 km square, Northgate, Westmere, Eastwatch, Ancient Ruins, the Rift Crypt entrance, six quest NPCs, and 26 encounter zones. `Assets/dashlash.unity` is the older 420 m starter realm and remains available.
-- The player has third-person movement and camera, targeting, five combat abilities, health/death, Energy, XP and levels 1–10. Inventory/equipment, set bonuses, specialization, talents, quests, Rift Crypt encounters, and local PlayerPrefs persistence exist.
-- Combat includes cooldowns, charges, critical hits, damage feedback, corpse loot, and enemy XP rewards. Movement includes jump, air control, camera steering, and ability-driven dash. Existing debug and editor builders support local iteration; there is no general developer command console.
-- The current UI has player/target frames, an action bar, quest tracker, minimap, Inventory, Character, Talents, Journal, and schematic Map. The UI quality pass and outstanding interface issues are recorded in `docs/reference/UI_AUDIT.md` and `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md`.
-- The zombie population includes ordinary enemies, Brutes, and Skirmishers. V2 activates nearby encounter zones and respawns them on timers. This is not a networked or server-authoritative game.
-- PlayerPrefs stores progression, inventory/equipment, specialization, talents, quest progress, and selected UI placement. The current save model is local prototype state.
+## Playable world
 
-## Project assets and ownership
+- `Assets/Phasebreak/Scenes/StarterZone_V2.unity` is first in build settings. Its four fixed MapMagic terrain tiles cover a 2 km square with a southwest spawn, Northgate, Westmere, Eastwatch, Ancient Ruins, Rift Crypt entrance, six quest NPCs, and 26 encounter zones. `Assets/dashlash.unity` remains the older fallback scene.
+- V2 activates nearby zombie encounter zones and respawns them on timers. Ordinary zombies, Brutes, and Skirmishers use the existing enemy, XP, and corpse-loot systems. `docs/reference/STARTER_ZONE_V2.md` describes world ownership, required assets, and rebuilding.
 
-- MapMagic 2.1.19 is vendored under `Assets/MapMagic`. V2 uses `Assets/Phasebreak/Data/StarterZoneV2/ShatteredFrontier.asset` and the builder in `Assets/Phasebreak/Editor/BuildStarterZoneV2.cs`. Keep the scene, graph, referenced art, and `.meta` GUIDs together.
-- The obsolete one-off `Assets/Editor/HubForceResolve.cs` bootstrapper and its `.meta` files are absent from the complete snapshot. The active MapMagic package imports and compiles without that forced package resolve script.
-- The project uses URP and the Unity Input System. Source art and licenses are described in `docs/reference/PHASEBREAK_WORLD_ASSET_CATALOG.md` and the scoped `THIRD_PARTY_ASSETS.md` note.
-- Runtime gameplay code is under `Assets/Phasebreak/Scripts`. The editor builders under `Assets/Phasebreak/Editor` are authoring tools, not duplicate runtime systems.
+## Implemented systems and ownership
 
-## Verification and limits
+- `Assets/Phasebreak/Scripts` owns third-person movement, jump/air control, camera, targeting, interaction, five combat abilities, Energy, health/death, XP/levels 1–10, inventory/equipment, set effects, specialization, talents, quests, enemy encounters, and Rift Crypt checkpoint recovery. UI and debug tools should use these owners rather than duplicate gameplay state.
+- The UI includes player/target frames, action bar, Inventory, Character, Talents, Journal, quest tracker, minimap, and schematic world map. `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md` records remaining interface and regression work.
+- PlayerPrefs stores progression, inventory/equipment, specialization, talents, quest progress, and selected UI positions. This is local prototype persistence, not an authoritative multiplayer save service.
+- Editor authoring tools live under `Assets/Phasebreak/Editor`; MapMagic 2.1.19 is under `Assets/MapMagic`. Third-party attribution and license files remain with their assets.
 
-- The checked-in V2 scene initially failed to deserialize and opened empty in the connected Editor. The existing complete V2 builder regenerated it; the resulting scene had eight roots, the Player, four terrains, MapMagic, and 26 encounter zones. Play Mode entered with five nearby enemies and no new console errors. The repaired scene and paired graph are part of this baseline.
-- Unity compilation completed without errors. Third-party MapMagic API warnings and some obsolete Unity API warnings remain. Focused Play Mode smoke checks establish scene startup and nearby encounter activation; full quest, loot, talent, dungeon, persistence, and packaged-build regression runs remain outstanding.
-- Unity found 195 V2 scene dependencies, no missing dependency paths, and no missing scripts in the scene hierarchy. An Assets file audit found no missing `.meta` files outside normal plugin bundle internals. `git lfs fsck` passed. Unity Test Runner has no meaningful automated tests in this project.
-- V2 architecture and settlements still use prototype geometry. The world map is schematic. There is no local chat/command registry, unified Settings menu, Spellbook, or multiplayer service.
+## Verification and current limits
 
-## Next work
-
-`CHAT_COMMAND_REGISTRY_PROPOSAL.md` describes a possible focused next step: local chat plus developer commands, with shared input-focus blocking and adapters to existing systems. It has not been implemented. GitHub Issues are the actionable backlog; `PHASEBREAK_ROADMAP.md` provides direction, while `PHASEBREAK_MASTER_FEATURE_CATALOG.md` and `docs/reference/UI_FUNCTIONALITY_FOLLOWUPS.md` are supporting references.
+- Unity compilation completed without current errors. V2 reopened with the Player, four terrains, MapMagic, and 26 encounter zones; Play Mode started with five nearby enemies and no new runtime errors. Its 195 dependency paths and scene scripts resolved, the required `.meta` audit found no gaps, and `git lfs fsck` passed.
+- There is no meaningful automated Unity test suite or packaged-build regression pass yet. Full quest, loot, talent, dungeon, persistence, and performance regression remains open.
+- Settlements and world art are prototype quality; the world map is schematic. There is no local chat/command registry, unified Settings menu, Spellbook, or multiplayer service. Chat and developer commands remain a proposal in `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md`.

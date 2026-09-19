@@ -9,24 +9,21 @@
 - MapMagic 2 lives in `Assets/MapMagic`. The V2 scene and graph are paired. If a scene genuinely fails to deserialize, use the checked-in `Phasebreak > Rebuild Complete Starter Zone V2` editor workflow and verify the saved scene afterward.
 - Let Unity finish import and compile, then run focused Play Mode checks for the changed flow. Report what was observed and what remains untested.
 - When finishing work, report files changed, tests run, manual checks, and remaining risks.
-- The chat and command registry in `CHAT_COMMAND_REGISTRY_PROPOSAL.md` is a proposal, not an existing feature.
+- The chat and command registry in `docs/reference/CHAT_COMMAND_REGISTRY_PROPOSAL.md` is a proposal, not an existing feature.
 
 ## Documentation policy
 
 - Do not create new Markdown planning, audit, report, proposal, handoff, or status files unless explicitly requested.
 - `PROJECT_STATE.md` is the factual current implementation snapshot. Update it only when implemented capability materially changes.
 - `PHASEBREAK_ROADMAP.md` records development direction and milestones. Update it only when milestone status or development direction changes.
-- GitHub Issues are the actionable backlog. Specialist documents, including the root proposals/catalog and historical material in `docs/reference/`, are read only when relevant to the active issue.
+- GitHub Issues are the actionable backlog. `docs/reference/` holds specialist context, not parallel task lists.
 - Do not create per-ticket completion report Markdown files. Report completion in the Codex response and/or PR.
 
 ## Normal implementation context
 
-Before implementing a ticket, normally read only:
+Before implementing a ticket, read:
 
 1. `AGENTS.md`.
 2. `PROJECT_STATE.md`.
 3. The active GitHub Issue.
-4. `PHASEBREAK_ROADMAP.md` if roadmap context is needed.
-5. Explicitly relevant specialist documentation.
-
-Do not automatically read every Markdown file in the repository.
+Read `PHASEBREAK_ROADMAP.md` only when broader milestone context is needed. Read `docs/reference/` only when the active issue explicitly requires it or repository investigation shows it is necessary. Do not automatically read `docs/reference/PHASEBREAK_MASTER_FEATURE_CATALOG.md` or every Markdown file in the repository.

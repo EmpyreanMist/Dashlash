@@ -1,6 +1,6 @@
 # Proposed next step: local chat and developer commands
 
-This proposal follows the implemented baseline in `PROJECT_STATE.md`. It is future work and does not change the current controls.
+This proposal follows the implemented baseline in `../../PROJECT_STATE.md`. It is future work and does not change the current controls.
 
 Status: proposal only. No chat, command registry, or developer command from this document is implemented yet.
 

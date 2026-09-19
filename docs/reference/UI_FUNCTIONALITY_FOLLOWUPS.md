@@ -6,7 +6,7 @@ This is the honest remainder after the UI quality pass, not a claim that the sys
 
 ## Missing interfaces
 
-- A local chat/command console is proposed but not implemented. `../../CHAT_COMMAND_REGISTRY_PROPOSAL.md` defines its input-focus behavior, command registry, access policy and system adapters. Focus testing must cover every independently bound gameplay key, including F8 and arena reset R, plus camera mouse steering.
+- A local chat/command console is proposed but not implemented. `CHAT_COMMAND_REGISTRY_PROPOSAL.md` defines its input-focus behavior, command registry, access policy and system adapters. Focus testing must cover every independently bound gameplay key, including F8 and arena reset R, plus camera mouse steering.
 - No unified Escape/game menu or applied Settings screen. Esc currently closes an open major panel; when none is open it does not open a game menu. Camera sensitivity, zoom speed, invert Y, UI scale, screen shake, keybindings and resolution/fullscreen therefore have no in-game settings QA.
 - No Spellbook or action-bar assignment UI. The current combat/action bar has five bound abilities; do not imply a 20-slot assignment system exists.
 - No unified HUD edit mode, reset-position/reset-all workflow or HUD-scale control. Existing frame dragging/persistence should be regression-tested when this is built.
