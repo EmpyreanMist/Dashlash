@@ -19,6 +19,7 @@ MonoBehaviour:
   visualPrefab: {fileID: 0}
   slot: 15
   rarity: 4
+  excludedFromRandomLoot: 1
   itemLevel: 9
   tags: 129
   itemSet: {fileID: 0}

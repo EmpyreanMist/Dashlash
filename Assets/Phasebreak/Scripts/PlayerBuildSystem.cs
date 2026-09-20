@@ -95,11 +95,12 @@ namespace Phasebreak.Gameplay
         public List<PhasebreakItemDefinition> GenerateCorpseLoot()
         {
             List<PhasebreakItemDefinition> drops = new(); enemiesDefeated++;
-            if (itemCatalog == null || itemCatalog.Length == 0 ||
+            PhasebreakItemDefinition[] pool = itemCatalog?.Where(item => item != null && !item.excludedFromRandomLoot).ToArray();
+            if (pool == null || pool.Length == 0 ||
                 (enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return drops;
-            drops.Add(itemCatalog[(enemiesDefeated - 1) % itemCatalog.Length]);
-            if (enemiesDefeated % 5 == 0 && itemCatalog.Length > 1)
-                drops.Add(itemCatalog[enemiesDefeated % itemCatalog.Length]);
+            drops.Add(pool[(enemiesDefeated - 1) % pool.Length]);
+            if (enemiesDefeated % 5 == 0 && pool.Length > 1)
+                drops.Add(pool[enemiesDefeated % pool.Length]);
             return drops;
         }
         public int GetTagCount(ItemTag tag) => equipped.Values.Count(i => i != null && (i.tags & tag) != 0);
@@ -150,12 +151,22 @@ namespace Phasebreak.Gameplay
         private void Changed() { Recalculate(); Save(); BuildChanged?.Invoke(); }
         private void LoadOrSeed()
         {
-            if (!PlayerPrefs.HasKey(SaveKey)) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
+            if (!PlayerPrefs.HasKey(SaveKey)) { SeedFreshLoadout(); return; }
             BuildSaveData data = JsonUtility.FromJson<BuildSaveData>(PlayerPrefs.GetString(SaveKey)) ?? new BuildSaveData();
             Specialization = data.specialization;
-            if (data.inventory.Count == 0 && data.gear.Count == 0) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
+            if (data.inventory.Count == 0 && data.gear.Count == 0) { SeedFreshLoadout(); return; }
             foreach (string id in data.inventory) if (byId.TryGetValue(id, out PhasebreakItemDefinition item)) inventory.Add(item);
             for (int i = 0; i < Mathf.Min(data.slots.Count, data.gear.Count); i++) if (Enum.TryParse(data.slots[i], out EquipmentSlot slot) && byId.TryGetValue(data.gear[i], out PhasebreakItemDefinition item)) equipped[slot] = item;
+        }
+        private void SeedFreshLoadout()
+        {
+            foreach (PhasebreakItemDefinition item in startingInventory.Where(item => item != null))
+            {
+                if (item.slot == EquipmentSlot.PrimaryWeapon && !equipped.ContainsKey(EquipmentSlot.PrimaryWeapon))
+                    equipped[EquipmentSlot.PrimaryWeapon] = item;
+                else inventory.Add(item);
+            }
+            Save();
         }
         private void Save()
         {
