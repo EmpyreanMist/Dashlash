@@ -24,6 +24,8 @@ namespace Phasebreak.Gameplay
         private readonly List<GameObject> equipmentCells = new();
         private readonly List<GameObject> lootCells = new();
         private readonly Dictionary<MenuMode, Image> navImages = new();
+        private Image journalNavImage;
+        private Image mapNavImage;
         private readonly Dictionary<InventoryFilter, Image> filterImages = new();
 
         private PlayerBuildSystem build;
@@ -81,6 +83,7 @@ namespace Phasebreak.Gameplay
             PhasebreakInventoryHud hud = instance != null ? instance : FindAnyObjectByType<PhasebreakInventoryHud>();
             if (hud != null && hud.mode != MenuMode.None) hud.CloseMenu();
         }
+        public static void RefreshNavigation() => instance?.UpdateNav();
         public static bool IsLootWindowOpenFor(CorpseLootContainer corpse) => instance != null && instance.mode == MenuMode.Loot && instance.activeCorpse == corpse;
         public static void NotifyCorpseDespawned(CorpseLootContainer corpse) { if (IsLootWindowOpenFor(corpse)) instance.CloseMenu(); }
 
@@ -407,13 +410,22 @@ namespace Phasebreak.Gameplay
             nav.anchorMin = nav.anchorMax = new Vector2(1f, 0f);
             nav.pivot = new Vector2(1f, 0f);
             nav.anchoredPosition = new Vector2(-22f, 20f);
-            nav.sizeDelta = new Vector2(274f, 70f);
+            nav.sizeDelta = new Vector2(406f, 70f);
             PhasebreakUiTheme.StyleSurface(nav.GetComponent<Image>(), Window);
             NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory", "inventory");
             NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character", "character");
             NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents", "talents");
             NavButton(nav, MenuMode.Spellbook, EquipmentSlot.Sigil1, 3, "Spellbook", "spellbook");
-            navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f, TextAlignmentOptions.Center, new Vector2(.77f, .105f), new Vector2(.99f, .15f), TextPrimary);
+            journalNavImage = NavWorldButton(nav, 4, "Journal", "journal", "JOURNAL", "✦",
+                WorldQuestHud.ToggleJournalMenu);
+            mapNavImage = NavWorldButton(nav, 5, "Map", "worldmap", "MAP", "◇",
+                WorldQuestHud.ToggleMapMenu);
+            navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f,
+                TextAlignmentOptions.Center, Vector2.zero, Vector2.zero, TextPrimary);
+            navTooltip.rectTransform.anchorMin = navTooltip.rectTransform.anchorMax = new Vector2(1f, 0f);
+            navTooltip.rectTransform.pivot = new Vector2(1f, 0f);
+            navTooltip.rectTransform.anchoredPosition = new Vector2(-22f, 0f);
+            navTooltip.rectTransform.sizeDelta = new Vector2(406f, 18f);
             navTooltip.gameObject.SetActive(false);
         }
 
@@ -426,13 +438,37 @@ namespace Phasebreak.Gameplay
             rect.sizeDelta = new Vector2(58f, 54f);
             Image background = rect.GetComponent<Image>();
             navImages[target] = background;
-            Image icon = IconImage("Icon", rect, new Vector2(.23f, .2f), new Vector2(.77f, .8f));
+            Image icon = IconImage("Icon", rect, new Vector2(.23f, .28f), new Vector2(.77f, .86f));
             icon.sprite = PhasebreakItemIconLibrary.Get(iconSlot);
             icon.color = TextPrimary;
+            Text("Label", rect, hint.ToUpperInvariant(), 9f, TextAlignmentOptions.Center,
+                new Vector2(.02f, .025f), new Vector2(.98f, .26f), TextMuted);
             ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
             relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]"; navTooltip.gameObject.SetActive(true); }, () => navTooltip.gameObject.SetActive(false), () => Toggle(target));
             PhasebreakUiTheme.StyleSurface(background, PanelLight);
             relay.ConfigureVisual(background, PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
+        }
+
+        private Image NavWorldButton(RectTransform root, int index, string hint, string bindingId,
+            string label, string symbol, Action onClick)
+        {
+            RectTransform rect = Block(hint, root, PanelLight);
+            rect.anchorMin = rect.anchorMax = Vector2.zero;
+            rect.pivot = Vector2.zero;
+            rect.anchoredPosition = new Vector2(9f + index * 66f, 8f);
+            rect.sizeDelta = new Vector2(58f, 54f);
+            Image background = rect.GetComponent<Image>();
+            Text("Symbol", rect, symbol, 29f, TextAlignmentOptions.Center,
+                new Vector2(.12f, .28f), new Vector2(.88f, .88f), TextPrimary);
+            Text("Label", rect, label, 9f, TextAlignmentOptions.Center,
+                new Vector2(.02f, .025f), new Vector2(.98f, .26f), TextMuted);
+            ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
+            relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]";
+                navTooltip.gameObject.SetActive(true); },
+                () => navTooltip.gameObject.SetActive(false), onClick);
+            PhasebreakUiTheme.StyleSurface(background, PanelLight);
+            relay.ConfigureVisual(background, PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
+            return background;
         }
 
         private void BuildTitleBar(RectTransform window, string subtitle, string title, MenuMode target)
@@ -737,7 +773,15 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private void UpdateNav() { foreach (KeyValuePair<MenuMode, Image> pair in navImages) pair.Value.color = mode == pair.Key ? PhasebreakUiTheme.Active : PanelLight; }
+        private void UpdateNav()
+        {
+            foreach (KeyValuePair<MenuMode, Image> pair in navImages)
+                pair.Value.GetComponent<ItemSlotUI>().SetSelected(mode == pair.Key);
+            if (journalNavImage != null)
+                journalNavImage.GetComponent<ItemSlotUI>().SetSelected(WorldQuestHud.IsJournalOpen);
+            if (mapNavImage != null)
+                mapNavImage.GetComponent<ItemSlotUI>().SetSelected(WorldQuestHud.IsMapOpen);
+        }
         private void SetActions(bool enabled) { foreach (InputAction action in new[] { inventoryAction, characterAction, talentsAction, spellbookAction, escapeAction }) if (enabled) action.Enable(); else action.Disable(); }
 
         private static RectTransform CreateScrollGrid(Transform parent, Vector2 min, Vector2 max, int columns, Vector2 cellSize, Vector2 spacing)

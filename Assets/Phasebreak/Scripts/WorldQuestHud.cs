@@ -63,6 +63,10 @@ namespace Phasebreak.Gameplay
         private bool journalOpen;
         private bool vendorOpen;
         public static bool IsWorldMenuOpen { get; private set; }
+        public static bool IsMapOpen => instance != null && instance.mapOpen;
+        public static bool IsJournalOpen => instance != null && instance.journalOpen;
+        public static void ToggleMapMenu() => instance?.ToggleMap();
+        public static void ToggleJournalMenu() => instance?.ToggleJournal();
         public static void CloseWorldMenus()
         {
             WorldQuestHud hud = instance != null ? instance : FindAnyObjectByType<WorldQuestHud>();
@@ -647,6 +651,7 @@ namespace Phasebreak.Gameplay
         {
             IsWorldMenuOpen = mapOpen || journalOpen || vendorOpen;
             if (IsWorldMenuOpen) { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
+            PhasebreakInventoryHud.RefreshNavigation();
         }
 
         private void RefreshBindingHints()
