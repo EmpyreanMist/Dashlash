@@ -400,7 +400,9 @@ namespace Phasebreak.Gameplay
             if (target == null || !target.IsHostile || !target.IsAlive)
                 return false;
             Vector3 origin = transform.position + Vector3.up * 1.1f;
-            Vector3 destination = target.NameplateWorldPosition - Vector3.up * 0.65f;
+            CharacterController targetController = target.GetComponent<CharacterController>();
+            Vector3 destination = targetController != null ? targetController.bounds.center :
+                target.NameplateWorldPosition - Vector3.up * 0.65f;
             Vector3 direction = destination - origin;
             float distance = direction.magnitude;
             if (distance > maximumRange || FlatDistance(transform.position, target.transform.position) < minimumRange || distance < 0.01f)

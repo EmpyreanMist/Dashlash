@@ -108,6 +108,15 @@ namespace Phasebreak.Gameplay
             EnemyRoleDefinition.RankTuning tuning = roleDefinition != null ? roleDefinition.Tuning(newRank) :
                 new EnemyRoleDefinition.RankTuning { healthMultiplier = 1f, damageMultiplier = 1f,
                     experienceMultiplier = 1f };
+            // Keep the gameplay capsule aligned with the role visual without scaling world movement.
+            controller ??= GetComponent<CharacterController>();
+            if (newRole != EnemyRole.Zombie)
+            {
+                float rankScale = Mathf.Lerp(1f, Mathf.Max(1f, tuning.scaleMultiplier), .75f);
+                controller.height = (newRole == EnemyRole.Brute ? 2.65f : 1.7f) * rankScale;
+                controller.radius = (newRole == EnemyRole.Brute ? .75f : .34f) * rankScale;
+                controller.center = Vector3.up * (controller.height * .5f);
+            }
             maxHealth = Mathf.RoundToInt(maxHealth * tuning.healthMultiplier);
             attackDamage = Mathf.Max(1, Mathf.CeilToInt(attackDamage * tuning.damageMultiplier));
             experienceReward = Mathf.RoundToInt(experienceReward * tuning.experienceMultiplier);
