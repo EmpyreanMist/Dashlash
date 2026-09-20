@@ -60,6 +60,8 @@ namespace Phasebreak.Gameplay
         public GameObject visualPrefab;
         public EquipmentSlot slot;
         public ItemRarity rarity;
+        [Tooltip("Keep authored rewards and starter gear out of ordinary corpse drops.")]
+        public bool excludedFromRandomLoot;
         [Min(1)] public int itemLevel = 1;
         public ItemTag tags;
         public PhasebreakItemSetDefinition itemSet;

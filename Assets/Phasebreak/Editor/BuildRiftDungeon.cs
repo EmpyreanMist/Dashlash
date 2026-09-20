@@ -33,6 +33,8 @@ namespace Phasebreak.Editor
                 new Color(0.35f, 0.12f, 0.78f), true);
             Material gateMaterial = CreateMaterial("Assets/Phasebreak/Materials/RiftGate.mat",
                 new Color(0.55f, 0.1f, 0.18f), true);
+            Material safeMaterial = CreateMaterial("Assets/Phasebreak/Materials/CryptSanctuary.mat",
+                new Color(0.85f, 0.54f, 0.14f), true);
             Material enemyMaterial = AssetDatabase.LoadAssetAtPath<Material>(
                 "Assets/Phasebreak/Materials/Enemy.mat");
             Material telegraphMaterial = AssetDatabase.LoadAssetAtPath<Material>(
@@ -51,14 +53,18 @@ namespace Phasebreak.Editor
             Transform checkpointOne = CreateMarker("Checkpoint 1", root.transform,
                 new Vector3(0f, 1f, 45f));
             Transform checkpointTwo = CreateMarker("Checkpoint 2", root.transform,
-                new Vector3(0f, 1f, 59f));
+                new Vector3(0f, 1f, 60f));
             Transform checkpointThree = CreateMarker("Checkpoint 3", root.transform,
-                new Vector3(0f, 1f, 73f));
+                new Vector3(0f, 1f, 78f));
+            Transform checkpointFour = CreateMarker("Checkpoint 4", root.transform,
+                new Vector3(0f, 1f, 96f));
 
             GameObject gateOne = CreateBlock("Gate 1", architecture.transform,
                 new Vector3(0f, 1.5f, 57f), new Vector3(4.5f, 3f, 0.35f), gateMaterial);
             GameObject gateTwo = CreateBlock("Gate 2", architecture.transform,
-                new Vector3(0f, 1.5f, 71f), new Vector3(4.5f, 3f, 0.35f), gateMaterial);
+                new Vector3(0f, 1.5f, 75f), new Vector3(4.5f, 3f, 0.35f), gateMaterial);
+            GameObject gateThree = CreateBlock("Gate 3", architecture.transform,
+                new Vector3(0f, 1.5f, 93f), new Vector3(4.5f, 3f, 0.35f), gateMaterial);
 
             GameObject encountersRoot = new GameObject("Encounters");
             encountersRoot.transform.SetParent(root.transform);
@@ -66,23 +72,38 @@ namespace Phasebreak.Editor
                 "the Threshold Guardians", checkpointOne, gateOne, false,
                 new[]
                 {
-                    CreateEnemy("Crypt Guardian A", encountersRoot.transform, new Vector3(-2.2f, 1f, 51f),
+                    CreateEnemy("Threshold Zombie A", encountersRoot.transform, new Vector3(-2.2f, 1f, 49f),
                         player.transform, enemyMaterial, telegraphMaterial, 22, 12),
-                    CreateEnemy("Crypt Guardian B", encountersRoot.transform, new Vector3(2.2f, 1f, 53.5f),
+                    CreateEnemy("Threshold Zombie B", encountersRoot.transform, new Vector3(2.2f, 1f, 51.5f),
+                        player.transform, enemyMaterial, telegraphMaterial, 22, 12),
+                    CreateEnemy("Threshold Zombie C", encountersRoot.transform, new Vector3(0f, 1f, 54f),
                         player.transform, enemyMaterial, telegraphMaterial, 22, 12)
                 });
             RiftDungeonEncounter second = CreateEncounter("2 - The Reliquary", encountersRoot.transform,
                 "the Reliquary Keepers", checkpointTwo, gateTwo, false,
                 new[]
                 {
-                    CreateEnemy("Reliquary Keeper A", encountersRoot.transform, new Vector3(-2.5f, 1f, 64f),
+                    CreateEnemy("Reliquary Zombie A", encountersRoot.transform, new Vector3(-2.5f, 1f, 65f),
                         player.transform, enemyMaterial, telegraphMaterial, 28, 14),
-                    CreateEnemy("Reliquary Keeper B", encountersRoot.transform, new Vector3(2.5f, 1f, 67f),
-                        player.transform, enemyMaterial, telegraphMaterial, 28, 14)
-                });
+                    CreateEnemy("Reliquary Zombie B", encountersRoot.transform, new Vector3(2.5f, 1f, 67f),
+                        player.transform, enemyMaterial, telegraphMaterial, 28, 14),
+                    CreateEnemy("Reliquary Puglin", encountersRoot.transform, new Vector3(0f, 1f, 71f),
+                        player.transform, enemyMaterial, telegraphMaterial, 36, 18)
+                }, new[] { EnemyRole.Zombie, EnemyRole.Zombie, EnemyRole.Brute });
+            RiftDungeonEncounter third = CreateEncounter("3 - The Breach", encountersRoot.transform,
+                "the Breach Defenders", checkpointThree, gateThree, false,
+                new[]
+                {
+                    CreateEnemy("Breach Puglin", encountersRoot.transform, new Vector3(0f, 1f, 84f),
+                        player.transform, enemyMaterial, telegraphMaterial, 36, 18),
+                    CreateEnemy("Breach Imp A", encountersRoot.transform, new Vector3(-3.5f, 1f, 88f),
+                        player.transform, enemyMaterial, telegraphMaterial, 24, 17),
+                    CreateEnemy("Breach Imp B", encountersRoot.transform, new Vector3(3.5f, 1f, 89f),
+                        player.transform, enemyMaterial, telegraphMaterial, 24, 17)
+                }, new[] { EnemyRole.Brute, EnemyRole.Skirmisher, EnemyRole.Skirmisher });
 
             MeleeEnemy boss = CreateEnemy("Rift Warden", encountersRoot.transform,
-                new Vector3(0f, 1f, 79f), player.transform, enemyMaterial, telegraphMaterial, 90, 36);
+                new Vector3(0f, 1f, 103f), player.transform, enemyMaterial, telegraphMaterial, 90, 36);
             boss.transform.Find("Body").localScale = new Vector3(1.45f, 1.45f, 1.45f);
             ConfigureEnemy(boss, "moveSpeed", 2.8f);
             ConfigureEnemy(boss, "awarenessRange", 13f);
@@ -92,19 +113,25 @@ namespace Phasebreak.Editor
                 PrimitiveType.Cube, telegraphMaterial);
             Transform ground = CreateTelegraph("Rift Rupture Telegraph", root.transform,
                 PrimitiveType.Cylinder, telegraphMaterial);
+            Transform safeCenter = CreateTelegraph("Convergence Safe Center", root.transform,
+                PrimitiveType.Cylinder, safeMaterial);
+            Transform aura = CreateTelegraph("Unbound Aura", boss.transform,
+                PrimitiveType.Cylinder, rift);
+            aura.localPosition = new Vector3(0f, -0.94f, 0f);
+            aura.localScale = new Vector3(3f, 0.025f, 3f);
             RiftWardenBoss bossMechanics = boss.gameObject.AddComponent<RiftWardenBoss>();
-            bossMechanics.Configure(player.transform, frontal, ground);
-            RiftDungeonEncounter third = CreateEncounter("3 - Rift Warden", encountersRoot.transform,
-                "the Rift Warden", checkpointThree, null, true, new[] { boss });
+            bossMechanics.Configure(player.transform, frontal, ground, safeCenter, aura);
+            RiftDungeonEncounter fourth = CreateEncounter("4 - Rift Warden", encountersRoot.transform,
+                "the Rift Warden", checkpointFour, null, true, new[] { boss });
 
-            Transform chest = CreateChest(root.transform, new Vector3(0f, 0.65f, 83f), accent, rift);
-            Transform exit = CreatePortal("Exit Rift", root.transform, new Vector3(0f, 0.08f, 85f),
+            Transform chest = CreateChest(root.transform, new Vector3(0f, 0.65f, 108f), accent, rift);
+            Transform exit = CreatePortal("Exit Rift", root.transform, new Vector3(0f, 0.08f, 110f),
                 rift, false);
 
             RiftDungeonController controller = root.AddComponent<RiftDungeonController>();
             CombatArenaReset reset = Object.FindAnyObjectByType<CombatArenaReset>();
             controller.Configure(player.transform, entrance, spawn, chest, exit,
-                new[] { first, second, third }, reset);
+                new[] { first, second, third, fourth }, reset);
 
             PhasebreakHud hud = Object.FindAnyObjectByType<PhasebreakHud>();
             if (hud != null)
@@ -118,23 +145,23 @@ namespace Phasebreak.Editor
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
             AssetDatabase.SaveAssets();
-            Debug.Log("PB_DUNGEON_BUILT Rift Crypt with 3 encounters, boss, reward and exit.");
+            Debug.Log("PB_DUNGEON_BUILT Rift Crypt with 4 escalating encounters, boss, reward and exit.");
         }
 
         private static void BuildArchitecture(Transform parent, Material floor, Material wall, Material accent)
         {
-            CreateBlock("Crypt Floor", parent, new Vector3(0f, -0.5f, 64f),
-                new Vector3(12f, 1f, 44f), floor);
-            CreateBlock("West Wall", parent, new Vector3(-6.25f, 1.5f, 64f),
-                new Vector3(0.5f, 4f, 44f), wall);
-            CreateBlock("East Wall", parent, new Vector3(6.25f, 1.5f, 64f),
-                new Vector3(0.5f, 4f, 44f), wall);
+            CreateBlock("Crypt Floor", parent, new Vector3(0f, -0.5f, 76.5f),
+                new Vector3(12f, 1f, 69f), floor);
+            CreateBlock("West Wall", parent, new Vector3(-6.25f, 1.5f, 76.5f),
+                new Vector3(0.5f, 4f, 69f), wall);
+            CreateBlock("East Wall", parent, new Vector3(6.25f, 1.5f, 76.5f),
+                new Vector3(0.5f, 4f, 69f), wall);
             CreateBlock("Entrance Wall", parent, new Vector3(0f, 1.5f, 42f),
                 new Vector3(12f, 4f, 0.5f), wall);
-            CreateBlock("Boss Wall", parent, new Vector3(0f, 1.5f, 86f),
+            CreateBlock("Boss Wall", parent, new Vector3(0f, 1.5f, 111f),
                 new Vector3(12f, 4f, 0.5f), wall);
 
-            for (int z = 46; z <= 82; z += 6)
+            for (int z = 46; z <= 106; z += 6)
             {
                 CreateBlock($"West Pillar {z}", parent, new Vector3(-5.35f, 1.25f, z),
                     new Vector3(0.8f, 2.5f, 0.8f), accent);
@@ -144,12 +171,13 @@ namespace Phasebreak.Editor
         }
 
         private static RiftDungeonEncounter CreateEncounter(string objectName, Transform parent,
-            string title, Transform checkpoint, GameObject gate, bool boss, MeleeEnemy[] enemies)
+            string title, Transform checkpoint, GameObject gate, bool boss, MeleeEnemy[] enemies,
+            EnemyRole[] roles = null)
         {
             GameObject item = new GameObject(objectName);
             item.transform.SetParent(parent);
             RiftDungeonEncounter encounter = item.AddComponent<RiftDungeonEncounter>();
-            encounter.Configure(title, enemies, gate, checkpoint, boss);
+            encounter.Configure(title, enemies, gate, checkpoint, boss, roles);
             return encounter;
         }
 

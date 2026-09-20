@@ -306,8 +306,10 @@ namespace Phasebreak.Gameplay
                     encounter.Enemies.Length > 0 && encounter.Enemies[0] != null)
                 {
                     RiftWardenBoss boss = encounter.Enemies[0].GetComponent<RiftWardenBoss>();
+                    if (boss != null)
+                        mechanic = $"\nWarden phase: <b>{boss.PhaseName}</b>";
                     if (boss != null && !string.IsNullOrEmpty(boss.CurrentMechanic))
-                        mechanic = $"\n<color=#FF673D><b>{boss.CurrentMechanic}</b></color>";
+                        mechanic += $"\n<color=#FF673D><b>{boss.CurrentMechanic}</b></color>";
                 }
                 dungeonLabel.text =
                     $"<b>{dungeon.DungeonName.ToUpperInvariant()}</b>  •  {dungeon.DifficultyName}\n" +
@@ -324,7 +326,9 @@ namespace Phasebreak.Gameplay
                     "<size=38><color=#F7A23B><b>RIFT CRYPT CLEARED</b></color></size>\n\n" +
                     $"Time  <b>{FormatTime(dungeon.ElapsedTime)}</b>\n" +
                     $"Enemies defeated  <b>{dungeon.KillCount}</b>\n" +
-                    "Reward  <color=#B56CFF><b>Heart of the Rift Warden</b></color>\n\n" +
+                    (dungeon.RewardGrantedThisRun
+                        ? "Reward  <color=#B56CFF><b>Heart of the Rift Warden</b></color>\n\n"
+                        : "Cache  <b>Previously claimed</b>\n\n") +
                     "Use the exit rift to return";
             }
         }
@@ -465,56 +469,78 @@ namespace Phasebreak.Gameplay
                 key.rectTransform.pivot = new Vector2(0f, 1f);
                 key.rectTransform.anchoredPosition = new Vector2(5f, -5f);
                 key.rectTransform.sizeDelta = new Vector2(18f, 18f);
+                key.fontStyle = FontStyles.Bold;
+                key.outlineWidth = .18f;
+                key.outlineColor = Color.black;
 
                 TextMeshProUGUI cost = AddText("Cost", slot, 10f, TextAlignmentOptions.BottomRight);
                 cost.rectTransform.anchorMin = Vector2.zero;
                 cost.rectTransform.anchorMax = Vector2.one;
                 cost.rectTransform.offsetMin = new Vector2(4f, 4f);
                 cost.rectTransform.offsetMax = new Vector2(-6f, -4f);
+                cost.fontStyle = FontStyles.Bold;
+                cost.outlineWidth = .18f;
+                cost.outlineColor = Color.black;
 
-                TextMeshProUGUI charges = AddText("Charges", slot, 10f, TextAlignmentOptions.TopRight);
+                TextMeshProUGUI charges = AddText("Charges", slot, 12f, TextAlignmentOptions.TopRight);
                 charges.rectTransform.anchorMin = Vector2.zero;
                 charges.rectTransform.anchorMax = Vector2.one;
                 charges.rectTransform.offsetMin = new Vector2(4f, 4f);
                 charges.rectTransform.offsetMax = new Vector2(-6f, -4f);
+                charges.fontStyle = FontStyles.Bold;
+                charges.outlineWidth = .18f;
+                charges.outlineColor = Color.black;
 
                 RectTransform cooldown = CreateRect("Cooldown", slot);
                 cooldown.anchorMin = Vector2.zero;
                 cooldown.anchorMax = Vector2.one;
                 cooldown.offsetMin = cooldown.offsetMax = Vector2.zero;
-                AddImage(cooldown, new Color(0.015f, 0.02f, 0.035f, 0.78f));
+                AddImage(cooldown, new Color(.02f, .02f, .02f, .82f));
 
                 TextMeshProUGUI cooldownText = AddText("Cooldown Text", slot, 25f,
                     TextAlignmentOptions.Center);
                 Stretch(cooldownText.rectTransform);
                 cooldownText.fontStyle = FontStyles.Bold;
+                cooldownText.color = PhasebreakUiTheme.Text;
+                cooldownText.outlineWidth = .2f;
+                cooldownText.outlineColor = Color.black;
+                key.transform.SetAsLastSibling();
+                cost.transform.SetAsLastSibling();
+                charges.transform.SetAsLastSibling();
                 abilitySlots[i] = new AbilitySlotView(panel, abilityIcon, cooldown, name, key, cost, charges, cooldownText);
                 int slotIndex = i;
                 ItemSlotUI hover = slot.gameObject.AddComponent<ItemSlotUI>();
                 hover.Configure(() => ShowAbilityTooltip(slotIndex), HideAbilityTooltip, null);
             }
-            abilityTooltip = AddText("Ability Tooltip", canvasRect, 15f, TextAlignmentOptions.TopLeft);
-            abilityTooltip.rectTransform.anchorMin = abilityTooltip.rectTransform.anchorMax = new Vector2(.5f, 0f);
-            abilityTooltip.rectTransform.pivot = new Vector2(.5f, 0f);
-            abilityTooltip.rectTransform.anchoredPosition = new Vector2(0f, 138f);
-            abilityTooltip.rectTransform.sizeDelta = new Vector2(380f, 66f);
-            abilityTooltip.color = new Color(.91f, .94f, .98f, 1f);
-            abilityTooltip.gameObject.SetActive(false);
+            RectTransform tooltipSurface = CreateRect("Ability Tooltip Surface", canvasRect);
+            tooltipSurface.anchorMin = tooltipSurface.anchorMax = new Vector2(.5f, 0f);
+            tooltipSurface.pivot = new Vector2(.5f, 0f);
+            tooltipSurface.anchoredPosition = new Vector2(0f, 138f);
+            tooltipSurface.sizeDelta = new Vector2(400f, 80f);
+            PhasebreakUiTheme.StyleSurface(AddImage(tooltipSurface, PhasebreakUiTheme.Window),
+                PhasebreakUiTheme.Window);
+            abilityTooltip = AddText("Ability Tooltip", tooltipSurface, 15f, TextAlignmentOptions.TopLeft);
+            abilityTooltip.rectTransform.anchorMin = Vector2.zero;
+            abilityTooltip.rectTransform.anchorMax = Vector2.one;
+            abilityTooltip.rectTransform.offsetMin = new Vector2(14f, 10f);
+            abilityTooltip.rectTransform.offsetMax = new Vector2(-14f, -10f);
+            abilityTooltip.color = PhasebreakUiTheme.Text;
+            tooltipSurface.gameObject.SetActive(false);
         }
 
         private void ShowAbilityTooltip(int index)
         {
             if (combat == null || abilityTooltip == null || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen) return;
             AbilityState state = combat.GetAssignedAbilityState(index);
-            abilityTooltip.text = $"<b>{state.Name}</b>  <color=#9CAABD>[{state.Key}]</color>\n" +
-                $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}  •  Cooldown {state.CooldownDuration:0.#}s" +
+            abilityTooltip.text = $"<color=#C9A86C><b>{state.Name}</b></color>  <color=#AAA69B>[{state.Key}]</color>\n" +
+                $"<color=#AAA69B>Energy {Mathf.CeilToInt(state.ResourceCost)}  •  Cooldown {state.CooldownDuration:0.#}s" +
                 (state.MaximumCharges > 1 ? $"  •  Charges {state.MaximumCharges}" : string.Empty) + "</color>";
-            abilityTooltip.gameObject.SetActive(true);
+            abilityTooltip.transform.parent.gameObject.SetActive(true);
         }
 
         private void HideAbilityTooltip()
         {
-            if (abilityTooltip != null) abilityTooltip.gameObject.SetActive(false);
+            if (abilityTooltip != null) abilityTooltip.transform.parent.gameObject.SetActive(false);
         }
 
         private void UpdateActionBar()
@@ -526,7 +552,7 @@ namespace Phasebreak.Gameplay
             if (resourceLabel != null)
                 resourceLabel.text = $"ENERGY  {Mathf.CeilToInt(combat.CurrentResource)}/{Mathf.CeilToInt(combat.MaximumResource)}";
             for (int i = 0; i < abilitySlots.Length; i++)
-                abilitySlots[i].UpdateView(combat.GetAssignedAbilityState(i));
+                abilitySlots[i].UpdateView(combat.GetAssignedAbilityState(i), combat.CurrentResource);
         }
 
         private void CreateProgressionDisplay()
@@ -835,8 +861,8 @@ namespace Phasebreak.Gameplay
 
         private sealed class AbilitySlotView
         {
-            private static readonly Color ReadyColor = new Color(0.08f, 0.18f, 0.3f, 0.98f);
-            private static readonly Color BlockedColor = new Color(0.12f, 0.075f, 0.085f, 0.98f);
+            private static readonly Color ReadyColor = PhasebreakUiTheme.Active;
+            private static readonly Color BlockedColor = PhasebreakUiTheme.Panel;
 
             private readonly UnityEngine.UI.Image panel;
             private readonly UnityEngine.UI.Image icon;
@@ -861,14 +887,19 @@ namespace Phasebreak.Gameplay
                 this.cooldownText = cooldownText;
             }
 
-            public void UpdateView(AbilityState state)
+            public void UpdateView(AbilityState state, float availableResource)
             {
                 name.text = state.Name;
                 icon.sprite = state.Icon;
-                icon.color = state.Icon == null ? Color.clear : state.IsUsable ? Color.white : new Color(.52f, .52f, .58f, 1f);
+                icon.color = state.Icon == null ? Color.clear : state.IsUsable ? Color.white : PhasebreakUiTheme.MutedText;
                 key.text = state.Key;
                 cost.text = state.ResourceCost > 0f ? Mathf.CeilToInt(state.ResourceCost).ToString() : string.Empty;
-                charges.text = state.MaximumCharges > 1 ? $"x{state.Charges}" : string.Empty;
+                cost.color = availableResource < state.ResourceCost
+                    ? new Color(.9f, .49f, .39f, 1f) : PhasebreakUiTheme.Text;
+                charges.text = state.MaximumCharges > 0
+                    ? $"{state.Charges}/{state.MaximumCharges}" : string.Empty;
+                charges.color = state.Charges == 0
+                    ? new Color(.9f, .49f, .39f, 1f) : PhasebreakUiTheme.Text;
                 panel.color = state.IsUsable ? ReadyColor : BlockedColor;
 
                 bool coolingDown = state.CooldownRemaining > 0.01f;

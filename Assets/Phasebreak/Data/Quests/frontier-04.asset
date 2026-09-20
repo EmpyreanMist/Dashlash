@@ -20,6 +20,7 @@ MonoBehaviour:
   prerequisiteQuestId: frontier-03
   objectiveKind: 1
   targetId: Risen Zombie
+  mapEncounterZoneId: ruined-shrine
   objectiveText: Defeat Risen Zombies
   requiredCount: 5
   experienceReward: 42

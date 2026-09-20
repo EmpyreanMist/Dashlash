@@ -7,9 +7,11 @@ namespace Phasebreak.Gameplay
     {
         [SerializeField] private string encounterName = "Crypt Guardians";
         [SerializeField] private MeleeEnemy[] enemies;
+        [SerializeField] private EnemyRole[] enemyRoles;
         [SerializeField] private GameObject gate;
         [SerializeField] private Transform checkpoint;
         [SerializeField] private bool bossEncounter;
+        private bool rolesApplied;
 
         public string EncounterName => encounterName;
         public bool IsBossEncounter => bossEncounter;
@@ -34,10 +36,11 @@ namespace Phasebreak.Gameplay
         public bool IsComplete => RemainingEnemies == 0;
 
         public void Configure(string title, MeleeEnemy[] encounterEnemies, GameObject encounterGate,
-            Transform respawnCheckpoint, bool isBoss)
+            Transform respawnCheckpoint, bool isBoss, EnemyRole[] roles = null)
         {
             encounterName = title;
             enemies = encounterEnemies;
+            enemyRoles = roles;
             gate = encounterGate;
             checkpoint = respawnCheckpoint;
             bossEncounter = isBoss;
@@ -62,13 +65,25 @@ namespace Phasebreak.Gameplay
             SetGateLocked(true);
             if (enemies == null)
                 return;
-            foreach (MeleeEnemy enemy in enemies)
+            for (int i = 0; i < enemies.Length; i++)
             {
+                MeleeEnemy enemy = enemies[i];
                 if (enemy == null)
                     continue;
                 enemy.gameObject.SetActive(true);
+                if (!rolesApplied && enemyRoles != null && i < enemyRoles.Length &&
+                    enemyRoles[i] != EnemyRole.Zombie)
+                {
+                    enemy.ConfigureRole(enemyRoles[i], EnemyRank.Normal);
+                    Transform body = enemy.transform.Find("Body");
+                    Transform blade = enemy.transform.Find("Blade");
+                    if (body != null) body.gameObject.SetActive(false);
+                    if (blade != null) blade.gameObject.SetActive(false);
+                }
                 enemy.ResetEnemy();
+                enemy.GetComponent<RiftWardenBoss>()?.ResetForEncounter();
             }
+            rolesApplied = true;
         }
 
         public void Complete() => SetGateLocked(false);
@@ -83,6 +98,7 @@ namespace Phasebreak.Gameplay
                     continue;
                 enemy.gameObject.SetActive(true);
                 enemy.ResetEnemy();
+                enemy.GetComponent<RiftWardenBoss>()?.ResetForEncounter();
             }
             SetGateLocked(true);
         }
