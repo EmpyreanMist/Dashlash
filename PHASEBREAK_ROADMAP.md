@@ -22,7 +22,7 @@ Judge major additions by combat feel, build discovery and transformation, meanin
 
 ## Current milestone
 
-**Core Build Identity — Fighter to Anomaly.** Validate whether the Riftblade chain-kill prototype feels fun with real keyboard and mouse input, clear combat feedback, audible escalation, and satisfying progression from ordinary attacks to invested flicker chains. Free specialization switching supports comparison and experimentation. Prove that build investment changes how combat plays before adding a global Phasebreak meter or world-wide Phasebreach system. The existing API-driven 12-kill chain establishes mechanical feasibility; it does not establish play-feel or final balance.
+**V0.2 — Fun, Content & Visual Quality.** Improve the authored Starter Zone, enemy and encounter decisions, ability and talent build choices, and combat/UI feedback in four coherent passes. Preserve current gameplay owners and the five-slot action bar. Verify each pass in Unity and reserve the broader Play Mode smoke test and Development Build for the end of V0.2. The existing Riftblade chain is a mechanical foundation; keyboard and mouse feel, audio, and balance still need direct play.
 
 ## Near-term milestones
 
