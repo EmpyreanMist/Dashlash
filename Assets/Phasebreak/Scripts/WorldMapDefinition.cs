@@ -1,8 +1,16 @@
+using System;
 using UnityEngine;
 
 namespace Phasebreak.Gameplay
 {
     public enum WorldMapProviderKind { Terrain, Dungeon, Custom }
+
+    [Serializable]
+    public struct WorldMapRegion
+    {
+        public string name;
+        public Vector2 worldPosition;
+    }
 
     [CreateAssetMenu(menuName = "Phasebreak/World/Map Definition", fileName = "WorldMap")]
     public sealed class WorldMapDefinition : ScriptableObject
@@ -14,6 +22,7 @@ namespace Phasebreak.Gameplay
         public Rect worldBounds;
         public Sprite generatedTerrain;
         public Sprite generatedRoads;
+        public WorldMapRegion[] regions;
         [Min(50f)] public float minimapViewHeight = 240f;
         [Header("Terrain layer names")]
         public string grassLayer = "Grass";

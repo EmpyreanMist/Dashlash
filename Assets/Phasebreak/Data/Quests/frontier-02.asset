@@ -20,6 +20,7 @@ MonoBehaviour:
   prerequisiteQuestId: frontier-01
   objectiveKind: 1
   targetId: Risen Zombie
+  mapEncounterZoneId: broken-cart-ambush
   objectiveText: Defeat Risen Zombies
   requiredCount: 3
   experienceReward: 28

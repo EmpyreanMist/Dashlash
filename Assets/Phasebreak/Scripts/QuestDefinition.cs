@@ -15,6 +15,8 @@ namespace Phasebreak.Gameplay
         public string prerequisiteQuestId;
         public QuestObjectiveKind objectiveKind;
         public string targetId;
+        [Tooltip("Optional authored encounter site for the world-map objective marker.")]
+        public string mapEncounterZoneId;
         public string objectiveText;
         [Min(1)] public int requiredCount = 1;
         [Min(0)] public int experienceReward;

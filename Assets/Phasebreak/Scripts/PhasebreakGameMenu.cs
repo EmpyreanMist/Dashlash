@@ -20,11 +20,11 @@ namespace Phasebreak.Gameplay
             { Category = category; SearchText = searchText; Object = item; }
         }
 
-        private static readonly Color Back = new(.012f, .02f, .036f, .98f);
-        private static readonly Color Raised = new(.035f, .06f, .09f, 1f);
-        private static readonly Color Accent = new(.13f, .72f, .88f, 1f);
-        private static readonly Color Light = new(.91f, .95f, 1f, 1f);
-        private static readonly Color Muted = new(.57f, .67f, .76f, 1f);
+        private static readonly Color Back = PhasebreakUiTheme.Window;
+        private static readonly Color Raised = PhasebreakUiTheme.Raised;
+        private static readonly Color Accent = PhasebreakUiTheme.Accent;
+        private static readonly Color Light = PhasebreakUiTheme.Text;
+        private static readonly Color Muted = PhasebreakUiTheme.MutedText;
 
         private readonly List<SettingRow> rows = new();
         private readonly List<(int startRow, GameObject item)> headers = new();
@@ -141,9 +141,10 @@ namespace Phasebreak.Gameplay
 
         private void BuildMenu()
         {
-            RectTransform backdrop = Rect("Menu Backdrop", root, new Color(.005f, .008f, .016f, .72f), true);
+            RectTransform backdrop = Rect("Menu Backdrop", root, new Color(.015f, .014f, .012f, .72f), true);
             Stretch(backdrop, 0f);
             menuPanel = Rect("Game Menu", root, Back, true);
+            PhasebreakUiTheme.StyleSurface(menuPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             menuPanel.anchorMin = menuPanel.anchorMax = menuPanel.pivot = new Vector2(.5f, .5f);
             menuPanel.sizeDelta = new Vector2(560f, 480f);
             Label("Title", menuPanel, "PHASEBREAK", 39f, Light, new Vector2(.08f, .77f), new Vector2(.92f, .93f));
@@ -156,6 +157,7 @@ namespace Phasebreak.Gameplay
         private void BuildSettings()
         {
             settingsPanel = Rect("Settings", root, Back, true);
+            PhasebreakUiTheme.StyleSurface(settingsPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             settingsPanel.anchorMin = new Vector2(.12f, .08f);
             settingsPanel.anchorMax = new Vector2(.88f, .92f);
             settingsPanel.offsetMin = settingsPanel.offsetMax = Vector2.zero;
@@ -163,6 +165,7 @@ namespace Phasebreak.Gameplay
             Button("Back", settingsPanel, "BACK", new Vector2(.84f, .895f), new Vector2(.965f, .965f), ShowMain);
 
             RectTransform searchRoot = Rect("Search Settings", settingsPanel, Raised, true);
+            PhasebreakUiTheme.StyleSurface(searchRoot.GetComponent<UnityEngine.UI.Image>(), Raised);
             Anchors(searchRoot, new Vector2(.035f, .79f), new Vector2(.965f, .875f));
             search = searchRoot.gameObject.AddComponent<TMP_InputField>();
             search.lineType = TMP_InputField.LineType.SingleLine;
@@ -182,6 +185,7 @@ namespace Phasebreak.Gameplay
                 () => { search.text = string.Empty; search.Select(); });
 
             RectTransform scrollRoot = Rect("Settings Scroll", settingsPanel, Raised, true);
+            PhasebreakUiTheme.StyleSurface(scrollRoot.GetComponent<UnityEngine.UI.Image>(), Raised);
             Anchors(scrollRoot, new Vector2(.035f, .13f), new Vector2(.965f, .775f));
             UnityEngine.UI.ScrollRect scroll = scrollRoot.gameObject.AddComponent<UnityEngine.UI.ScrollRect>();
             scroll.horizontal = false;
@@ -284,7 +288,7 @@ namespace Phasebreak.Gameplay
 
         private RectTransform Row(string category, string searchText)
         {
-            RectTransform row = Rect(searchText, content, new Color(.055f, .083f, .115f, .97f), false);
+            RectTransform row = Rect(searchText, content, PhasebreakUiTheme.Panel, false);
             row.gameObject.AddComponent<UnityEngine.UI.LayoutElement>().preferredHeight = 58f;
             rows.Add(new SettingRow(category, searchText.ToLowerInvariant() + " " + category.ToLowerInvariant(), row.gameObject));
             return row;
@@ -490,9 +494,10 @@ namespace Phasebreak.Gameplay
 
         private static TextMeshProUGUI Button(string name, Transform parent, string text, Vector2 min, Vector2 max, Action click)
         {
-            RectTransform rect = Rect(name, parent, new Color(.07f, .19f, .27f, 1f), true);
+            RectTransform rect = Rect(name, parent, Raised, true);
             Anchors(rect, min, max);
             UnityEngine.UI.Button button = rect.gameObject.AddComponent<UnityEngine.UI.Button>();
+            PhasebreakUiTheme.StyleButton(button);
             button.onClick.AddListener(() => click());
             return Label("Label", rect, text, 17f, Light, Vector2.zero, Vector2.one);
         }

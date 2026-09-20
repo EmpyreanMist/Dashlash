@@ -42,8 +42,8 @@ namespace Phasebreak.Gameplay
             const int width = 220;
             const int height = 360;
             Texture2D texture = NewTexture(width, height, "Phasebreak Character Silhouette");
-            Color body = new(.18f, .28f, .38f, .9f);
-            Color edge = new(.18f, .76f, .9f, .72f);
+            Color body = new(.22f, .19f, .16f, .9f);
+            Color edge = new(.69f, .48f, .25f, .72f);
             FillCircle(texture, 110, 310, 30, body);
             FillPolygon(texture, new[] { new Vector2Int(73, 272), new Vector2Int(147, 272), new Vector2Int(165, 170), new Vector2Int(135, 138), new Vector2Int(85, 138), new Vector2Int(55, 170) }, body);
             FillPolygon(texture, new[] { new Vector2Int(68, 260), new Vector2Int(48, 247), new Vector2Int(20, 145), new Vector2Int(45, 135), new Vector2Int(88, 232) }, body);

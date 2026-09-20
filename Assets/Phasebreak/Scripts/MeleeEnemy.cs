@@ -123,7 +123,7 @@ namespace Phasebreak.Gameplay
             CurrentHealth = maxHealth;
             telegraphBaseScale = telegraphOriginalScale * (role == EnemyRole.Brute ? 1.45f : 1f);
             Targetable identity = GetComponent<Targetable>();
-            string name = roleDefinition != null ? roleDefinition.displayName : "Zombie";
+            string name = roleDefinition != null ? roleDefinition.displayName : "Risen Zombie";
             identity?.Configure((newRank == EnemyRank.Normal ? "" : newRank + " ") + name,
                 TargetFaction.Hostile, newRank == EnemyRank.Elite ? 3 : newRank == EnemyRank.Veteran ? 2 : 1);
             identity?.SetRank(newRank == EnemyRank.Elite ? UnitRank.Elite : newRank == EnemyRank.Veteran ? UnitRank.Rare : UnitRank.Normal);
@@ -414,7 +414,8 @@ namespace Phasebreak.Gameplay
             if (!defeatRewardGranted)
             {
                 defeatRewardGranted = true;
-                CombatEvents.RaiseEnemyDefeated(experienceReward, gameObject.name, transform.position);
+                CombatEvents.RaiseEnemyDefeated(experienceReward,
+                    GetComponent<Targetable>()?.DisplayName ?? gameObject.name, transform.position);
                 PlayerBuildSystem build = FindAnyObjectByType<PlayerBuildSystem>();
                 CorpseLootContainer corpse = GetComponent<CorpseLootContainer>() ?? gameObject.AddComponent<CorpseLootContainer>();
                 corpse.Initialize(this, build != null ? build.GenerateCorpseLoot() : null);

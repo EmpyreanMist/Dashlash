@@ -24,6 +24,15 @@ MonoBehaviour:
     height: 2000
   generatedTerrain: {fileID: 2100602216263972180, guid: acae42da4aa7df747b55b2be204260d4, type: 3}
   generatedRoads: {fileID: -7333514080230403937, guid: 8852490a9b59a70478ec21b8fea36409, type: 3}
+  regions:
+  - name: Western Lowlands
+    worldPosition: {x: 400, y: 510}
+  - name: Northern Ridge
+    worldPosition: {x: 510, y: 1690}
+  - name: Eastern Highlands
+    worldPosition: {x: 1540, y: 1400}
+  - name: Rift Approach
+    worldPosition: {x: 1540, y: 300}
   minimapViewHeight: 240
   grassLayer: Grass
   earthLayer: Earth

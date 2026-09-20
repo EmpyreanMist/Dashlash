@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
@@ -20,6 +21,7 @@ namespace Phasebreak.Gameplay
         private FrontierEncounterZone[] mapEncounters;
         private readonly List<GameObject> journalRows = new();
         private QuestJournal journal;
+        private PlayerBuildSystem build;
         private Transform player;
         private InputAction mapAction;
         private InputAction journalAction;
@@ -27,6 +29,7 @@ namespace Phasebreak.Gameplay
         private RectTransform canvas;
         private RectTransform mapWindow;
         private RectTransform journalWindow;
+        private RectTransform vendorWindow;
         private RectTransform modalBackdrop;
         private RectTransform trackerPanel;
         private RectTransform miniPanel;
@@ -47,16 +50,27 @@ namespace Phasebreak.Gameplay
         private TextMeshProUGUI toast;
         private TextMeshProUGUI journalDetails;
         private TextMeshProUGUI mapFooter;
+        private TextMeshProUGUI mapDetails;
+        private TextMeshProUGUI vendorBalance;
+        private TextMeshProUGUI vendorFeedback;
+        private string selectedMapName;
+        private string selectedMapId;
+        private Vector2 selectedMapWorld;
         private CanvasGroup toastGroup;
         private string selectedJournalId;
         private float toastUntil;
         private bool mapOpen;
         private bool journalOpen;
+        private bool vendorOpen;
         public static bool IsWorldMenuOpen { get; private set; }
+        public static bool IsMapOpen => instance != null && instance.mapOpen;
+        public static bool IsJournalOpen => instance != null && instance.journalOpen;
+        public static void ToggleMapMenu() => instance?.ToggleMap();
+        public static void ToggleJournalMenu() => instance?.ToggleJournal();
         public static void CloseWorldMenus()
         {
             WorldQuestHud hud = instance != null ? instance : FindAnyObjectByType<WorldQuestHud>();
-            if (hud != null && (hud.mapOpen || hud.journalOpen)) hud.CloseWindows();
+            if (hud != null && (hud.mapOpen || hud.journalOpen || hud.vendorOpen)) hud.CloseWindows();
         }
 
         private static readonly Color Back = PhasebreakUiTheme.Window;
@@ -76,6 +90,7 @@ namespace Phasebreak.Gameplay
             mapNpcs = FindObjectsByType<QuestNpc>();
             mapEncounters = FindObjectsByType<FrontierEncounterZone>();
             player = journal != null ? journal.transform : FindAnyObjectByType<PlayerProgression>()?.transform;
+            build = player != null ? player.GetComponent<PlayerBuildSystem>() : null;
             mapAction = PhasebreakSettings.Button("worldmap", "World Map");
             journalAction = PhasebreakSettings.Button("journal", "Quest Journal");
             closeAction = new InputAction("Close World UI", InputActionType.Button, "<Keyboard>/escape");
@@ -88,7 +103,7 @@ namespace Phasebreak.Gameplay
             instance = this;
             PhasebreakSettings.BindingsChanged += RefreshBindingHints;
             mapAction?.Enable(); journalAction?.Enable(); closeAction?.Enable();
-            if (journal != null) { journal.Changed += Refresh; journal.Message += ShowMessage; }
+            if (journal != null) { journal.Changed += Refresh; journal.Message += ShowMessage; journal.QuartermasterRequested += OpenVendor; }
         }
 
         private void OnDisable()
@@ -96,7 +111,7 @@ namespace Phasebreak.Gameplay
             IsWorldMenuOpen = false;
             PhasebreakSettings.BindingsChanged -= RefreshBindingHints;
             mapAction?.Disable(); journalAction?.Disable(); closeAction?.Disable();
-            if (journal != null) { journal.Changed -= Refresh; journal.Message -= ShowMessage; }
+            if (journal != null) { journal.Changed -= Refresh; journal.Message -= ShowMessage; journal.QuartermasterRequested -= OpenVendor; }
         }
 
         private void OnDestroy()
@@ -112,7 +127,7 @@ namespace Phasebreak.Gameplay
             {
                 if (mapAction.WasPressedThisFrame()) ToggleMap();
                 else if (journalAction.WasPressedThisFrame()) ToggleJournal();
-                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen)) { CloseWindows(); GameplayInputFocus.ConsumeFrame(); }
+                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen || vendorOpen)) { CloseWindows(); GameplayInputFocus.ConsumeFrame(); }
             }
             bool modal = IsWorldMenuOpen || PhasebreakInventoryHud.IsMajorMenuOpen;
             if (trackerPanel != null) trackerPanel.gameObject.SetActive(!modal);
@@ -137,9 +152,10 @@ namespace Phasebreak.Gameplay
                 foreach ((RectTransform marker, Vector2 world) in miniLocations)
                     PositionMarker(marker, minimapTerrain != null ? MinimapPosition(world) : MiniPosition(playerXZ, world));
                 QuestDefinition active = journal?.ActiveQuest;
-                if (active != null)
+                QuestDefinition next = journal?.NextAvailableQuest;
+                if (active != null || next != null)
                 {
-                    Vector2 objective = ObjectivePosition(active);
+                    Vector2 objective = active != null ? ObjectivePosition(active) : NpcPosition(next.giverNpcId, next.mapPosition);
                     PositionMarker(minimapObjective, minimapTerrain != null ? MinimapPosition(objective) : MiniPosition(playerXZ, objective));
                 }
                 minimapPlayer.localRotation = Quaternion.Euler(0f, 0f, -player.eulerAngles.y);
@@ -235,9 +251,11 @@ namespace Phasebreak.Gameplay
             {
                 MapImage("Terrain", mapDefinition.generatedTerrain);
                 if (mapDefinition.generatedRoads != null) MapImage("Roads", mapDefinition.generatedRoads);
+                foreach (WorldMapRegion region in mapDefinition.regions ?? Array.Empty<WorldMapRegion>())
+                    MapRegion(region.name, region.worldPosition);
                 foreach (QuestLocation location in mapLocations)
                     MapPoint(mapSurface, location.DisplayName.ToUpperInvariant(),
-                        new Vector2(location.transform.position.x, location.transform.position.z), Cyan);
+                        new Vector2(location.transform.position.x, location.transform.position.z), Cyan, location.Id);
             }
             else
             {
@@ -260,19 +278,58 @@ namespace Phasebreak.Gameplay
                 MapPoint(mapSurface, "RIFT CRYPT", new Vector2(-8f, 8f), new Color(.7f, .4f, .92f));
             }
             mapObjective = Diamond("Objective Marker", mapSurface, new Color(1f, .74f, .21f), 20f);
+            AddMapInteraction(mapObjective, () => ShowObjectiveDetails(), () => RestoreMapDetails(), () => SelectObjective());
             mapPlayer = Diamond("Player Marker", mapSurface, new Color(.75f, .95f, 1f), 18f);
+            RectTransform detailPanel = Block("Map Details", mapWindow, Back);
+            Place(detailPanel, new Vector2(.75f, .15f), new Vector2(.965f, .85f));
+            PhasebreakUiTheme.StyleSurface(detailPanel.GetComponent<UnityEngine.UI.Image>(), Back);
+            mapDetails = Label("Map Detail Text", detailPanel, string.Empty, 17f, TextAlignmentOptions.TopLeft,
+                new Vector2(.07f, .06f), new Vector2(.93f, .94f), Text);
+            RestoreMapDetails();
             mapFooter = Label("Map Footer", mapWindow, $"LIGHT MARKER: YOU     GOLD MARKER: OBJECTIVE     [{PhasebreakSettings.Display("worldmap")}] CLOSE", 13f, TextAlignmentOptions.Center,
                 new Vector2(.1f, .02f), new Vector2(.9f, .075f), Muted);
             mapWindow.gameObject.SetActive(false);
+
+            vendorWindow = Window("Quartermaster", "QUARTERMASTER ORIN", new Vector2(.27f, .17f), new Vector2(.73f, .83f));
+            Label("Vendor Introduction", vendorWindow, "Spend Rift Marks on supplies for the road and the crypt.", 17f,
+                TextAlignmentOptions.Left, new Vector2(.05f, .79f), new Vector2(.95f, .86f), Muted);
+            vendorBalance = Label("Rift Marks Balance", vendorWindow, string.Empty, 20f,
+                TextAlignmentOptions.Left, new Vector2(.05f, .72f), new Vector2(.95f, .79f), Text);
+            if (journal != null)
+            {
+                for (int i = 0; i < journal.QuartermasterStock.Count; i++)
+                {
+                    QuartermasterOffer offer = journal.QuartermasterStock[i];
+                    PhasebreakItemDefinition item = build?.FindItemById(offer.ItemId);
+                    float bottom = .62f - i * .11f;
+                    RectTransform row = Block("Supply " + offer.ItemId, vendorWindow, Raised);
+                    Place(row, new Vector2(.05f, bottom), new Vector2(.95f, bottom + .09f));
+                    Label("Supply Name", row, item != null ? item.displayName : offer.ItemId, 17f,
+                        TextAlignmentOptions.Left, new Vector2(.025f, .48f), new Vector2(.76f, .98f), Text);
+                    Label("Supply Effect", row, item != null ? item.description : "Unavailable", 13f,
+                        TextAlignmentOptions.Left, new Vector2(.025f, .04f), new Vector2(.76f, .52f), Muted);
+                    RectTransform buyRect = Block("Buy", row, Back);
+                    Place(buyRect, new Vector2(.78f, .14f), new Vector2(.98f, .86f));
+                    buyRect.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+                    UnityEngine.UI.Button buy = buyRect.gameObject.AddComponent<UnityEngine.UI.Button>();
+                    Label("Price", buyRect, $"{offer.Cost} MARKS", 14f, TextAlignmentOptions.Center,
+                        Vector2.zero, Vector2.one, Text);
+                    string itemId = offer.ItemId;
+                    buy.onClick.AddListener(() => TryBuy(itemId));
+                }
+            }
+            vendorFeedback = Label("Vendor Feedback", vendorWindow, "Choose a supply to purchase.", 16f,
+                TextAlignmentOptions.Left, new Vector2(.05f, .07f), new Vector2(.95f, .16f), Muted);
+            vendorWindow.gameObject.SetActive(false);
 
             journalWindow = Window("Quest Journal", "FIELD JOURNAL", new Vector2(.17f, .22f), new Vector2(.83f, .78f));
             journalList = Block("Quest List", journalWindow, Raised);
             Place(journalList, new Vector2(.035f, .08f), new Vector2(.36f, .85f));
             Label("Quest List Heading", journalList, "QUESTS", 14f, TextAlignmentOptions.Left,
                 new Vector2(.06f, .89f), new Vector2(.94f, .98f), Cyan);
-            RectTransform detailPanel = Block("Quest Details", journalWindow, Raised);
-            Place(detailPanel, new Vector2(.38f, .08f), new Vector2(.965f, .85f));
-            journalDetails = Label("Quest Detail Text", detailPanel, string.Empty, 20f, TextAlignmentOptions.TopLeft,
+            RectTransform journalDetailPanel = Block("Quest Details", journalWindow, Raised);
+            Place(journalDetailPanel, new Vector2(.38f, .08f), new Vector2(.965f, .85f));
+            journalDetails = Label("Quest Detail Text", journalDetailPanel, string.Empty, 20f, TextAlignmentOptions.TopLeft,
                 new Vector2(.045f, .04f), new Vector2(.955f, .96f), Text);
             journalWindow.gameObject.SetActive(false);
         }
@@ -291,14 +348,94 @@ namespace Phasebreak.Gameplay
             return window;
         }
 
-        private void MapPoint(RectTransform parent, string name, Vector2 world, Color color)
+        private void MapPoint(RectTransform parent, string name, Vector2 world, Color color, string id = null)
         {
             RectTransform marker = Diamond(name + " Marker", parent, color, 13f);
             PositionMarker(marker, WorldToMap(world));
+            AddMapInteraction(marker, () => ShowMapDetails(name, id, world), RestoreMapDetails,
+                () => { selectedMapName = name; selectedMapId = id; selectedMapWorld = world; ShowMapDetails(name, id, world); });
             TextMeshProUGUI label = Label(name + " Label", parent, name, 12f, TextAlignmentOptions.Center,
                 WorldToMap(world), WorldToMap(world), Text);
             label.rectTransform.anchoredPosition = new Vector2(0f, -22f);
             label.rectTransform.sizeDelta = new Vector2(150f, 20f);
+        }
+
+        private void MapRegion(string name, Vector2 world)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            Vector2 position = WorldToMap(world);
+            TextMeshProUGUI label = Label(name + " Region", mapSurface, name.ToUpperInvariant(), 16f,
+                TextAlignmentOptions.Center, position, position, new Color(.86f, .79f, .63f, .95f));
+            label.rectTransform.sizeDelta = new Vector2(210f, 30f);
+        }
+
+        private static void AddMapInteraction(RectTransform marker, Action enter, Action exit, Action click)
+        {
+            RectTransform hitArea = Block("Marker Hit Area", marker, Color.clear);
+            hitArea.anchorMin = hitArea.anchorMax = new Vector2(.5f, .5f);
+            hitArea.sizeDelta = new Vector2(34f, 34f);
+            UnityEngine.UI.Image image = hitArea.GetComponent<UnityEngine.UI.Image>();
+            image.raycastTarget = true;
+            EventTrigger trigger = hitArea.gameObject.AddComponent<EventTrigger>();
+            AddEvent(trigger, EventTriggerType.PointerEnter, enter);
+            AddEvent(trigger, EventTriggerType.PointerExit, exit);
+            AddEvent(trigger, EventTriggerType.PointerClick, click);
+        }
+
+        private static void AddEvent(EventTrigger trigger, EventTriggerType type, Action action)
+        {
+            EventTrigger.Entry entry = new() { eventID = type };
+            entry.callback.AddListener(_ => action());
+            trigger.triggers.Add(entry);
+        }
+
+        private void ShowMapDetails(string name, string id, Vector2 world)
+        {
+            if (mapDetails == null) return;
+            bool discovered = !string.IsNullOrEmpty(id) && journal != null && journal.IsDiscovered(id);
+            QuestDefinition active = journal?.ActiveQuest;
+            bool objectiveHere = active != null && !journal.ObjectiveReady &&
+                string.Equals(active.targetId, id, StringComparison.OrdinalIgnoreCase);
+            bool returnHere = active != null && journal.ObjectiveReady &&
+                string.Equals(active.turnInNpcId, id, StringComparison.OrdinalIgnoreCase);
+            string purpose = returnHere ? "Return here to complete: " + active.title
+                : objectiveHere ? "Quest destination: " + active.title
+                : discovered ? "Discovered landmark" : "Landmark";
+            string distance = player == null ? string.Empty :
+                $"\n\n{Mathf.RoundToInt(Vector2.Distance(new Vector2(player.position.x, player.position.z), world))} m from you";
+            mapDetails.text = $"<color=#C9A86C><size=21><b>{name}</b></size></color>\n\n{purpose}{distance}\n\n<color=#8998AA>Hover or select another marker for details.</color>";
+        }
+
+        private void ShowObjectiveDetails()
+        {
+            if (mapDetails == null) return;
+            QuestDefinition active = journal?.ActiveQuest;
+            if (active == null)
+            {
+                QuestDefinition next = journal?.NextAvailableQuest;
+                mapDetails.text = next == null
+                    ? "<color=#C9A86C><size=21><b>THE FRONTIER</b></size></color>\n\nSelect a landmark for details. The light marker shows your location."
+                    : $"<color=#C9A86C><size=21><b>NEXT QUEST</b></size></color>\n\n{next.title}\n\nSpeak with {NpcName(next.giverNpcId)} to begin.";
+                return;
+            }
+            string purpose = journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText;
+            mapDetails.text = $"<color=#C9A86C><size=21><b>CURRENT OBJECTIVE</b></size></color>\n\n{active.title}\n\n{purpose}\n\n{journal.Progress}/{active.requiredCount}";
+        }
+
+        private void SelectObjective()
+        {
+            selectedMapName = null;
+            selectedMapId = null;
+            ShowObjectiveDetails();
+        }
+
+        private void RestoreMapDetails()
+        {
+            if (mapDetails == null) return;
+            if (!string.IsNullOrEmpty(selectedMapName))
+                ShowMapDetails(selectedMapName, selectedMapId, selectedMapWorld);
+            else if (journal?.ActiveQuest != null || journal?.NextAvailableQuest != null) ShowObjectiveDetails();
+            else mapDetails.text = "<color=#C9A86C><size=21><b>THE FRONTIER</b></size></color>\n\nSelect a landmark to see its name and distance.\n\nThe light marker shows your location.";
         }
 
         private void MapImage(string name, Sprite sprite)
@@ -375,17 +512,25 @@ namespace Phasebreak.Gameplay
         {
             if (tracker == null || journalDetails == null) return;
             QuestDefinition active = journal?.ActiveQuest;
-            bool hasObjective = active != null;
+            QuestDefinition next = journal?.NextAvailableQuest;
+            bool hasObjective = active != null || next != null;
             minimapObjective.gameObject.SetActive(hasObjective);
             mapObjective.gameObject.SetActive(hasObjective);
             if (hasObjective)
             {
-                PositionMarker(mapObjective, WorldToMap(ObjectivePosition(active)));
+                PositionMarker(mapObjective, WorldToMap(active != null ? ObjectivePosition(active) : NpcPosition(next.giverNpcId, next.mapPosition)));
             }
-            trackerHeading.text = active == null ? "NO ACTIVE QUEST" : active.title.ToUpperInvariant();
+            RestoreMapDetails();
+            RefreshVendor();
+            trackerHeading.text = active != null ? active.title.ToUpperInvariant() :
+                next != null ? "NEXT: " + next.title.ToUpperInvariant() : "NO ACTIVE QUEST";
             string journalKey = PhasebreakSettings.Display("journal");
-            tracker.text = active == null ? $"Speak with a questgiver.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>" :
-                $"{(journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText)}\n<color=#6BE7FF>{journal.Progress}/{active.requiredCount}</color>  <color=#8998AA>•  [{journalKey}] JOURNAL</color>";
+            if (active != null)
+                tracker.text = $"{(journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText)}\n<color=#6BE7FF>{journal.Progress}/{active.requiredCount}</color>  <color=#8998AA>•  [{journalKey}] JOURNAL</color>";
+            else if (next != null)
+                tracker.text = $"Speak with {NpcName(next.giverNpcId)}.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>";
+            else
+                tracker.text = $"Frontier duties complete.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>";
             RefreshJournal();
         }
 
@@ -441,12 +586,47 @@ namespace Phasebreak.Gameplay
             toastPanel.gameObject.SetActive(true);
         }
 
+        private void RefreshVendor()
+        {
+            if (vendorBalance != null)
+                vendorBalance.text = $"RIFT MARKS   <color=#C9A86C>{journal?.Marks ?? 0}</color>";
+        }
+
+        private void TryBuy(string itemId)
+        {
+            if (journal == null || vendorFeedback == null) return;
+            QuartermasterPurchaseResult result = journal.TryPurchase(itemId);
+            PhasebreakItemDefinition item = build?.FindItemById(itemId);
+            vendorFeedback.text = result switch
+            {
+                QuartermasterPurchaseResult.Purchased => $"Purchased {item?.displayName ?? itemId}. Find it in Inventory.",
+                QuartermasterPurchaseResult.InsufficientMarks => "Not enough Rift Marks. Complete quests to earn more.",
+                _ => "This supply is unavailable."
+            };
+            RefreshVendor();
+        }
+
+        private void OpenVendor()
+        {
+            PhasebreakInventoryHud.CloseMajorMenu();
+            mapOpen = journalOpen = false;
+            vendorOpen = true;
+            mapWindow.gameObject.SetActive(false);
+            journalWindow.gameObject.SetActive(false);
+            vendorWindow.gameObject.SetActive(true);
+            vendorFeedback.text = "Choose a supply to purchase.";
+            modalBackdrop.gameObject.SetActive(true);
+            RefreshVendor();
+            SetCursor();
+        }
+
         private void ToggleMap()
         {
             bool opening = !mapOpen;
             if (opening) PhasebreakInventoryHud.CloseMajorMenu();
-            mapOpen = opening; journalOpen = false;
+            mapOpen = opening; journalOpen = vendorOpen = false;
             mapWindow.gameObject.SetActive(mapOpen); journalWindow.gameObject.SetActive(false);
+            vendorWindow.gameObject.SetActive(false);
             modalBackdrop.gameObject.SetActive(mapOpen); SetCursor();
         }
 
@@ -454,21 +634,24 @@ namespace Phasebreak.Gameplay
         {
             bool opening = !journalOpen;
             if (opening) PhasebreakInventoryHud.CloseMajorMenu();
-            journalOpen = opening; mapOpen = false;
+            journalOpen = opening; mapOpen = vendorOpen = false;
             journalWindow.gameObject.SetActive(journalOpen); mapWindow.gameObject.SetActive(false);
+            vendorWindow.gameObject.SetActive(false);
             modalBackdrop.gameObject.SetActive(journalOpen); Refresh(); SetCursor();
         }
 
         private void CloseWindows()
         {
-            mapOpen = journalOpen = false;
+            mapOpen = journalOpen = vendorOpen = false;
             mapWindow.gameObject.SetActive(false); journalWindow.gameObject.SetActive(false);
+            vendorWindow.gameObject.SetActive(false);
             modalBackdrop.gameObject.SetActive(false); SetCursor();
         }
         private void SetCursor()
         {
-            IsWorldMenuOpen = mapOpen || journalOpen;
+            IsWorldMenuOpen = mapOpen || journalOpen || vendorOpen;
             if (IsWorldMenuOpen) { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
+            PhasebreakInventoryHud.RefreshNavigation();
         }
 
         private void RefreshBindingHints()
@@ -495,6 +678,13 @@ namespace Phasebreak.Gameplay
             }
             if (quest.objectiveKind == QuestObjectiveKind.Defeat && player != null)
             {
+                if (!string.IsNullOrWhiteSpace(quest.mapEncounterZoneId))
+                {
+                    FrontierEncounterZone authored = mapEncounters.FirstOrDefault(zone => zone != null &&
+                        string.Equals(zone.ZoneId, quest.mapEncounterZoneId, StringComparison.OrdinalIgnoreCase));
+                    if (authored != null)
+                        return new Vector2(authored.transform.position.x, authored.transform.position.z);
+                }
                 FrontierEncounterZone nearest = null;
                 float distance = float.MaxValue;
                 foreach (FrontierEncounterZone zone in mapEncounters)
@@ -509,6 +699,16 @@ namespace Phasebreak.Gameplay
             }
             return quest.mapPosition;
         }
+
+        private Vector2 NpcPosition(string npcId, Vector2 fallback)
+        {
+            QuestNpc npc = mapNpcs.FirstOrDefault(candidate => candidate != null &&
+                string.Equals(candidate.Id, npcId, StringComparison.OrdinalIgnoreCase));
+            return npc != null ? new Vector2(npc.transform.position.x, npc.transform.position.z) : fallback;
+        }
+
+        private string NpcName(string npcId) => mapNpcs.FirstOrDefault(candidate => candidate != null &&
+            string.Equals(candidate.Id, npcId, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? npcId.Replace('-', ' ');
 
         private Vector2 WorldToMap(Vector2 world) => mapDefinition != null
             ? mapDefinition.WorldToMap(new Vector3(world.x, 0f, world.y))

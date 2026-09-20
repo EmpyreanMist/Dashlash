@@ -6,6 +6,16 @@ using UnityEngine.InputSystem;
 
 namespace Phasebreak.Gameplay
 {
+    public enum QuartermasterPurchaseResult { Purchased, InsufficientMarks, Unavailable }
+
+    public readonly struct QuartermasterOffer
+    {
+        public readonly string ItemId;
+        public readonly int Cost;
+
+        public QuartermasterOffer(string itemId, int cost) { ItemId = itemId; Cost = cost; }
+    }
+
     [Serializable] internal sealed class QuestSaveData
     {
         public int version = 1;
@@ -20,6 +30,14 @@ namespace Phasebreak.Gameplay
     public sealed class QuestJournal : MonoBehaviour
     {
         private const string SaveKey = "Phasebreak.World.v1";
+        private static readonly QuartermasterOffer[] Stock =
+        {
+            new("sigil.emberglass", 4),
+            new("boots.wake", 6),
+            new("chest.bulwark", 8),
+            new("relic.keen-cell", 13),
+            new("relic.fracture", 20)
+        };
         private readonly HashSet<string> completed = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> discovered = new(StringComparer.OrdinalIgnoreCase);
         private QuestCatalog catalog;
@@ -34,13 +52,18 @@ namespace Phasebreak.Gameplay
         private int marks;
 
         public QuestDefinition ActiveQuest => FindQuest(activeId);
+        public QuestDefinition NextAvailableQuest => ActiveQuest != null ? null : catalog?.quests?.FirstOrDefault(q =>
+            q != null && !completed.Contains(q.id) &&
+            (string.IsNullOrWhiteSpace(q.prerequisiteQuestId) || completed.Contains(q.prerequisiteQuestId)));
         public int Progress => progress;
         public int Marks => marks;
         public bool ObjectiveReady => ActiveQuest != null && progress >= Mathf.Max(1, ActiveQuest.requiredCount);
         public IReadOnlyCollection<string> CompletedIds => completed;
         public IReadOnlyCollection<string> DiscoveredIds => discovered;
+        public IReadOnlyList<QuartermasterOffer> QuartermasterStock => Stock;
         public event Action Changed;
         public event Action<string> Message;
+        public event Action QuartermasterRequested;
 
         private void Awake()
         {
@@ -81,7 +104,12 @@ namespace Phasebreak.Gameplay
                 interact != null && interact.WasPressedThisFrame())
             {
                 QuestNpc nearby = NearbyNpc();
-                if (nearby != null) Interact(nearby);
+                if (nearby != null)
+                {
+                    Interact(nearby);
+                    if (string.Equals(nearby.Id, "quartermaster-orin", StringComparison.OrdinalIgnoreCase))
+                        QuartermasterRequested?.Invoke();
+                }
             }
         }
 
@@ -105,7 +133,10 @@ namespace Phasebreak.Gameplay
             get
             {
                 QuestNpc npc = NearbyNpc();
-                return npc == null ? string.Empty : $"[E] Speak with {npc.DisplayName}";
+                if (npc == null) return string.Empty;
+                return string.Equals(npc.Id, "quartermaster-orin", StringComparison.OrdinalIgnoreCase)
+                    ? $"[E] Talk and trade with {npc.DisplayName}"
+                    : $"[E] Speak with {npc.DisplayName}";
             }
         }
 
@@ -162,6 +193,19 @@ namespace Phasebreak.Gameplay
         public bool OffersQuest(string npcId) => ActiveQuest == null && catalog?.quests?.Any(q => q != null &&
             !completed.Contains(q.id) && string.Equals(q.giverNpcId, npcId, StringComparison.OrdinalIgnoreCase) &&
             (string.IsNullOrWhiteSpace(q.prerequisiteQuestId) || completed.Contains(q.prerequisiteQuestId))) == true;
+
+        public QuartermasterPurchaseResult TryPurchase(string itemId)
+        {
+            QuartermasterOffer offer = Stock.FirstOrDefault(candidate => candidate.ItemId == itemId);
+            if (offer.Cost <= 0 || build == null || build.FindItemById(itemId) == null)
+                return QuartermasterPurchaseResult.Unavailable;
+            if (marks < offer.Cost) return QuartermasterPurchaseResult.InsufficientMarks;
+            if (!build.GrantRewardById(itemId)) return QuartermasterPurchaseResult.Unavailable;
+            marks -= offer.Cost;
+            Save();
+            Changed?.Invoke();
+            return QuartermasterPurchaseResult.Purchased;
+        }
 
         private void OnEnemyDefeated(EnemyDefeatedEvent defeated)
         {
