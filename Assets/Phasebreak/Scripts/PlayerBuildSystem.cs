@@ -50,6 +50,7 @@ namespace Phasebreak.Gameplay
             LoadOrSeed(); Recalculate();
         }
         public PhasebreakItemDefinition GetEquipped(EquipmentSlot slot) => equipped.GetValueOrDefault(slot);
+        public PhasebreakItemDefinition FindItemById(string id) => id != null && byId.TryGetValue(id, out PhasebreakItemDefinition item) ? item : null;
 
         public void RefreshTalentModifiers() { Recalculate(); BuildChanged?.Invoke(); }
 
