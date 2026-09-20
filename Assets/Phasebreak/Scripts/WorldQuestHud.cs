@@ -148,9 +148,10 @@ namespace Phasebreak.Gameplay
                 foreach ((RectTransform marker, Vector2 world) in miniLocations)
                     PositionMarker(marker, minimapTerrain != null ? MinimapPosition(world) : MiniPosition(playerXZ, world));
                 QuestDefinition active = journal?.ActiveQuest;
-                if (active != null)
+                QuestDefinition next = journal?.NextAvailableQuest;
+                if (active != null || next != null)
                 {
-                    Vector2 objective = ObjectivePosition(active);
+                    Vector2 objective = active != null ? ObjectivePosition(active) : NpcPosition(next.giverNpcId, next.mapPosition);
                     PositionMarker(minimapObjective, minimapTerrain != null ? MinimapPosition(objective) : MiniPosition(playerXZ, objective));
                 }
                 minimapPlayer.localRotation = Quaternion.Euler(0f, 0f, -player.eulerAngles.y);
@@ -405,7 +406,14 @@ namespace Phasebreak.Gameplay
         {
             if (mapDetails == null) return;
             QuestDefinition active = journal?.ActiveQuest;
-            if (active == null) { RestoreMapDetails(); return; }
+            if (active == null)
+            {
+                QuestDefinition next = journal?.NextAvailableQuest;
+                mapDetails.text = next == null
+                    ? "<color=#C9A86C><size=21><b>THE FRONTIER</b></size></color>\n\nSelect a landmark for details. The light marker shows your location."
+                    : $"<color=#C9A86C><size=21><b>NEXT QUEST</b></size></color>\n\n{next.title}\n\nSpeak with {NpcName(next.giverNpcId)} to begin.";
+                return;
+            }
             string purpose = journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText;
             mapDetails.text = $"<color=#C9A86C><size=21><b>CURRENT OBJECTIVE</b></size></color>\n\n{active.title}\n\n{purpose}\n\n{journal.Progress}/{active.requiredCount}";
         }
@@ -422,7 +430,7 @@ namespace Phasebreak.Gameplay
             if (mapDetails == null) return;
             if (!string.IsNullOrEmpty(selectedMapName))
                 ShowMapDetails(selectedMapName, selectedMapId, selectedMapWorld);
-            else if (journal?.ActiveQuest != null) ShowObjectiveDetails();
+            else if (journal?.ActiveQuest != null || journal?.NextAvailableQuest != null) ShowObjectiveDetails();
             else mapDetails.text = "<color=#C9A86C><size=21><b>THE FRONTIER</b></size></color>\n\nSelect a landmark to see its name and distance.\n\nThe light marker shows your location.";
         }
 
@@ -500,19 +508,25 @@ namespace Phasebreak.Gameplay
         {
             if (tracker == null || journalDetails == null) return;
             QuestDefinition active = journal?.ActiveQuest;
-            bool hasObjective = active != null;
+            QuestDefinition next = journal?.NextAvailableQuest;
+            bool hasObjective = active != null || next != null;
             minimapObjective.gameObject.SetActive(hasObjective);
             mapObjective.gameObject.SetActive(hasObjective);
             if (hasObjective)
             {
-                PositionMarker(mapObjective, WorldToMap(ObjectivePosition(active)));
+                PositionMarker(mapObjective, WorldToMap(active != null ? ObjectivePosition(active) : NpcPosition(next.giverNpcId, next.mapPosition)));
             }
             RestoreMapDetails();
             RefreshVendor();
-            trackerHeading.text = active == null ? "NO ACTIVE QUEST" : active.title.ToUpperInvariant();
+            trackerHeading.text = active != null ? active.title.ToUpperInvariant() :
+                next != null ? "NEXT: " + next.title.ToUpperInvariant() : "NO ACTIVE QUEST";
             string journalKey = PhasebreakSettings.Display("journal");
-            tracker.text = active == null ? $"Speak with a questgiver.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>" :
-                $"{(journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText)}\n<color=#6BE7FF>{journal.Progress}/{active.requiredCount}</color>  <color=#8998AA>•  [{journalKey}] JOURNAL</color>";
+            if (active != null)
+                tracker.text = $"{(journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText)}\n<color=#6BE7FF>{journal.Progress}/{active.requiredCount}</color>  <color=#8998AA>•  [{journalKey}] JOURNAL</color>";
+            else if (next != null)
+                tracker.text = $"Speak with {NpcName(next.giverNpcId)}.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>";
+            else
+                tracker.text = $"Frontier duties complete.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>";
             RefreshJournal();
         }
 
@@ -659,6 +673,13 @@ namespace Phasebreak.Gameplay
             }
             if (quest.objectiveKind == QuestObjectiveKind.Defeat && player != null)
             {
+                if (!string.IsNullOrWhiteSpace(quest.mapEncounterZoneId))
+                {
+                    FrontierEncounterZone authored = mapEncounters.FirstOrDefault(zone => zone != null &&
+                        string.Equals(zone.ZoneId, quest.mapEncounterZoneId, StringComparison.OrdinalIgnoreCase));
+                    if (authored != null)
+                        return new Vector2(authored.transform.position.x, authored.transform.position.z);
+                }
                 FrontierEncounterZone nearest = null;
                 float distance = float.MaxValue;
                 foreach (FrontierEncounterZone zone in mapEncounters)
@@ -673,6 +694,16 @@ namespace Phasebreak.Gameplay
             }
             return quest.mapPosition;
         }
+
+        private Vector2 NpcPosition(string npcId, Vector2 fallback)
+        {
+            QuestNpc npc = mapNpcs.FirstOrDefault(candidate => candidate != null &&
+                string.Equals(candidate.Id, npcId, StringComparison.OrdinalIgnoreCase));
+            return npc != null ? new Vector2(npc.transform.position.x, npc.transform.position.z) : fallback;
+        }
+
+        private string NpcName(string npcId) => mapNpcs.FirstOrDefault(candidate => candidate != null &&
+            string.Equals(candidate.Id, npcId, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? npcId.Replace('-', ' ');
 
         private Vector2 WorldToMap(Vector2 world) => mapDefinition != null
             ? mapDefinition.WorldToMap(new Vector3(world.x, 0f, world.y))

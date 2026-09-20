@@ -52,6 +52,9 @@ namespace Phasebreak.Gameplay
         private int marks;
 
         public QuestDefinition ActiveQuest => FindQuest(activeId);
+        public QuestDefinition NextAvailableQuest => ActiveQuest != null ? null : catalog?.quests?.FirstOrDefault(q =>
+            q != null && !completed.Contains(q.id) &&
+            (string.IsNullOrWhiteSpace(q.prerequisiteQuestId) || completed.Contains(q.prerequisiteQuestId)));
         public int Progress => progress;
         public int Marks => marks;
         public bool ObjectiveReady => ActiveQuest != null && progress >= Mathf.Max(1, ActiveQuest.requiredCount);
