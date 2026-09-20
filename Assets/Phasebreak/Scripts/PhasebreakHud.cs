@@ -497,28 +497,35 @@ namespace Phasebreak.Gameplay
                 ItemSlotUI hover = slot.gameObject.AddComponent<ItemSlotUI>();
                 hover.Configure(() => ShowAbilityTooltip(slotIndex), HideAbilityTooltip, null);
             }
-            abilityTooltip = AddText("Ability Tooltip", canvasRect, 15f, TextAlignmentOptions.TopLeft);
-            abilityTooltip.rectTransform.anchorMin = abilityTooltip.rectTransform.anchorMax = new Vector2(.5f, 0f);
-            abilityTooltip.rectTransform.pivot = new Vector2(.5f, 0f);
-            abilityTooltip.rectTransform.anchoredPosition = new Vector2(0f, 138f);
-            abilityTooltip.rectTransform.sizeDelta = new Vector2(380f, 66f);
-            abilityTooltip.color = new Color(.91f, .94f, .98f, 1f);
-            abilityTooltip.gameObject.SetActive(false);
+            RectTransform tooltipSurface = CreateRect("Ability Tooltip Surface", canvasRect);
+            tooltipSurface.anchorMin = tooltipSurface.anchorMax = new Vector2(.5f, 0f);
+            tooltipSurface.pivot = new Vector2(.5f, 0f);
+            tooltipSurface.anchoredPosition = new Vector2(0f, 138f);
+            tooltipSurface.sizeDelta = new Vector2(400f, 80f);
+            PhasebreakUiTheme.StyleSurface(AddImage(tooltipSurface, PhasebreakUiTheme.Window),
+                PhasebreakUiTheme.Window);
+            abilityTooltip = AddText("Ability Tooltip", tooltipSurface, 15f, TextAlignmentOptions.TopLeft);
+            abilityTooltip.rectTransform.anchorMin = Vector2.zero;
+            abilityTooltip.rectTransform.anchorMax = Vector2.one;
+            abilityTooltip.rectTransform.offsetMin = new Vector2(14f, 10f);
+            abilityTooltip.rectTransform.offsetMax = new Vector2(-14f, -10f);
+            abilityTooltip.color = PhasebreakUiTheme.Text;
+            tooltipSurface.gameObject.SetActive(false);
         }
 
         private void ShowAbilityTooltip(int index)
         {
             if (combat == null || abilityTooltip == null || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen) return;
             AbilityState state = combat.GetAssignedAbilityState(index);
-            abilityTooltip.text = $"<b>{state.Name}</b>  <color=#9CAABD>[{state.Key}]</color>\n" +
-                $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}  •  Cooldown {state.CooldownDuration:0.#}s" +
+            abilityTooltip.text = $"<color=#C9A86C><b>{state.Name}</b></color>  <color=#AAA69B>[{state.Key}]</color>\n" +
+                $"<color=#AAA69B>Energy {Mathf.CeilToInt(state.ResourceCost)}  •  Cooldown {state.CooldownDuration:0.#}s" +
                 (state.MaximumCharges > 1 ? $"  •  Charges {state.MaximumCharges}" : string.Empty) + "</color>";
-            abilityTooltip.gameObject.SetActive(true);
+            abilityTooltip.transform.parent.gameObject.SetActive(true);
         }
 
         private void HideAbilityTooltip()
         {
-            if (abilityTooltip != null) abilityTooltip.gameObject.SetActive(false);
+            if (abilityTooltip != null) abilityTooltip.transform.parent.gameObject.SetActive(false);
         }
 
         private void UpdateActionBar()

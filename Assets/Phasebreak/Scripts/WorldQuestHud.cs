@@ -280,9 +280,9 @@ namespace Phasebreak.Gameplay
             mapObjective = Diamond("Objective Marker", mapSurface, new Color(1f, .74f, .21f), 20f);
             AddMapInteraction(mapObjective, () => ShowObjectiveDetails(), () => RestoreMapDetails(), () => SelectObjective());
             mapPlayer = Diamond("Player Marker", mapSurface, new Color(.75f, .95f, 1f), 18f);
-            RectTransform detailPanel = Block("Map Details", mapWindow, Raised);
+            RectTransform detailPanel = Block("Map Details", mapWindow, Back);
             Place(detailPanel, new Vector2(.75f, .15f), new Vector2(.965f, .85f));
-            PhasebreakUiTheme.StyleSurface(detailPanel.GetComponent<UnityEngine.UI.Image>(), Raised);
+            PhasebreakUiTheme.StyleSurface(detailPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             mapDetails = Label("Map Detail Text", detailPanel, string.Empty, 17f, TextAlignmentOptions.TopLeft,
                 new Vector2(.07f, .06f), new Vector2(.93f, .94f), Text);
             RestoreMapDetails();

@@ -126,9 +126,10 @@ namespace Phasebreak.Gameplay
                 "<color=#444F62>LOCKED</color>    <color=#8A50E6>AVAILABLE</color>    <color=#1CB8E5>PURCHASED</color>    <color=#F2B02E>MAX RANK</color>",
                 12f, TextAlignmentOptions.Center, new Vector2(.18f, .005f), new Vector2(.82f, .035f), Muted);
 
-            RectTransform details = Block("Selected Talent Details", root, Surface);
+            RectTransform details = Block("Selected Talent Details", root, PhasebreakUiTheme.Window);
             Place(details, new Vector2(.72f, .105f), new Vector2(.975f, .775f));
-            Outline(details, new Color(.18f, .16f, .35f, .9f));
+            PhasebreakUiTheme.StyleSurface(details.GetComponent<UnityEngine.UI.Image>(),
+                PhasebreakUiTheme.Window);
             RectTransform iconFrame = Block("Selected Icon Frame", details, Purple);
             Place(iconFrame, new Vector2(.08f, .73f), new Vector2(.36f, .9f));
             detailsIcon = Image("Selected Icon", iconFrame, new Vector2(.06f, .06f), new Vector2(.94f, .94f));
