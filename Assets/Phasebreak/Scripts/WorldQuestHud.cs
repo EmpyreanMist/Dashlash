@@ -240,6 +240,8 @@ namespace Phasebreak.Gameplay
             {
                 MapImage("Terrain", mapDefinition.generatedTerrain);
                 if (mapDefinition.generatedRoads != null) MapImage("Roads", mapDefinition.generatedRoads);
+                foreach (WorldMapRegion region in mapDefinition.regions ?? Array.Empty<WorldMapRegion>())
+                    MapRegion(region.name, region.worldPosition);
                 foreach (QuestLocation location in mapLocations)
                     MapPoint(mapSurface, location.DisplayName.ToUpperInvariant(),
                         new Vector2(location.transform.position.x, location.transform.position.z), Cyan, location.Id);
@@ -313,6 +315,15 @@ namespace Phasebreak.Gameplay
                 WorldToMap(world), WorldToMap(world), Text);
             label.rectTransform.anchoredPosition = new Vector2(0f, -22f);
             label.rectTransform.sizeDelta = new Vector2(150f, 20f);
+        }
+
+        private void MapRegion(string name, Vector2 world)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            Vector2 position = WorldToMap(world);
+            TextMeshProUGUI label = Label(name + " Region", mapSurface, name.ToUpperInvariant(), 16f,
+                TextAlignmentOptions.Center, position, position, new Color(.86f, .79f, .63f, .95f));
+            label.rectTransform.sizeDelta = new Vector2(210f, 30f);
         }
 
         private static void AddMapInteraction(RectTransform marker, Action enter, Action exit, Action click)
