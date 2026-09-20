@@ -16,6 +16,8 @@ namespace Phasebreak.Gameplay
         private Image itemIcon;
         private Image comparisonIcon;
         private Outline rootOutline;
+        private Image rarityAccent;
+        private Image comparisonAccent;
         private PlayerBuildSystem build;
 
         public void Initialize(RectTransform canvas)
@@ -27,18 +29,18 @@ namespace Phasebreak.Gameplay
             root.pivot = new Vector2(0f, 1f);
             root.sizeDelta = new Vector2(386f, 462f);
             Image background = gameObject.AddComponent<Image>();
-            background.color = new Color(.012f, .019f, .032f, .99f);
-            rootOutline = gameObject.AddComponent<Outline>();
-            rootOutline.effectColor = new Color(.2f, .72f, .9f, .9f);
-            rootOutline.effectDistance = new Vector2(2f, -2f);
+            PhasebreakUiTheme.StyleSurface(background, PhasebreakUiTheme.Window);
+            rootOutline = gameObject.GetComponent<Outline>();
             CanvasGroup group = gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             group.interactable = false;
 
-            RectTransform accent = Block("Arcane Accent", root, new Color(.1f, .68f, .86f, 1f));
+            RectTransform accent = Block("Rarity Accent", root, PhasebreakUiTheme.Accent);
             Place(accent, new Vector2(0f, .984f), Vector2.one, 0f);
+            rarityAccent = accent.GetComponent<Image>();
 
-            RectTransform iconFrame = Block("Item Icon Frame", root, new Color(.06f, .1f, .16f, 1f));
+            RectTransform iconFrame = Block("Item Icon Frame", root, PhasebreakUiTheme.Raised);
+            PhasebreakUiTheme.StyleSurface(iconFrame.GetComponent<Image>(), PhasebreakUiTheme.Raised);
             iconFrame.anchorMin = iconFrame.anchorMax = new Vector2(0f, 1f);
             iconFrame.pivot = new Vector2(0f, 1f);
             iconFrame.anchoredPosition = new Vector2(18f, -24f);
@@ -49,19 +51,19 @@ namespace Phasebreak.Gameplay
             itemText = Text("Item Details", root, string.Empty, 14f, TextAlignmentOptions.TopLeft, new Vector2(.05f, .035f), new Vector2(.95f, .94f));
             itemText.margin = new Vector4(0f, 0f, 0f, 0f);
 
-            comparisonPanel = Block("Equipped Comparison", root.parent, new Color(.012f, .019f, .032f, .99f));
+            comparisonPanel = Block("Equipped Comparison", root.parent, PhasebreakUiTheme.Window);
             comparisonPanel.sizeDelta = root.sizeDelta;
             comparisonPanel.anchorMin = comparisonPanel.anchorMax = new Vector2(.5f, .5f);
             comparisonPanel.pivot = new Vector2(0f, 1f);
-            Outline compareOutline = comparisonPanel.gameObject.AddComponent<Outline>();
-            compareOutline.effectColor = new Color(.39f, .28f, .68f, .9f);
-            compareOutline.effectDistance = new Vector2(2f, -2f);
+            PhasebreakUiTheme.StyleSurface(comparisonPanel.GetComponent<Image>(), PhasebreakUiTheme.Window);
             CanvasGroup compareGroup = comparisonPanel.gameObject.AddComponent<CanvasGroup>();
             compareGroup.blocksRaycasts = false;
             compareGroup.interactable = false;
-            RectTransform compareAccent = Block("Void Accent", comparisonPanel, new Color(.48f, .28f, .86f, 1f));
+            RectTransform compareAccent = Block("Comparison Accent", comparisonPanel, PhasebreakUiTheme.Accent);
             Place(compareAccent, new Vector2(0f, .984f), Vector2.one, 0f);
-            RectTransform compareIconFrame = Block("Equipped Icon Frame", comparisonPanel, new Color(.06f, .1f, .16f, 1f));
+            comparisonAccent = compareAccent.GetComponent<Image>();
+            RectTransform compareIconFrame = Block("Equipped Icon Frame", comparisonPanel, PhasebreakUiTheme.Raised);
+            PhasebreakUiTheme.StyleSurface(compareIconFrame.GetComponent<Image>(), PhasebreakUiTheme.Raised);
             compareIconFrame.anchorMin = compareIconFrame.anchorMax = new Vector2(0f, 1f);
             compareIconFrame.pivot = new Vector2(0f, 1f);
             compareIconFrame.anchoredPosition = new Vector2(18f, -24f);
@@ -81,9 +83,9 @@ namespace Phasebreak.Gameplay
             itemIcon.sprite = PhasebreakItemIconLibrary.Resolve(item);
             itemIcon.color = item.icon != null ? Color.white : RarityTint(item.rarity);
             itemText.text = BuildItemText(item, equipped, false, comparison);
-            rootOutline.effectColor = comparison.IsUpgrade
-                ? new Color(.25f, 1f, .49f, .9f)
-                : new Color(.2f, .72f, .9f, .9f);
+            rarityAccent.color = Color.Lerp(PhasebreakUiTheme.Accent, RarityTint(item.rarity), .55f);
+            rootOutline.effectColor = Color.Lerp(PhasebreakUiTheme.MetalEdge,
+                RarityTint(item.rarity), .35f);
             gameObject.SetActive(true);
             root.SetAsLastSibling();
 
@@ -94,6 +96,8 @@ namespace Phasebreak.Gameplay
                 comparisonIcon.sprite = PhasebreakItemIconLibrary.Resolve(equipped);
                 comparisonIcon.color = equipped.icon != null ? Color.white : RarityTint(equipped.rarity);
                 comparisonText.text = BuildItemText(equipped, null, true, default);
+                comparisonAccent.color = Color.Lerp(PhasebreakUiTheme.Accent,
+                    RarityTint(equipped.rarity), .55f);
                 comparisonPanel.SetAsLastSibling();
             }
 
@@ -131,7 +135,7 @@ namespace Phasebreak.Gameplay
             text.Append($"<size=13><color=#A9B7CA>{item.rarity}  •  Item Level {item.itemLevel}</color></size></indent>\n\n");
             text.Append($"<b>{Pretty(item.slot)}</b>\n");
             if (item.tags != ItemTag.None)
-                text.Append($"<color=#73CAE7>Tags</color>  {PrettyFlags(item.tags.ToString())}\n");
+                text.Append($"<color=#C9A86C>Tags</color>  {PrettyFlags(item.tags.ToString())}\n");
 
             if (!equipped)
             {
@@ -168,7 +172,7 @@ namespace Phasebreak.Gameplay
                 foreach (SetBonusDefinition bonus in item.itemSet.bonuses ?? System.Array.Empty<SetBonusDefinition>())
                     maximumPieces = Mathf.Max(maximumPieces, bonus.pieces);
                 int displayedPieces = maximumPieces > 0 ? Mathf.Min(equippedPieces, maximumPieces) : equippedPieces;
-                text.Append($"\n<color=#66D6F1><b>{item.itemSet.displayName}</b>  {displayedPieces}/{maximumPieces}</color>\n");
+                text.Append($"\n<color=#C9A86C><b>{item.itemSet.displayName}</b>  {displayedPieces}/{maximumPieces}</color>\n");
                 text.Append($"<color=#8698AE>{item.itemSet.fantasy}</color>\n");
                 foreach (SetBonusDefinition bonus in item.itemSet.bonuses ?? System.Array.Empty<SetBonusDefinition>())
                 {
@@ -204,7 +208,7 @@ namespace Phasebreak.Gameplay
             if (Mathf.Approximately(value, 0f) && (!comparing || Mathf.Approximately(oldValue, 0f)))
                 return;
             float delta = value - oldValue;
-            string color = !comparing || Mathf.Abs(delta) < .001f ? "#DEE7F2" : delta > 0f ? "#5EE58C" : "#FF6874";
+            string color = !comparing || Mathf.Abs(delta) < .001f ? "#E7E1D4" : delta > 0f ? "#5EE58C" : "#FF6874";
             string formatted = percent ? value.ToString("+0%;-0%;0%") : value.ToString("+0;-0;0");
             string difference = comparing && Mathf.Abs(delta) >= .001f
                 ? $"  <size=12>({(percent ? delta.ToString("+0%;-0%") : delta.ToString("+0;-0"))})</size>"
@@ -254,7 +258,7 @@ namespace Phasebreak.Gameplay
             text.text = value;
             text.fontSize = size;
             text.alignment = alignment;
-            text.color = new Color(.88f, .93f, 1f);
+            text.color = PhasebreakUiTheme.Text;
             text.textWrappingMode = TextWrappingModes.Normal;
             text.raycastTarget = false;
             Place(text.rectTransform, min, max, 0f);

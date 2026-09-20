@@ -32,7 +32,7 @@ namespace Phasebreak.Gameplay
         private const string SaveKey = "Phasebreak.World.v1";
         private static readonly QuartermasterOffer[] Stock =
         {
-            new("weapon.rift-iron", 4),
+            new("sigil.emberglass", 4),
             new("boots.wake", 6),
             new("chest.bulwark", 8),
             new("relic.keen-cell", 13),

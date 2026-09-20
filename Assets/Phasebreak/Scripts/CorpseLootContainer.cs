@@ -11,6 +11,7 @@ namespace Phasebreak.Gameplay
         private readonly List<PhasebreakItemDefinition> items = new();
         private MeleeEnemy owner; private Renderer[] renderers; private MaterialPropertyBlock block;
         private CapsuleCollider interactionCollider;
+        private LootRarityPresentation rarityPresentation;
         private float expiresAt, emptyAt = float.PositiveInfinity; private bool hovered;
         public IReadOnlyList<PhasebreakItemDefinition> Items => items;
         public bool IsEmpty => items.Count == 0;
@@ -25,16 +26,19 @@ namespace Phasebreak.Gameplay
             interactionCollider = gameObject.AddComponent<CapsuleCollider>(); interactionCollider.isTrigger = true;
             if (character != null) { interactionCollider.center = character.center; interactionCollider.radius = character.radius * 1.15f; interactionCollider.height = character.height; }
             expiresAt = Time.unscaledTime + corpseLifetime; emptyAt = items.Count == 0 ? Time.unscaledTime + emptyDespawnDelay : float.PositiveInfinity;
+            RefreshPresentation();
         }
         public bool Take(PhasebreakItemDefinition item, PlayerBuildSystem inventory)
         {
             int index = items.IndexOf(item); if (index < 0 || inventory == null || !inventory.AddToInventory(item)) return false;
-            items.RemoveAt(index); if (items.Count == 0) emptyAt = Time.unscaledTime + emptyDespawnDelay; return true;
+            items.RemoveAt(index); if (items.Count == 0) emptyAt = Time.unscaledTime + emptyDespawnDelay;
+            RefreshPresentation(); return true;
         }
         public int TakeAll(PlayerBuildSystem inventory)
         {
             int count = 0; for (int i = items.Count - 1; i >= 0; i--) if (inventory.AddToInventory(items[i])) { items.RemoveAt(i); count++; }
-            if (items.Count == 0) emptyAt = Time.unscaledTime + emptyDespawnDelay; return count;
+            if (items.Count == 0) emptyAt = Time.unscaledTime + emptyDespawnDelay;
+            RefreshPresentation(); return count;
         }
         public void SetHovered(bool value)
         {
@@ -50,8 +54,18 @@ namespace Phasebreak.Gameplay
         }
         public void Despawn()
         {
-            items.Clear(); SetHovered(false); PhasebreakInventoryHud.NotifyCorpseDespawned(this); gameObject.SetActive(false);
+            items.Clear(); RefreshPresentation(); SetHovered(false); PhasebreakInventoryHud.NotifyCorpseDespawned(this); gameObject.SetActive(false);
         }
-        public void ClearForReset() { items.Clear(); SetHovered(false); if (interactionCollider != null) Destroy(interactionCollider); enabled = false; Destroy(this); }
+        public void ClearForReset() { items.Clear(); RefreshPresentation(); SetHovered(false); if (interactionCollider != null) Destroy(interactionCollider); enabled = false; Destroy(this); }
+
+        private void RefreshPresentation()
+        {
+            if (items.Count == 0) { rarityPresentation?.Show(null); return; }
+            rarityPresentation ??= GetComponent<LootRarityPresentation>() ?? gameObject.AddComponent<LootRarityPresentation>();
+            ItemRarity highest = ItemRarity.Common;
+            foreach (PhasebreakItemDefinition item in items)
+                if (item != null && item.rarity > highest) highest = item.rarity;
+            rarityPresentation.Show(highest);
+        }
     }
 }

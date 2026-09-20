@@ -24,6 +24,8 @@ namespace Phasebreak.Gameplay
         private readonly List<GameObject> equipmentCells = new();
         private readonly List<GameObject> lootCells = new();
         private readonly Dictionary<MenuMode, Image> navImages = new();
+        private Image journalNavImage;
+        private Image mapNavImage;
         private readonly Dictionary<InventoryFilter, Image> filterImages = new();
 
         private PlayerBuildSystem build;
@@ -81,6 +83,7 @@ namespace Phasebreak.Gameplay
             PhasebreakInventoryHud hud = instance != null ? instance : FindAnyObjectByType<PhasebreakInventoryHud>();
             if (hud != null && hud.mode != MenuMode.None) hud.CloseMenu();
         }
+        public static void RefreshNavigation() => instance?.UpdateNav();
         public static bool IsLootWindowOpenFor(CorpseLootContainer corpse) => instance != null && instance.mode == MenuMode.Loot && instance.activeCorpse == corpse;
         public static void NotifyCorpseDespawned(CorpseLootContainer corpse) { if (IsLootWindowOpenFor(corpse)) instance.CloseMenu(); }
 
@@ -237,7 +240,10 @@ namespace Phasebreak.Gameplay
 
         private void BuildCharacterWindow(RectTransform root)
         {
-            characterPanel = WindowPanel("Character Panel", root, new Vector2(.055f, .055f), new Vector2(.945f, .945f));
+            characterPanel = WindowPanel("Character Panel", root, Vector2.zero, Vector2.zero);
+            characterPanel.anchorMin = characterPanel.anchorMax = characterPanel.pivot = new Vector2(1f, 0f);
+            characterPanel.anchoredPosition = new Vector2(-560f, 100f);
+            characterPanel.sizeDelta = new Vector2(850f, 740f);
             BuildTitleBar(characterPanel, "THE PHASEBOUND", "CHARACTER", MenuMode.Character);
             characterTitle = Text("Identity", characterPanel, string.Empty, 14f, TextAlignmentOptions.Left, new Vector2(.035f, .865f), new Vector2(.85f, .892f), TextMuted);
             equipmentStage = Section("Equipment Stage", characterPanel, new Vector2(.025f, .055f), new Vector2(.64f, .87f));
@@ -245,7 +251,7 @@ namespace Phasebreak.Gameplay
             Text("Equipment Header", equipmentStage, "EQUIPMENT", 15f, TextAlignmentOptions.Left, new Vector2(.035f, .935f), new Vector2(.5f, .985f), TextMuted);
             RectTransform analysis = Section("Build Analysis", characterPanel, new Vector2(.66f, .055f), new Vector2(.975f, .87f));
             Text("Analysis Header", analysis, "CHARACTER ANALYSIS", 15f, TextAlignmentOptions.Left, new Vector2(.06f, .93f), new Vector2(.8f, .985f), TextMuted);
-            characterSummary = Text("Final Stats", analysis, string.Empty, 19f, TextAlignmentOptions.TopLeft, new Vector2(.06f, .54f), new Vector2(.94f, .925f), TextPrimary);
+            characterSummary = Text("Final Stats", analysis, string.Empty, 17f, TextAlignmentOptions.TopLeft, new Vector2(.06f, .54f), new Vector2(.94f, .925f), TextPrimary);
             RectTransform detailsScroll = Block("Build Details Scroll", analysis, PanelLight);
             Place(detailsScroll, new Vector2(.04f, .135f), new Vector2(.96f, .525f), 0f);
             ScrollRect scroll = detailsScroll.gameObject.AddComponent<ScrollRect>();
@@ -282,19 +288,19 @@ namespace Phasebreak.Gameplay
 
         private void BuildPaperDoll(RectTransform parent)
         {
-            RectTransform glow = Block("Silhouette Glow", parent, new Color(.035f, .12f, .19f, .28f));
+            RectTransform glow = Block("Silhouette Glow", parent, new Color(.12f, .08f, .04f, .28f));
             glow.anchorMin = glow.anchorMax = new Vector2(.5f, .52f);
             glow.pivot = new Vector2(.5f, .5f);
-            glow.sizeDelta = new Vector2(276f, 488f);
+            glow.sizeDelta = new Vector2(180f, 460f);
             Outline glowOutline = glow.gameObject.AddComponent<Outline>();
-            glowOutline.effectColor = new Color(.08f, .43f, .62f, .35f);
+            glowOutline.effectColor = new Color(.53f, .35f, .18f, .35f);
             glowOutline.effectDistance = new Vector2(1f, -1f);
             Image silhouette = IconImage("Character Silhouette", glow, new Vector2(.08f, .04f), new Vector2(.92f, .96f));
             silhouette.sprite = PhasebreakItemIconLibrary.GetCharacterSilhouette();
             silhouette.color = Color.white;
             silhouette.preserveAspect = true;
-            Text("Identity Mark", glow, "PHASEBOUND", 12f, TextAlignmentOptions.Bottom, new Vector2(0f, .01f), new Vector2(1f, .09f), new Color(.22f, .76f, .92f, .8f));
-            RectTransform line = Block("Central Arcane Line", parent, new Color(.1f, .5f, .7f, .2f));
+            Text("Identity Mark", glow, "PHASEBOUND", 12f, TextAlignmentOptions.Bottom, new Vector2(0f, .01f), new Vector2(1f, .09f), new Color(.8f, .62f, .4f, .8f));
+            RectTransform line = Block("Central Arcane Line", parent, new Color(.45f, .28f, .1f, .2f));
             line.anchorMin = line.anchorMax = new Vector2(.5f, .52f);
             line.pivot = new Vector2(.5f, .5f);
             line.sizeDelta = new Vector2(2f, 520f);
@@ -407,13 +413,22 @@ namespace Phasebreak.Gameplay
             nav.anchorMin = nav.anchorMax = new Vector2(1f, 0f);
             nav.pivot = new Vector2(1f, 0f);
             nav.anchoredPosition = new Vector2(-22f, 20f);
-            nav.sizeDelta = new Vector2(274f, 70f);
+            nav.sizeDelta = new Vector2(406f, 70f);
             PhasebreakUiTheme.StyleSurface(nav.GetComponent<Image>(), Window);
             NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory", "inventory");
             NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character", "character");
             NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents", "talents");
             NavButton(nav, MenuMode.Spellbook, EquipmentSlot.Sigil1, 3, "Spellbook", "spellbook");
-            navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f, TextAlignmentOptions.Center, new Vector2(.77f, .105f), new Vector2(.99f, .15f), TextPrimary);
+            journalNavImage = NavWorldButton(nav, 4, "Journal", "journal", "JOURNAL", "J",
+                WorldQuestHud.ToggleJournalMenu);
+            mapNavImage = NavWorldButton(nav, 5, "Map", "worldmap", "MAP", "M",
+                WorldQuestHud.ToggleMapMenu);
+            navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f,
+                TextAlignmentOptions.Center, Vector2.zero, Vector2.zero, TextPrimary);
+            navTooltip.rectTransform.anchorMin = navTooltip.rectTransform.anchorMax = new Vector2(1f, 0f);
+            navTooltip.rectTransform.pivot = new Vector2(1f, 0f);
+            navTooltip.rectTransform.anchoredPosition = new Vector2(-22f, 0f);
+            navTooltip.rectTransform.sizeDelta = new Vector2(406f, 18f);
             navTooltip.gameObject.SetActive(false);
         }
 
@@ -426,13 +441,37 @@ namespace Phasebreak.Gameplay
             rect.sizeDelta = new Vector2(58f, 54f);
             Image background = rect.GetComponent<Image>();
             navImages[target] = background;
-            Image icon = IconImage("Icon", rect, new Vector2(.23f, .2f), new Vector2(.77f, .8f));
+            Image icon = IconImage("Icon", rect, new Vector2(.23f, .28f), new Vector2(.77f, .86f));
             icon.sprite = PhasebreakItemIconLibrary.Get(iconSlot);
             icon.color = TextPrimary;
+            Text("Label", rect, hint.ToUpperInvariant(), 9f, TextAlignmentOptions.Center,
+                new Vector2(.02f, .025f), new Vector2(.98f, .26f), TextMuted);
             ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
             relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]"; navTooltip.gameObject.SetActive(true); }, () => navTooltip.gameObject.SetActive(false), () => Toggle(target));
             PhasebreakUiTheme.StyleSurface(background, PanelLight);
             relay.ConfigureVisual(background, PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
+        }
+
+        private Image NavWorldButton(RectTransform root, int index, string hint, string bindingId,
+            string label, string symbol, Action onClick)
+        {
+            RectTransform rect = Block(hint, root, PanelLight);
+            rect.anchorMin = rect.anchorMax = Vector2.zero;
+            rect.pivot = Vector2.zero;
+            rect.anchoredPosition = new Vector2(9f + index * 66f, 8f);
+            rect.sizeDelta = new Vector2(58f, 54f);
+            Image background = rect.GetComponent<Image>();
+            Text("Symbol", rect, symbol, 29f, TextAlignmentOptions.Center,
+                new Vector2(.12f, .28f), new Vector2(.88f, .88f), TextPrimary);
+            Text("Label", rect, label, 9f, TextAlignmentOptions.Center,
+                new Vector2(.02f, .025f), new Vector2(.98f, .26f), TextMuted);
+            ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
+            relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]";
+                navTooltip.gameObject.SetActive(true); },
+                () => navTooltip.gameObject.SetActive(false), onClick);
+            PhasebreakUiTheme.StyleSurface(background, PanelLight);
+            relay.ConfigureVisual(background, PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
+            return background;
         }
 
         private void BuildTitleBar(RectTransform window, string subtitle, string title, MenuMode target)
@@ -509,22 +548,22 @@ namespace Phasebreak.Gameplay
             if (build == null) return;
             Clear(equipmentCells);
             characterTitle.text = $"LEVEL {(progression != null ? progression.Level : 1)}  •  {build.Specialization.ToString().ToUpperInvariant()}  •  16 EQUIPMENT CHANNELS";
-            CreateEquipmentSlot(EquipmentSlot.Head, new Vector2(.07f, .79f), false);
-            CreateEquipmentSlot(EquipmentSlot.Shoulders, new Vector2(.07f, .64f), false);
-            CreateEquipmentSlot(EquipmentSlot.Chest, new Vector2(.07f, .49f), false);
-            CreateEquipmentSlot(EquipmentSlot.Hands, new Vector2(.07f, .34f), false);
-            CreateEquipmentSlot(EquipmentSlot.Legs, new Vector2(.07f, .19f), false);
-            CreateEquipmentSlot(EquipmentSlot.Boots, new Vector2(.07f, .04f), false);
-            CreateEquipmentSlot(EquipmentSlot.PrimaryWeapon, new Vector2(.78f, .79f), true);
-            CreateEquipmentSlot(EquipmentSlot.Secondary, new Vector2(.78f, .64f), true);
-            CreateEquipmentSlot(EquipmentSlot.Core, new Vector2(.78f, .49f), true);
-            CreateEquipmentSlot(EquipmentSlot.MobilityRelic, new Vector2(.78f, .34f), true);
-            CreateEquipmentSlot(EquipmentSlot.PowerRelic, new Vector2(.78f, .19f), true);
-            CreateEquipmentSlot(EquipmentSlot.UtilityRelic, new Vector2(.78f, .04f), true);
-            CreateEquipmentSlot(EquipmentSlot.Sigil1, new Vector2(.29f, .035f), true, true);
-            CreateEquipmentSlot(EquipmentSlot.Sigil2, new Vector2(.405f, .035f), true, true);
-            CreateEquipmentSlot(EquipmentSlot.Sigil3, new Vector2(.52f, .035f), true, true);
-            CreateEquipmentSlot(EquipmentSlot.WildcardArtifact, new Vector2(.635f, .035f), true, true);
+            CreateEquipmentSlot(EquipmentSlot.Head, new Vector2(.03f, .8f), false);
+            CreateEquipmentSlot(EquipmentSlot.Shoulders, new Vector2(.03f, .675f), false);
+            CreateEquipmentSlot(EquipmentSlot.Chest, new Vector2(.03f, .55f), false);
+            CreateEquipmentSlot(EquipmentSlot.Hands, new Vector2(.03f, .425f), false);
+            CreateEquipmentSlot(EquipmentSlot.Legs, new Vector2(.03f, .3f), false);
+            CreateEquipmentSlot(EquipmentSlot.Boots, new Vector2(.03f, .175f), false);
+            CreateEquipmentSlot(EquipmentSlot.PrimaryWeapon, new Vector2(.65f, .8f), true);
+            CreateEquipmentSlot(EquipmentSlot.Secondary, new Vector2(.65f, .675f), true);
+            CreateEquipmentSlot(EquipmentSlot.Core, new Vector2(.65f, .55f), true);
+            CreateEquipmentSlot(EquipmentSlot.MobilityRelic, new Vector2(.65f, .425f), true);
+            CreateEquipmentSlot(EquipmentSlot.PowerRelic, new Vector2(.65f, .3f), true);
+            CreateEquipmentSlot(EquipmentSlot.UtilityRelic, new Vector2(.65f, .175f), true);
+            CreateEquipmentSlot(EquipmentSlot.Sigil1, new Vector2(.29f, .025f), true, true);
+            CreateEquipmentSlot(EquipmentSlot.Sigil2, new Vector2(.405f, .025f), true, true);
+            CreateEquipmentSlot(EquipmentSlot.Sigil3, new Vector2(.52f, .025f), true, true);
+            CreateEquipmentSlot(EquipmentSlot.WildcardArtifact, new Vector2(.635f, .025f), true, true);
             passiveIcon.sprite = progression != null ? progression.PassiveIcon : PhasebreakIconCatalog.Current?.fallbackBuff;
             passiveIcon.color = passiveIcon.sprite == null ? Color.clear : progression != null && progression.HasKeenEdge ? Color.white : new Color(.35f, .4f, .48f, .65f);
             characterSummary.text = BuildCharacterSummary();
@@ -534,19 +573,19 @@ namespace Phasebreak.Gameplay
         private void CreateEquipmentSlot(EquipmentSlot slot, Vector2 anchor, bool labelOnLeft, bool compact = false)
         {
             PhasebreakItemDefinition item = build.GetEquipped(slot);
-            Vector2 size = compact ? new Vector2(70f, 70f) : new Vector2(78f, 78f);
+            Vector2 size = compact ? new Vector2(62f, 62f) : new Vector2(68f, 68f);
             RectTransform holder = new GameObject(slot.ToString(), typeof(RectTransform)).GetComponent<RectTransform>();
             holder.SetParent(equipmentStage, false);
             holder.anchorMin = holder.anchorMax = anchor;
             holder.pivot = Vector2.zero;
-            holder.sizeDelta = compact ? new Vector2(78f, 96f) : new Vector2(205f, 82f);
+            holder.sizeDelta = compact ? new Vector2(70f, 78f) : new Vector2(160f, 72f);
             equipmentCells.Add(holder.gameObject);
             RectTransform slotRect = Block("Equipment Slot", holder, RarityColor(item != null ? item.rarity : ItemRarity.Common));
             slotRect.anchorMin = slotRect.anchorMax = labelOnLeft && !compact ? new Vector2(1f, .5f) : new Vector2(0f, .5f);
             slotRect.pivot = labelOnLeft && !compact ? new Vector2(1f, .5f) : new Vector2(0f, .5f);
             slotRect.anchoredPosition = Vector2.zero;
             slotRect.sizeDelta = size;
-            RectTransform surface = Block("Slot Surface", slotRect, new Color(.035f, .055f, .082f, 1f));
+            RectTransform surface = Block("Slot Surface", slotRect, PanelLight);
             Stretch(surface, 3f);
             Image icon = IconImage("Slot Icon", surface, new Vector2(.17f, .17f), new Vector2(.83f, .83f));
             icon.sprite = item != null ? PhasebreakItemIconLibrary.Resolve(item) : PhasebreakItemIconLibrary.Get(slot);
@@ -554,9 +593,9 @@ namespace Phasebreak.Gameplay
             icon.preserveAspect = true;
             if (!compact)
             {
-                Vector2 labelMin = labelOnLeft ? new Vector2(0f, .08f) : new Vector2(.42f, .08f);
-                Vector2 labelMax = labelOnLeft ? new Vector2(.58f, .92f) : new Vector2(1f, .92f);
-                Text("Slot Label", holder, Pretty(slot).ToUpperInvariant(), 15f, labelOnLeft ? TextAlignmentOptions.Right : TextAlignmentOptions.Left, labelMin, labelMax, item != null ? TextPrimary : TextMuted);
+                Vector2 labelMin = labelOnLeft ? new Vector2(0f, .08f) : new Vector2(.47f, .08f);
+                Vector2 labelMax = labelOnLeft ? new Vector2(.53f, .92f) : new Vector2(1f, .92f);
+                Text("Slot Label", holder, Pretty(slot).ToUpperInvariant(), 12f, labelOnLeft ? TextAlignmentOptions.Right : TextAlignmentOptions.Left, labelMin, labelMax, item != null ? TextPrimary : TextMuted);
             }
             else Text("Slot Label", holder, CompactSlotLabel(slot), 12f, TextAlignmentOptions.Center, new Vector2(-.1f, -.2f), new Vector2(1.1f, .02f), item != null ? TextPrimary : TextMuted);
             ItemSlotUI relay = slotRect.gameObject.AddComponent<ItemSlotUI>();
@@ -566,7 +605,7 @@ namespace Phasebreak.Gameplay
                 () => SelectEquipmentSlot(slot),
                 item == null ? null : () => TryUnequip(slot),
                 item == null ? null : () => TryUnequip(slot));
-            relay.ConfigureVisual(surface.GetComponent<Image>(), new Color(.035f, .055f, .082f, 1f), new Color(.075f, .13f, .18f, 1f), new Color(.08f, .24f, .32f, 1f));
+            relay.ConfigureVisual(surface.GetComponent<Image>(), PanelLight, PhasebreakUiTheme.Hover, PhasebreakUiTheme.Active);
             relay.SetSelected(selectedEquipmentSlot == slot);
         }
 
@@ -579,7 +618,7 @@ namespace Phasebreak.Gameplay
             int levelHealth = progression != null ? progression.BonusHealth : 0;
             float passiveCrit = progression != null ? progression.CriticalChanceBonus : 0f;
             StringBuilder text = new();
-            text.Append("<color=#63D9F2><b>FINAL STATS</b></color>\n");
+            text.Append("<color=#CFA66A><b>FINAL STATS</b></color>\n");
             StatRow(text, "Power", $"x{levelPower * build.PowerMultiplier:0.00}");
             StatRow(text, "Bonus health", $"+{levelHealth + build.BonusHealth}");
             StatRow(text, "Defense", build.Defense.ToString("P0"));
@@ -595,12 +634,18 @@ namespace Phasebreak.Gameplay
         {
             string passive = progression != null && progression.HasKeenEdge ? progression.PassiveName : "Locked";
             StringBuilder text = new();
-            text.Append($"<color=#A984FF><b>SPECIALIZATION</b></color>\n{(build.Specialization == Specialization.Unchosen ? "Choose in Talents" : build.Specialization)}\n");
-            text.Append($"\n<color=#A984FF><b>PASSIVE</b></color>\n{passive}\n");
-            text.Append("\n<color=#73D6EE><b>ACTIVE SETS</b></color>\n");
+            if (selectedEquipmentSlot is EquipmentSlot slot)
+            {
+                PhasebreakItemDefinition selected = build.GetEquipped(slot);
+                text.Append($"<color=#CFA66A><b>{CompactSlotLabel(slot)}</b></color>\n" +
+                    (selected != null ? selected.displayName : "Empty — equip from Inventory") + "\n\n");
+            }
+            text.Append($"<color=#CFA66A><b>SPECIALIZATION</b></color>\n{(build.Specialization == Specialization.Unchosen ? "Choose in Talents" : build.Specialization)}\n");
+            text.Append($"\n<color=#CFA66A><b>PASSIVE</b></color>\n{passive}\n");
+            text.Append("\n<color=#CFA66A><b>ACTIVE SETS</b></color>\n");
             string sets = BuildSetSummary();
             text.Append(string.IsNullOrEmpty(sets) ? "<color=#738196>None active</color>\n" : sets);
-            text.Append("\n<color=#73D6EE><b>BUILD MODIFIERS</b></color>\n");
+            text.Append("\n<color=#CFA66A><b>BUILD MODIFIERS</b></color>\n");
             text.Append(ModifierSummary(true));
             return text.ToString();
         }
@@ -614,7 +659,7 @@ namespace Phasebreak.Gameplay
                 int count = group.Count();
                 int maximum = (group.Key.bonuses ?? Array.Empty<SetBonusDefinition>()).Select(bonus => bonus.pieces).DefaultIfEmpty(0).Max();
                 int displayedCount = maximum > 0 ? Mathf.Min(count, maximum) : count;
-                result.Append($"<b>{group.Key.displayName}</b>  <color=#63D9F2>{displayedCount}/{maximum}</color>\n");
+                result.Append($"<b>{group.Key.displayName}</b>  <color=#CFA66A>{displayedCount}/{maximum}</color>\n");
                 foreach (SetBonusDefinition bonus in group.Key.bonuses ?? Array.Empty<SetBonusDefinition>())
                     result.Append($"<color={(count >= bonus.pieces ? "#5EE58C" : "#667487")}>{bonus.pieces}-piece  {bonus.description}</color>\n");
             }
@@ -737,7 +782,15 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private void UpdateNav() { foreach (KeyValuePair<MenuMode, Image> pair in navImages) pair.Value.color = mode == pair.Key ? PhasebreakUiTheme.Active : PanelLight; }
+        private void UpdateNav()
+        {
+            foreach (KeyValuePair<MenuMode, Image> pair in navImages)
+                pair.Value.GetComponent<ItemSlotUI>().SetSelected(mode == pair.Key);
+            if (journalNavImage != null)
+                journalNavImage.GetComponent<ItemSlotUI>().SetSelected(WorldQuestHud.IsJournalOpen);
+            if (mapNavImage != null)
+                mapNavImage.GetComponent<ItemSlotUI>().SetSelected(WorldQuestHud.IsMapOpen);
+        }
         private void SetActions(bool enabled) { foreach (InputAction action in new[] { inventoryAction, characterAction, talentsAction, spellbookAction, escapeAction }) if (enabled) action.Enable(); else action.Disable(); }
 
         private static RectTransform CreateScrollGrid(Transform parent, Vector2 min, Vector2 max, int columns, Vector2 cellSize, Vector2 spacing)

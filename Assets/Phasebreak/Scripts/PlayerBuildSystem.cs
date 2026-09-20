@@ -7,7 +7,7 @@ namespace Phasebreak.Gameplay
 {
     public enum SpecializationChangeResult { Changed, AlreadyActive, InvalidChoice, Defeated, AbilityInProgress }
 
-    [Serializable] internal sealed class BuildSaveData { public List<string> inventory = new(); public List<string> slots = new(); public List<string> gear = new(); public Specialization specialization; }
+    [Serializable] internal sealed class BuildSaveData { public List<string> inventory = new(); public List<string> slots = new(); public List<string> gear = new(); public List<string> claimedRewards = new(); public Specialization specialization; }
 
     [RequireComponent(typeof(PlayerHealth)), DisallowMultipleComponent]
     public sealed class PlayerBuildSystem : MonoBehaviour
@@ -19,6 +19,7 @@ namespace Phasebreak.Gameplay
         private readonly List<PhasebreakItemDefinition> inventory = new();
         private readonly Dictionary<EquipmentSlot, PhasebreakItemDefinition> equipped = new();
         private readonly Dictionary<string, PhasebreakItemDefinition> byId = new();
+        private readonly HashSet<string> claimedRewards = new(StringComparer.OrdinalIgnoreCase);
         private PlayerHealth health; private PlayerProgression progression; private TalentSystem talents; private PlayerCombat combat; private BuildStats stats;
         private BuildEffect effects; private float critEnergy, lungeReduction, teleportRecovery; private int enemiesDefeated;
 
@@ -87,6 +88,19 @@ namespace Phasebreak.Gameplay
             if (!byId.TryGetValue(id, out PhasebreakItemDefinition item)) return false;
             inventory.Add(item); Save(); LootAcquired?.Invoke(item); BuildChanged?.Invoke(); return true;
         }
+        public bool HasClaimedUniqueReward(string id) => !string.IsNullOrWhiteSpace(id) &&
+            claimedRewards.Contains(id);
+        public bool ClaimUniqueRewardById(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id) || claimedRewards.Contains(id) ||
+                !byId.TryGetValue(id, out PhasebreakItemDefinition item)) return false;
+            inventory.Add(item);
+            claimedRewards.Add(id);
+            Save();
+            LootAcquired?.Invoke(item);
+            BuildChanged?.Invoke();
+            return true;
+        }
         public bool AddToInventory(PhasebreakItemDefinition item)
         {
             if (item == null || !byId.ContainsKey(item.id)) return false;
@@ -95,11 +109,12 @@ namespace Phasebreak.Gameplay
         public List<PhasebreakItemDefinition> GenerateCorpseLoot()
         {
             List<PhasebreakItemDefinition> drops = new(); enemiesDefeated++;
-            if (itemCatalog == null || itemCatalog.Length == 0 ||
+            PhasebreakItemDefinition[] pool = itemCatalog?.Where(item => item != null && !item.excludedFromRandomLoot).ToArray();
+            if (pool == null || pool.Length == 0 ||
                 (enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return drops;
-            drops.Add(itemCatalog[(enemiesDefeated - 1) % itemCatalog.Length]);
-            if (enemiesDefeated % 5 == 0 && itemCatalog.Length > 1)
-                drops.Add(itemCatalog[enemiesDefeated % itemCatalog.Length]);
+            drops.Add(pool[(enemiesDefeated - 1) % pool.Length]);
+            if (enemiesDefeated % 5 == 0 && pool.Length > 1)
+                drops.Add(pool[enemiesDefeated % pool.Length]);
             return drops;
         }
         public int GetTagCount(ItemTag tag) => equipped.Values.Count(i => i != null && (i.tags & tag) != 0);
@@ -150,17 +165,39 @@ namespace Phasebreak.Gameplay
         private void Changed() { Recalculate(); Save(); BuildChanged?.Invoke(); }
         private void LoadOrSeed()
         {
-            if (!PlayerPrefs.HasKey(SaveKey)) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
-            BuildSaveData data = JsonUtility.FromJson<BuildSaveData>(PlayerPrefs.GetString(SaveKey)) ?? new BuildSaveData();
+            if (!PlayerPrefs.HasKey(SaveKey)) { SeedFreshLoadout(); return; }
+            BuildSaveData data = JsonUtility.FromJson<BuildSaveData>(PlayerPrefs.GetString(SaveKey));
+            if (data == null) { SeedFreshLoadout(); return; }
             Specialization = data.specialization;
-            if (data.inventory.Count == 0 && data.gear.Count == 0) { inventory.AddRange(startingInventory.Where(i => i != null)); Save(); return; }
-            foreach (string id in data.inventory) if (byId.TryGetValue(id, out PhasebreakItemDefinition item)) inventory.Add(item);
-            for (int i = 0; i < Mathf.Min(data.slots.Count, data.gear.Count); i++) if (Enum.TryParse(data.slots[i], out EquipmentSlot slot) && byId.TryGetValue(data.gear[i], out PhasebreakItemDefinition item)) equipped[slot] = item;
+            foreach (string id in data.inventory ?? new List<string>())
+                if (!string.IsNullOrWhiteSpace(id) && byId.TryGetValue(id, out PhasebreakItemDefinition item)) inventory.Add(item);
+            int savedGearCount = Mathf.Min(data.slots?.Count ?? 0, data.gear?.Count ?? 0);
+            for (int i = 0; i < savedGearCount; i++)
+                if (Enum.TryParse(data.slots[i], out EquipmentSlot slot) &&
+                    !string.IsNullOrWhiteSpace(data.gear[i]) &&
+                    byId.TryGetValue(data.gear[i], out PhasebreakItemDefinition item)) equipped[slot] = item;
+            foreach (string id in data.claimedRewards ?? new List<string>())
+                if (!string.IsNullOrWhiteSpace(id)) claimedRewards.Add(id);
+            // Older saves may already own the dungeon artifact without a claim record.
+            if (inventory.Any(item => item.id == "artifact.riftwarden-heart") ||
+                equipped.Values.Any(item => item != null && item.id == "artifact.riftwarden-heart"))
+                claimedRewards.Add("artifact.riftwarden-heart");
+        }
+        private void SeedFreshLoadout()
+        {
+            foreach (PhasebreakItemDefinition item in startingInventory.Where(item => item != null))
+            {
+                if (item.slot == EquipmentSlot.PrimaryWeapon && !equipped.ContainsKey(EquipmentSlot.PrimaryWeapon))
+                    equipped[EquipmentSlot.PrimaryWeapon] = item;
+                else inventory.Add(item);
+            }
+            Save();
         }
         private void Save()
         {
             BuildSaveData data = new() { specialization = Specialization }; data.inventory.AddRange(inventory.Where(i => i != null).Select(i => i.id));
             foreach (KeyValuePair<EquipmentSlot, PhasebreakItemDefinition> pair in equipped) { data.slots.Add(pair.Key.ToString()); data.gear.Add(pair.Value.id); }
+            data.claimedRewards.AddRange(claimedRewards.OrderBy(id => id));
             PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(data)); PlayerPrefs.Save();
         }
     }

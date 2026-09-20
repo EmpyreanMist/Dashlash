@@ -32,12 +32,12 @@ namespace Phasebreak.Gameplay
         private TalentNodeDefinition selected;
         private Specialization viewed = Specialization.Berserker;
 
-        private static readonly Color Surface = new(.022f, .035f, .058f, .98f);
-        private static readonly Color SurfaceRaised = new(.045f, .064f, .095f, .98f);
-        private static readonly Color Cyan = new(.11f, .72f, .9f, 1f);
-        private static readonly Color Purple = new(.54f, .31f, .9f, 1f);
-        private static readonly Color Text = new(.9f, .94f, 1f, 1f);
-        private static readonly Color Muted = new(.5f, .59f, .69f, 1f);
+        private static readonly Color Surface = PhasebreakUiTheme.Window;
+        private static readonly Color SurfaceRaised = PhasebreakUiTheme.Raised;
+        private static readonly Color Purchased = PhasebreakUiTheme.Accent;
+        private static readonly Color Purple = new(.45f, .32f, .52f, 1f);
+        private static readonly Color Text = PhasebreakUiTheme.Text;
+        private static readonly Color Muted = PhasebreakUiTheme.MutedText;
 
         public void Initialize(RectTransform root)
         {
@@ -73,11 +73,15 @@ namespace Phasebreak.Gameplay
             {
                 bool isActive = pair.Key == active;
                 pair.Value.color = isActive ? PhasebreakUiTheme.Active : pair.Key == viewed ? PhasebreakUiTheme.Raised : PhasebreakUiTheme.Panel;
-                tabStates[pair.Key].text = isActive ? "ACTIVE" : "SWITCH";
+                tabStates[pair.Key].text = isActive ? "ACTIVE" : string.Empty;
                 tabStates[pair.Key].color = isActive ? PhasebreakUiTheme.Text : PhasebreakUiTheme.MutedText;
             }
-            activateButton.interactable = viewed != active && build != null;
-            activateLabel.text = viewed == active ? "CURRENTLY ACTIVE" : $"ACTIVATE {viewed.ToString().ToUpperInvariant()}";
+            activateButton.transform.SetParent(tabSurfaces[viewed].transform, false);
+            Place(activateButton.GetComponent<RectTransform>(), new Vector2(.77f, .16f),
+                new Vector2(.98f, .84f));
+            activateButton.gameObject.SetActive(viewed != active);
+            activateButton.interactable = build != null;
+            activateLabel.text = "ACTIVATE";
             TalentTreeDefinition tree = talents?.GetTree(viewed);
             identityLabel.text = tree == null ? "Talent data is not installed." : tree.identity;
             if (tree != null && (selected == null || !tree.nodes.Contains(selected)))
@@ -92,9 +96,6 @@ namespace Phasebreak.Gameplay
             Place(tabs, new Vector2(.025f, .79f), new Vector2(.975f, .885f));
             activeSpecializationLabel = AddText("Active Specialization", root, string.Empty, 14f,
                 TextAlignmentOptions.MidlineLeft, new Vector2(.03f, .895f), new Vector2(.68f, .96f), PhasebreakUiTheme.Text);
-            activateButton = Button("Activate Specialization", root, string.Empty,
-                new Vector2(.71f, .897f), new Vector2(.97f, .957f), ActivateViewed, out activateLabel);
-            PhasebreakUiTheme.StyleButton(activateButton);
             Specialization[] specs = { Specialization.Berserker, Specialization.Bulwark, Specialization.Riftblade };
             for (int i = 0; i < specs.Length; i++)
             {
@@ -113,22 +114,27 @@ namespace Phasebreak.Gameplay
                 tabStates[spec] = AddText("State", tab, string.Empty, 10f, TextAlignmentOptions.Center,
                     new Vector2(.76f, .1f), new Vector2(.98f, .9f), PhasebreakUiTheme.MutedText);
             }
+            activateButton = Button("Activate Specialization", tabSurfaces[viewed].transform,
+                "ACTIVATE", new Vector2(.77f, .16f), new Vector2(.98f, .84f),
+                ActivateViewed, out activateLabel);
+            PhasebreakUiTheme.StyleButton(activateButton);
 
-            RectTransform center = Block("Talent Constellation", root, new Color(.012f, .021f, .038f, .97f));
+            RectTransform center = Block("Talent Constellation", root, Surface);
             Place(center, new Vector2(.025f, .105f), new Vector2(.705f, .775f));
-            Outline(center, new Color(.13f, .25f, .38f, .8f));
+            PhasebreakUiTheme.StyleSurface(center.GetComponent<UnityEngine.UI.Image>(), Surface);
             identityLabel = AddText("Tree Identity", center, string.Empty, 14f, TextAlignmentOptions.TopLeft, new Vector2(.025f, .89f), new Vector2(.975f, .98f), Muted);
             treeArea = Rect("Tree Area", center);
             Place(treeArea, new Vector2(.025f, .035f), new Vector2(.975f, .88f));
             connectionLayer = Rect("Connections", treeArea); Stretch(connectionLayer);
             nodeLayer = Rect("Nodes", treeArea); Stretch(nodeLayer);
             AddText("State Legend", center,
-                "<color=#444F62>LOCKED</color>    <color=#8A50E6>AVAILABLE</color>    <color=#1CB8E5>PURCHASED</color>    <color=#F2B02E>MAX RANK</color>",
+                "<color=#77746E>LOCKED</color>    <color=#A98AB8>AVAILABLE</color>    <color=#C9A86C>PURCHASED</color>    <color=#E4C078>MAX RANK</color>",
                 12f, TextAlignmentOptions.Center, new Vector2(.18f, .005f), new Vector2(.82f, .035f), Muted);
 
-            RectTransform details = Block("Selected Talent Details", root, Surface);
+            RectTransform details = Block("Selected Talent Details", root, PhasebreakUiTheme.Window);
             Place(details, new Vector2(.72f, .105f), new Vector2(.975f, .775f));
-            Outline(details, new Color(.18f, .16f, .35f, .9f));
+            PhasebreakUiTheme.StyleSurface(details.GetComponent<UnityEngine.UI.Image>(),
+                PhasebreakUiTheme.Window);
             RectTransform iconFrame = Block("Selected Icon Frame", details, Purple);
             Place(iconFrame, new Vector2(.08f, .73f), new Vector2(.36f, .9f));
             detailsIcon = Image("Selected Icon", iconFrame, new Vector2(.06f, .06f), new Vector2(.94f, .94f));
@@ -157,7 +163,7 @@ namespace Phasebreak.Gameplay
         private void CreateConnection(TalentNodeDefinition from, TalentNodeDefinition to)
         {
             RectTransform line = Block("Connection " + from.id + " to " + to.id, connectionLayer,
-                talents.GetRank(from.id) > 0 ? new Color(.18f, .7f, .86f, .85f) : new Color(.18f, .23f, .32f, .8f));
+                talents.GetRank(from.id) > 0 ? new Color(.64f, .48f, .27f, .85f) : new Color(.22f, .21f, .2f, .8f));
             generated.Add(line.gameObject);
             Vector2 start = ToLocal(from.presentationPosition);
             Vector2 end = ToLocal(to.presentationPosition);
@@ -181,14 +187,14 @@ namespace Phasebreak.Gameplay
             int rank = talents.GetRank(node.id);
             TalentPurchaseResult state = talents.CanPurchase(node);
             bool maxed = rank >= node.maximumRank;
-            Color border = maxed ? new Color(.95f, .69f, .18f, 1f) : rank > 0 ? Cyan : state == TalentPurchaseResult.Purchased ? Purple : new Color(.18f, .23f, .31f, 1f);
-            if (selected == node) border = new Color(.85f, .95f, 1f, 1f);
+            Color border = maxed ? new Color(.88f, .68f, .34f, 1f) : rank > 0 ? Purchased : state == TalentPurchaseResult.Purchased ? Purple : PhasebreakUiTheme.MetalEdge;
+            if (selected == node) border = PhasebreakUiTheme.Text;
             RectTransform frame = Block(node.displayName, nodeLayer, border);
             generated.Add(frame.gameObject);
             frame.anchorMin = frame.anchorMax = node.presentationPosition;
             frame.pivot = new Vector2(.5f, .5f);
             frame.sizeDelta = node.nodeType == TalentNodeType.Keystone ? new Vector2(94f, 94f) : new Vector2(82f, 82f);
-            RectTransform surface = Block("Surface", frame, new Color(.025f, .035f, .055f, 1f));
+            RectTransform surface = Block("Surface", frame, SurfaceRaised);
             Stretch(surface, 4f);
             UnityEngine.UI.Image icon = Image("Icon", surface, new Vector2(.08f, .08f), new Vector2(.92f, .92f));
             icon.sprite = node.icon;
@@ -217,7 +223,7 @@ namespace Phasebreak.Gameplay
             detailsIcon.enabled = selected.icon != null;
             detailsTitle.text = selected.displayName.ToUpperInvariant();
             string requirements = RequirementText(selected, state);
-            string next = rank < selected.maximumRank ? $"\n\n<color=#6BE7FF><b>NEXT RANK</b></color>\n{selected.RankEffect(rank + 1)}" : string.Empty;
+            string next = rank < selected.maximumRank ? $"\n\n<color=#C9A86C><b>NEXT RANK</b></color>\n{selected.RankEffect(rank + 1)}" : string.Empty;
             detailsBody.text = $"<color=#A984FF>{selected.nodeType}</color>   RANK {rank}/{selected.maximumRank}\n\n{selected.description}\n\n<b>CURRENT EFFECT</b>\n{(rank > 0 ? selected.RankEffect(rank) : "Not active")}{next}\n\n<color=#8998AA>{requirements}</color>";
             purchaseButton.interactable = state == TalentPurchaseResult.Purchased;
             purchaseLabel.text = rank >= selected.maximumRank ? "MAXIMUM RANK" : $"INVEST {selected.pointCost} POINT{(selected.pointCost == 1 ? string.Empty : "S")}";
@@ -227,7 +233,7 @@ namespace Phasebreak.Gameplay
         {
             if (selected == null) return;
             TalentPurchaseResult result = talents.Purchase(selected);
-            feedback.text = result == TalentPurchaseResult.Purchased ? "<color=#6BE7FF>Talent awakened.</color>" : RequirementText(selected, result);
+            feedback.text = result == TalentPurchaseResult.Purchased ? "<color=#C9A86C>Talent awakened.</color>" : RequirementText(selected, result);
             Refresh();
         }
 
@@ -299,14 +305,13 @@ namespace Phasebreak.Gameplay
 
         private static UnityEngine.UI.Button Button(string name, Transform parent, string value, Vector2 min, Vector2 max, Action click, out TextMeshProUGUI label)
         {
-            RectTransform rect = Block(name, parent, new Color(.07f, .16f, .23f, 1f)); Place(rect, min, max);
+            RectTransform rect = Block(name, parent, SurfaceRaised); Place(rect, min, max);
             UnityEngine.UI.Button button = rect.gameObject.AddComponent<UnityEngine.UI.Button>(); button.onClick.AddListener(() => click?.Invoke());
             label = AddText("Label", rect, value, 11.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, Text); return button;
         }
 
         private static void Place(RectTransform rect, Vector2 min, Vector2 max) { rect.anchorMin = min; rect.anchorMax = max; rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero; }
         private static void Stretch(RectTransform rect, float inset = 0f) { rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = new Vector2(inset, inset); rect.offsetMax = new Vector2(-inset, -inset); }
-        private static void Outline(RectTransform rect, Color color) { UnityEngine.UI.Outline outline = rect.gameObject.AddComponent<UnityEngine.UI.Outline>(); outline.effectColor = color; outline.effectDistance = new Vector2(1f, -1f); }
     }
 
     public sealed class TalentNodePointer : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
