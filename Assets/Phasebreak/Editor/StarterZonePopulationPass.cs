@@ -65,7 +65,7 @@ namespace Phasebreak.Editor
             Transform ambush = Site(root, "03 - Broken cart road ambush", "broken-cart-ambush",
                 new Vector2(480, 555), 1,
                 new[] { O(-12, -6), O(7, 4), O(14, -8) },
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Zombie) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Charger) });
             Cart(ambush, 482, 551, 25);
             Crate(ambush, 470, 559, 1.7f);
             Boulder(ambush, 493, 563, 1.2f);
@@ -73,7 +73,7 @@ namespace Phasebreak.Editor
             Transform camp = Site(root, "04 - Abandoned road camp", "abandoned-road-camp",
                 new Vector2(625, 675), 1,
                 new[] { O(-12, 9), O(8, 11), O(15, -5), O(-4, -10) },
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Brute) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Charger), R(EnemyRole.Zombie), R(EnemyRole.Brute) });
             Campfire(camp, 625, 677);
             Crate(camp, 610, 681, 2);
             Barrel(camp, 638, 667);
@@ -82,7 +82,7 @@ namespace Phasebreak.Editor
             Transform guard = Site(root, "05 - East road brute guard", "east-road-brute-guard",
                 new Vector2(1040, 830), 2,
                 new[] { O(-16, -7), O(10, 9), O(3, -12) },
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Brute, EnemyRank.Veteran) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Caster), R(EnemyRole.Brute, EnemyRank.Veteran) });
             Fence(guard, 1033, 816, 45);
             Crate(guard, 1051, 840, 2);
             Boulder(guard, 1024, 838, 1.5f);
@@ -91,28 +91,28 @@ namespace Phasebreak.Editor
             Vector3[] overlookOffsets = OverlookOffsets(overlookAt);
             Transform overlook = Site(root, "06 - King's Road imp overlook", "kings-road-imp-overlook",
                 overlookAt, 2, overlookOffsets,
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Skirmisher), R(EnemyRole.Skirmisher) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Charger), R(EnemyRole.Skirmisher), R(EnemyRole.Caster) });
             Boulder(overlook, overlookAt.x + overlookOffsets[2].x + 5, overlookAt.y + overlookOffsets[2].z + 3, 1.8f);
             Boulder(overlook, overlookAt.x + overlookOffsets[3].x - 5, overlookAt.y + overlookOffsets[3].z + 2, 1.5f);
 
             Transform shrine = Site(root, "07 - Ruined shrine", "ruined-shrine",
                 new Vector2(940, 1220), 2,
                 new[] { O(-14, -9), O(8, 12), O(15, -4), O(-4, 4) },
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Brute), R(EnemyRole.Skirmisher, EnemyRank.Veteran) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Charger), R(EnemyRole.Brute), R(EnemyRole.Caster, EnemyRank.Veteran) });
             Shrine(shrine, 940, 1220);
             Boulder(shrine, 923, 1234, 1.4f);
 
             Transform elite = Site(root, "08 - Old Fort elite watch", "old-fort-elite-watch",
                 new Vector2(1535, 1553), 3,
                 new[] { O(-13, -7), O(10, -8), O(1, 10) },
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Skirmisher, EnemyRank.Elite) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Charger), R(EnemyRole.Caster, EnemyRank.Elite, "Veyra the Rift Seer") });
             Shrine(elite, 1535, 1553);
             Barrel(elite, 1550, 1545);
 
             Transform crypt = Site(root, "09 - Rift Crypt approach", "rift-crypt-approach",
                 new Vector2(1320, 590), 3,
                 new[] { O(-18, -9), O(14, -10), O(12, 12), O(-3, 8) },
-                new[] { R(EnemyRole.Zombie), R(EnemyRole.Zombie), R(EnemyRole.Skirmisher), R(EnemyRole.Brute, EnemyRank.Veteran) });
+                new[] { R(EnemyRole.Zombie), R(EnemyRole.Charger), R(EnemyRole.Skirmisher), R(EnemyRole.Brute, EnemyRank.Veteran, "Mordek the Gatebreaker") });
             BrokenWall(crypt, 1305, 580, 35);
             BrokenWall(crypt, 1336, 603, -22);
             Boulder(crypt, 1311, 610, 1.6f);
@@ -131,8 +131,9 @@ namespace Phasebreak.Editor
             return site.transform;
         }
 
-        private static FrontierEncounterZone.SpawnRole R(EnemyRole role, EnemyRank rank = EnemyRank.Normal) =>
-            new FrontierEncounterZone.SpawnRole { role = role, rank = rank };
+        private static FrontierEncounterZone.SpawnRole R(EnemyRole role, EnemyRank rank = EnemyRank.Normal,
+            string uniqueName = null) =>
+            new FrontierEncounterZone.SpawnRole { role = role, rank = rank, uniqueName = uniqueName };
         private static Vector3 O(float x, float z) => new Vector3(x, 0, z);
 
         private static Vector3[] OverlookOffsets(Vector2 center)

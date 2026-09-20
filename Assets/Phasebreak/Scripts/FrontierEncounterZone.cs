@@ -10,6 +10,7 @@ namespace Phasebreak.Gameplay
         {
             public EnemyRole role;
             public EnemyRank rank;
+            public string uniqueName;
         }
         [SerializeField] private string zoneId;
         [SerializeField] private GameObject enemyPrefab;
@@ -134,6 +135,7 @@ namespace Phasebreak.Gameplay
             SpawnRole spawnRole = GetRole(index);
             enemies[index] = enemy.GetComponent<MeleeEnemy>();
             enemies[index].ConfigureRole(spawnRole.role, spawnRole.rank);
+            enemies[index].ConfigureNamedEncounter(spawnRole.uniqueName);
             enemy.name = spawnRole.role == EnemyRole.Zombie ? enemyPrefab.name :
                 spawnRole.rank + " " + spawnRole.role;
         }
