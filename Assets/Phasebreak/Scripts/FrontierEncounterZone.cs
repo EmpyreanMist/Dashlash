@@ -57,7 +57,11 @@ namespace Phasebreak.Gameplay
         {
             for (int i = 0; i < enemies.Count; i++)
             {
-                if (enemies[i] != null) Destroy(enemies[i].gameObject);
+                if (enemies[i] != null)
+                {
+                    enemies[i].gameObject.SetActive(false);
+                    Destroy(enemies[i].gameObject);
+                }
                 enemies[i] = null;
                 deaths[i] = -1f;
             }
