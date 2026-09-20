@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
@@ -47,6 +48,10 @@ namespace Phasebreak.Gameplay
         private TextMeshProUGUI toast;
         private TextMeshProUGUI journalDetails;
         private TextMeshProUGUI mapFooter;
+        private TextMeshProUGUI mapDetails;
+        private string selectedMapName;
+        private string selectedMapId;
+        private Vector2 selectedMapWorld;
         private CanvasGroup toastGroup;
         private string selectedJournalId;
         private float toastUntil;
@@ -237,7 +242,7 @@ namespace Phasebreak.Gameplay
                 if (mapDefinition.generatedRoads != null) MapImage("Roads", mapDefinition.generatedRoads);
                 foreach (QuestLocation location in mapLocations)
                     MapPoint(mapSurface, location.DisplayName.ToUpperInvariant(),
-                        new Vector2(location.transform.position.x, location.transform.position.z), Cyan);
+                        new Vector2(location.transform.position.x, location.transform.position.z), Cyan, location.Id);
             }
             else
             {
@@ -260,7 +265,14 @@ namespace Phasebreak.Gameplay
                 MapPoint(mapSurface, "RIFT CRYPT", new Vector2(-8f, 8f), new Color(.7f, .4f, .92f));
             }
             mapObjective = Diamond("Objective Marker", mapSurface, new Color(1f, .74f, .21f), 20f);
+            AddMapInteraction(mapObjective, () => ShowObjectiveDetails(), () => RestoreMapDetails(), () => SelectObjective());
             mapPlayer = Diamond("Player Marker", mapSurface, new Color(.75f, .95f, 1f), 18f);
+            RectTransform detailPanel = Block("Map Details", mapWindow, Raised);
+            Place(detailPanel, new Vector2(.75f, .15f), new Vector2(.965f, .85f));
+            PhasebreakUiTheme.StyleSurface(detailPanel.GetComponent<UnityEngine.UI.Image>(), Raised);
+            mapDetails = Label("Map Detail Text", detailPanel, string.Empty, 17f, TextAlignmentOptions.TopLeft,
+                new Vector2(.07f, .06f), new Vector2(.93f, .94f), Text);
+            RestoreMapDetails();
             mapFooter = Label("Map Footer", mapWindow, $"LIGHT MARKER: YOU     GOLD MARKER: OBJECTIVE     [{PhasebreakSettings.Display("worldmap")}] CLOSE", 13f, TextAlignmentOptions.Center,
                 new Vector2(.1f, .02f), new Vector2(.9f, .075f), Muted);
             mapWindow.gameObject.SetActive(false);
@@ -270,9 +282,9 @@ namespace Phasebreak.Gameplay
             Place(journalList, new Vector2(.035f, .08f), new Vector2(.36f, .85f));
             Label("Quest List Heading", journalList, "QUESTS", 14f, TextAlignmentOptions.Left,
                 new Vector2(.06f, .89f), new Vector2(.94f, .98f), Cyan);
-            RectTransform detailPanel = Block("Quest Details", journalWindow, Raised);
-            Place(detailPanel, new Vector2(.38f, .08f), new Vector2(.965f, .85f));
-            journalDetails = Label("Quest Detail Text", detailPanel, string.Empty, 20f, TextAlignmentOptions.TopLeft,
+            RectTransform journalDetailPanel = Block("Quest Details", journalWindow, Raised);
+            Place(journalDetailPanel, new Vector2(.38f, .08f), new Vector2(.965f, .85f));
+            journalDetails = Label("Quest Detail Text", journalDetailPanel, string.Empty, 20f, TextAlignmentOptions.TopLeft,
                 new Vector2(.045f, .04f), new Vector2(.955f, .96f), Text);
             journalWindow.gameObject.SetActive(false);
         }
@@ -291,14 +303,78 @@ namespace Phasebreak.Gameplay
             return window;
         }
 
-        private void MapPoint(RectTransform parent, string name, Vector2 world, Color color)
+        private void MapPoint(RectTransform parent, string name, Vector2 world, Color color, string id = null)
         {
             RectTransform marker = Diamond(name + " Marker", parent, color, 13f);
             PositionMarker(marker, WorldToMap(world));
+            AddMapInteraction(marker, () => ShowMapDetails(name, id, world), RestoreMapDetails,
+                () => { selectedMapName = name; selectedMapId = id; selectedMapWorld = world; ShowMapDetails(name, id, world); });
             TextMeshProUGUI label = Label(name + " Label", parent, name, 12f, TextAlignmentOptions.Center,
                 WorldToMap(world), WorldToMap(world), Text);
             label.rectTransform.anchoredPosition = new Vector2(0f, -22f);
             label.rectTransform.sizeDelta = new Vector2(150f, 20f);
+        }
+
+        private static void AddMapInteraction(RectTransform marker, Action enter, Action exit, Action click)
+        {
+            RectTransform hitArea = Block("Marker Hit Area", marker, Color.clear);
+            hitArea.anchorMin = hitArea.anchorMax = new Vector2(.5f, .5f);
+            hitArea.sizeDelta = new Vector2(34f, 34f);
+            UnityEngine.UI.Image image = hitArea.GetComponent<UnityEngine.UI.Image>();
+            image.raycastTarget = true;
+            EventTrigger trigger = hitArea.gameObject.AddComponent<EventTrigger>();
+            AddEvent(trigger, EventTriggerType.PointerEnter, enter);
+            AddEvent(trigger, EventTriggerType.PointerExit, exit);
+            AddEvent(trigger, EventTriggerType.PointerClick, click);
+        }
+
+        private static void AddEvent(EventTrigger trigger, EventTriggerType type, Action action)
+        {
+            EventTrigger.Entry entry = new() { eventID = type };
+            entry.callback.AddListener(_ => action());
+            trigger.triggers.Add(entry);
+        }
+
+        private void ShowMapDetails(string name, string id, Vector2 world)
+        {
+            if (mapDetails == null) return;
+            bool discovered = !string.IsNullOrEmpty(id) && journal != null && journal.IsDiscovered(id);
+            QuestDefinition active = journal?.ActiveQuest;
+            bool objectiveHere = active != null && !journal.ObjectiveReady &&
+                string.Equals(active.targetId, id, StringComparison.OrdinalIgnoreCase);
+            bool returnHere = active != null && journal.ObjectiveReady &&
+                string.Equals(active.turnInNpcId, id, StringComparison.OrdinalIgnoreCase);
+            string purpose = returnHere ? "Return here to complete: " + active.title
+                : objectiveHere ? "Quest destination: " + active.title
+                : discovered ? "Discovered landmark" : "Landmark";
+            string distance = player == null ? string.Empty :
+                $"\n\n{Mathf.RoundToInt(Vector2.Distance(new Vector2(player.position.x, player.position.z), world))} m from you";
+            mapDetails.text = $"<color=#C9A86C><size=21><b>{name}</b></size></color>\n\n{purpose}{distance}\n\n<color=#8998AA>Hover or select another marker for details.</color>";
+        }
+
+        private void ShowObjectiveDetails()
+        {
+            if (mapDetails == null) return;
+            QuestDefinition active = journal?.ActiveQuest;
+            if (active == null) { RestoreMapDetails(); return; }
+            string purpose = journal.ObjectiveReady ? $"Return to {active.turnInNpcId.Replace('-', ' ')}" : active.objectiveText;
+            mapDetails.text = $"<color=#C9A86C><size=21><b>CURRENT OBJECTIVE</b></size></color>\n\n{active.title}\n\n{purpose}\n\n{journal.Progress}/{active.requiredCount}";
+        }
+
+        private void SelectObjective()
+        {
+            selectedMapName = null;
+            selectedMapId = null;
+            ShowObjectiveDetails();
+        }
+
+        private void RestoreMapDetails()
+        {
+            if (mapDetails == null) return;
+            if (!string.IsNullOrEmpty(selectedMapName))
+                ShowMapDetails(selectedMapName, selectedMapId, selectedMapWorld);
+            else if (journal?.ActiveQuest != null) ShowObjectiveDetails();
+            else mapDetails.text = "<color=#C9A86C><size=21><b>THE FRONTIER</b></size></color>\n\nSelect a landmark to see its name and distance.\n\nThe light marker shows your location.";
         }
 
         private void MapImage(string name, Sprite sprite)
@@ -382,6 +458,7 @@ namespace Phasebreak.Gameplay
             {
                 PositionMarker(mapObjective, WorldToMap(ObjectivePosition(active)));
             }
+            RestoreMapDetails();
             trackerHeading.text = active == null ? "NO ACTIVE QUEST" : active.title.ToUpperInvariant();
             string journalKey = PhasebreakSettings.Display("journal");
             tracker.text = active == null ? $"Speak with a questgiver.\n<color=#8998AA>[{journalKey}] FIELD JOURNAL</color>" :
