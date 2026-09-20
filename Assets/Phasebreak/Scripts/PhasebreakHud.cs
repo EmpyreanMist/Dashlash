@@ -306,8 +306,10 @@ namespace Phasebreak.Gameplay
                     encounter.Enemies.Length > 0 && encounter.Enemies[0] != null)
                 {
                     RiftWardenBoss boss = encounter.Enemies[0].GetComponent<RiftWardenBoss>();
+                    if (boss != null)
+                        mechanic = $"\nWarden phase: <b>{boss.PhaseName}</b>";
                     if (boss != null && !string.IsNullOrEmpty(boss.CurrentMechanic))
-                        mechanic = $"\n<color=#FF673D><b>{boss.CurrentMechanic}</b></color>";
+                        mechanic += $"\n<color=#FF673D><b>{boss.CurrentMechanic}</b></color>";
                 }
                 dungeonLabel.text =
                     $"<b>{dungeon.DungeonName.ToUpperInvariant()}</b>  •  {dungeon.DifficultyName}\n" +
@@ -324,7 +326,9 @@ namespace Phasebreak.Gameplay
                     "<size=38><color=#F7A23B><b>RIFT CRYPT CLEARED</b></color></size>\n\n" +
                     $"Time  <b>{FormatTime(dungeon.ElapsedTime)}</b>\n" +
                     $"Enemies defeated  <b>{dungeon.KillCount}</b>\n" +
-                    "Reward  <color=#B56CFF><b>Heart of the Rift Warden</b></color>\n\n" +
+                    (dungeon.RewardGrantedThisRun
+                        ? "Reward  <color=#B56CFF><b>Heart of the Rift Warden</b></color>\n\n"
+                        : "Cache  <b>Previously claimed</b>\n\n") +
                     "Use the exit rift to return";
             }
         }

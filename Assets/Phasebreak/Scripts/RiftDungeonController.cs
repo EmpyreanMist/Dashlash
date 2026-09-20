@@ -47,6 +47,7 @@ namespace Phasebreak.Gameplay
         public int CurrentEncounterIndex { get; private set; } = -1;
         public int KillCount { get; private set; }
         public bool RewardClaimed { get; private set; }
+        public bool RewardGrantedThisRun { get; private set; }
         public string DungeonName => "Rift Crypt";
         public void DebugRespawn()
         {
@@ -202,6 +203,7 @@ namespace Phasebreak.Gameplay
             PrepareDungeon();
             KillCount = 0;
             RewardClaimed = false;
+            RewardGrantedThisRun = false;
             startedAt = Time.unscaledTime;
             completedAt = 0f;
             State = RiftDungeonState.InProgress;
@@ -217,8 +219,12 @@ namespace Phasebreak.Gameplay
         {
             if (State != RiftDungeonState.RewardReady || RewardClaimed)
                 return;
+            const string rewardId = "artifact.riftwarden-heart";
+            if (build == null) return;
+            bool alreadyClaimed = build.HasClaimedUniqueReward(rewardId);
+            if (!alreadyClaimed && !build.ClaimUniqueRewardById(rewardId)) return;
             RewardClaimed = true;
-            build?.GrantRewardById("artifact.riftwarden-heart");
+            RewardGrantedThisRun = !alreadyClaimed;
             completedAt = Time.unscaledTime;
             State = RiftDungeonState.Completed;
             if (rewardChest != null)

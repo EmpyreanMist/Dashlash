@@ -10,6 +10,8 @@ namespace Phasebreak.Gameplay
         [SerializeField] private Transform target;
         [SerializeField] private Transform frontalTelegraph;
         [SerializeField] private Transform groundTelegraph;
+        [SerializeField] private Transform safeCenter;
+        [SerializeField] private Transform phaseAura;
         [SerializeField, Min(0.5f)] private float specialCooldown = 4.2f;
         [SerializeField, Min(0.2f)] private float telegraphDuration = 1.15f;
         [SerializeField, Min(1f)] private float frontalRange = 5.5f;
@@ -21,15 +23,21 @@ namespace Phasebreak.Gameplay
         private PlayerHealth playerHealth;
         private float nextSpecialAt;
         private bool useGroundAttack;
+        private bool unbound;
+        private float phaseTransitionUntil;
         private Coroutine attackRoutine;
 
         public string CurrentMechanic { get; private set; } = string.Empty;
+        public string PhaseName => unbound ? "UNBOUND" : "BOUND";
 
-        public void Configure(Transform player, Transform frontal, Transform ground)
+        public void Configure(Transform player, Transform frontal, Transform ground,
+            Transform sanctuary, Transform aura)
         {
             target = player;
             frontalTelegraph = frontal;
             groundTelegraph = ground;
+            safeCenter = sanctuary;
+            phaseAura = aura;
         }
 
         private void Awake()
@@ -47,7 +55,19 @@ namespace Phasebreak.Gameplay
 
         private void OnEnable()
         {
+            ResetForEncounter();
+        }
+
+        public void ResetForEncounter()
+        {
+            if (attackRoutine != null) StopCoroutine(attackRoutine);
+            attackRoutine = null;
+            unbound = false;
+            useGroundAttack = false;
+            phaseTransitionUntil = 0f;
             nextSpecialAt = Time.time + 2.5f;
+            CurrentMechanic = string.Empty;
+            if (phaseAura != null) phaseAura.gameObject.SetActive(false);
             SetTelegraphs(false);
         }
 
@@ -65,10 +85,23 @@ namespace Phasebreak.Gameplay
             if (enemy == null || !enemy.IsAlive || target == null || attackRoutine != null ||
                 Time.time < nextSpecialAt)
                 return;
+            if (!unbound && enemy.CurrentHealth <= enemy.MaxHealth * 0.55f)
+            {
+                unbound = true;
+                phaseTransitionUntil = Time.time + 2f;
+                CurrentMechanic = "RIFT UNBOUND — THE CENTER IS SAFE";
+                if (phaseAura != null) phaseAura.gameObject.SetActive(true);
+                SetTelegraphs(false);
+                return;
+            }
+            if (Time.time < phaseTransitionUntil) return;
+            if (CurrentMechanic == "RIFT UNBOUND — THE CENTER IS SAFE")
+                CurrentMechanic = string.Empty;
             if ((target.position - transform.position).sqrMagnitude > 12f * 12f)
                 return;
 
-            attackRoutine = StartCoroutine(useGroundAttack ? GroundRupture() : FrontalSlam());
+            attackRoutine = StartCoroutine(useGroundAttack
+                ? (unbound ? RiftConvergence() : GroundRupture()) : FrontalSlam());
             useGroundAttack = !useGroundAttack;
         }
 
@@ -86,6 +119,7 @@ namespace Phasebreak.Gameplay
                 frontalTelegraph.localPosition = new Vector3(0f, -0.94f, frontalRange * 0.5f);
             }
             yield return GrowTelegraph(frontalTelegraph);
+            if (enemy == null || !enemy.IsAlive) { FinishSpecial(frontalTelegraph); yield break; }
 
             Vector3 localPlayer = transform.InverseTransformPoint(target.position);
             if (Mathf.Abs(localPlayer.x) <= frontalHalfWidth && localPlayer.z >= 0f &&
@@ -106,12 +140,46 @@ namespace Phasebreak.Gameplay
                 groundTelegraph.gameObject.SetActive(true);
             }
             yield return GrowTelegraph(groundTelegraph);
+            if (enemy == null || !enemy.IsAlive) { FinishSpecial(groundTelegraph); yield break; }
 
             Vector3 flatDelta = target.position - impactPoint;
             flatDelta.y = 0f;
             if (flatDelta.magnitude <= groundRadius)
                 DamagePlayer(flatDelta.sqrMagnitude > 0.01f ? flatDelta.normalized : transform.forward, 7f);
             FinishSpecial(groundTelegraph);
+        }
+
+        private IEnumerator RiftConvergence()
+        {
+            CurrentMechanic = "RIFT CONVERGENCE — ENTER THE GOLD CENTER";
+            Vector3 impactPoint = transform.position;
+            impactPoint.y -= 0.94f;
+            if (groundTelegraph != null)
+            {
+                groundTelegraph.position = impactPoint;
+                groundTelegraph.localScale = new Vector3(14f, 0.035f, 14f);
+                groundTelegraph.gameObject.SetActive(true);
+            }
+            if (safeCenter != null)
+            {
+                safeCenter.position = impactPoint + Vector3.up * 0.025f;
+                safeCenter.localScale = new Vector3(4.2f, 0.04f, 4.2f);
+                safeCenter.gameObject.SetActive(true);
+            }
+            yield return GrowTelegraph(groundTelegraph);
+            if (enemy == null || !enemy.IsAlive)
+            {
+                FinishSpecial(groundTelegraph);
+                if (safeCenter != null) safeCenter.gameObject.SetActive(false);
+                yield break;
+            }
+
+            Vector3 flatDelta = target.position - impactPoint;
+            flatDelta.y = 0f;
+            if (flatDelta.magnitude > 2.1f && flatDelta.magnitude <= 7f)
+                DamagePlayer(flatDelta.normalized, 7f);
+            FinishSpecial(groundTelegraph);
+            if (safeCenter != null) safeCenter.gameObject.SetActive(false);
         }
 
         private IEnumerator GrowTelegraph(Transform visual)
@@ -134,7 +202,7 @@ namespace Phasebreak.Gameplay
         private void DamagePlayer(Vector3 direction, float knockback)
         {
             if (playerHealth != null && playerHealth.IsAlive)
-                playerHealth.TakeHit(specialDamage, direction, knockback);
+                playerHealth.TakeHit(specialDamage + (unbound ? 1 : 0), direction, knockback);
         }
 
         private void FinishSpecial(Transform visual)
@@ -142,7 +210,7 @@ namespace Phasebreak.Gameplay
             if (visual != null)
                 visual.gameObject.SetActive(false);
             CurrentMechanic = string.Empty;
-            nextSpecialAt = Time.time + specialCooldown;
+            nextSpecialAt = Time.time + (unbound ? specialCooldown * 0.7f : specialCooldown);
             attackRoutine = null;
         }
 
@@ -152,6 +220,8 @@ namespace Phasebreak.Gameplay
                 frontalTelegraph.gameObject.SetActive(visible);
             if (groundTelegraph != null)
                 groundTelegraph.gameObject.SetActive(visible);
+            if (safeCenter != null)
+                safeCenter.gameObject.SetActive(visible);
         }
     }
 }

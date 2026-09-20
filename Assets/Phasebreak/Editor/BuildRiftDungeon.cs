@@ -33,6 +33,8 @@ namespace Phasebreak.Editor
                 new Color(0.35f, 0.12f, 0.78f), true);
             Material gateMaterial = CreateMaterial("Assets/Phasebreak/Materials/RiftGate.mat",
                 new Color(0.55f, 0.1f, 0.18f), true);
+            Material safeMaterial = CreateMaterial("Assets/Phasebreak/Materials/CryptSanctuary.mat",
+                new Color(0.85f, 0.54f, 0.14f), true);
             Material enemyMaterial = AssetDatabase.LoadAssetAtPath<Material>(
                 "Assets/Phasebreak/Materials/Enemy.mat");
             Material telegraphMaterial = AssetDatabase.LoadAssetAtPath<Material>(
@@ -111,8 +113,14 @@ namespace Phasebreak.Editor
                 PrimitiveType.Cube, telegraphMaterial);
             Transform ground = CreateTelegraph("Rift Rupture Telegraph", root.transform,
                 PrimitiveType.Cylinder, telegraphMaterial);
+            Transform safeCenter = CreateTelegraph("Convergence Safe Center", root.transform,
+                PrimitiveType.Cylinder, safeMaterial);
+            Transform aura = CreateTelegraph("Unbound Aura", boss.transform,
+                PrimitiveType.Cylinder, rift);
+            aura.localPosition = new Vector3(0f, -0.94f, 0f);
+            aura.localScale = new Vector3(3f, 0.025f, 3f);
             RiftWardenBoss bossMechanics = boss.gameObject.AddComponent<RiftWardenBoss>();
-            bossMechanics.Configure(player.transform, frontal, ground);
+            bossMechanics.Configure(player.transform, frontal, ground, safeCenter, aura);
             RiftDungeonEncounter fourth = CreateEncounter("4 - Rift Warden", encountersRoot.transform,
                 "the Rift Warden", checkpointFour, null, true, new[] { boss });
 

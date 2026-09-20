@@ -81,6 +81,7 @@ namespace Phasebreak.Gameplay
                     if (blade != null) blade.gameObject.SetActive(false);
                 }
                 enemy.ResetEnemy();
+                enemy.GetComponent<RiftWardenBoss>()?.ResetForEncounter();
             }
             rolesApplied = true;
         }
@@ -97,6 +98,7 @@ namespace Phasebreak.Gameplay
                     continue;
                 enemy.gameObject.SetActive(true);
                 enemy.ResetEnemy();
+                enemy.GetComponent<RiftWardenBoss>()?.ResetForEncounter();
             }
             SetGateLocked(true);
         }
