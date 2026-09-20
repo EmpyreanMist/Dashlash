@@ -166,11 +166,16 @@ namespace Phasebreak.Gameplay
         private void LoadOrSeed()
         {
             if (!PlayerPrefs.HasKey(SaveKey)) { SeedFreshLoadout(); return; }
-            BuildSaveData data = JsonUtility.FromJson<BuildSaveData>(PlayerPrefs.GetString(SaveKey)) ?? new BuildSaveData();
+            BuildSaveData data = JsonUtility.FromJson<BuildSaveData>(PlayerPrefs.GetString(SaveKey));
+            if (data == null) { SeedFreshLoadout(); return; }
             Specialization = data.specialization;
-            if (data.inventory.Count == 0 && data.gear.Count == 0) { SeedFreshLoadout(); return; }
-            foreach (string id in data.inventory) if (byId.TryGetValue(id, out PhasebreakItemDefinition item)) inventory.Add(item);
-            for (int i = 0; i < Mathf.Min(data.slots.Count, data.gear.Count); i++) if (Enum.TryParse(data.slots[i], out EquipmentSlot slot) && byId.TryGetValue(data.gear[i], out PhasebreakItemDefinition item)) equipped[slot] = item;
+            foreach (string id in data.inventory ?? new List<string>())
+                if (!string.IsNullOrWhiteSpace(id) && byId.TryGetValue(id, out PhasebreakItemDefinition item)) inventory.Add(item);
+            int savedGearCount = Mathf.Min(data.slots?.Count ?? 0, data.gear?.Count ?? 0);
+            for (int i = 0; i < savedGearCount; i++)
+                if (Enum.TryParse(data.slots[i], out EquipmentSlot slot) &&
+                    !string.IsNullOrWhiteSpace(data.gear[i]) &&
+                    byId.TryGetValue(data.gear[i], out PhasebreakItemDefinition item)) equipped[slot] = item;
             foreach (string id in data.claimedRewards ?? new List<string>())
                 if (!string.IsNullOrWhiteSpace(id)) claimedRewards.Add(id);
             // Older saves may already own the dungeon artifact without a claim record.
