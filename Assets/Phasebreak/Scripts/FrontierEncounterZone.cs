@@ -5,6 +5,12 @@ namespace Phasebreak.Gameplay
 {
     public sealed class FrontierEncounterZone : MonoBehaviour
     {
+        [System.Serializable]
+        public struct SpawnRole
+        {
+            public EnemyRole role;
+            public EnemyRank rank;
+        }
         [SerializeField] private string zoneId;
         [SerializeField] private GameObject enemyPrefab;
         [SerializeField] private int count = 3;
@@ -15,8 +21,10 @@ namespace Phasebreak.Gameplay
         [SerializeField] private float unloadDistance = 300;
         [SerializeField] private int dangerTier = 1;
         [SerializeField] private Vector3[] authoredOffsets;
+        [SerializeField] private SpawnRole[] authoredRoles;
         public string ZoneId => zoneId;
         public void ConfigureFormation(Vector3[] offsets) { authoredOffsets = offsets; count = offsets.Length; }
+        public void ConfigureRoles(SpawnRole[] roles) { authoredRoles = roles; }
         private readonly List<MeleeEnemy> enemies = new List<MeleeEnemy>();
         private readonly List<float> deaths = new List<float>();
         private Transform player;
@@ -119,8 +127,24 @@ namespace Phasebreak.Gameplay
                 point.y = terrain.SampleHeight(point) + terrain.transform.position.y + .15f;
             }
             GameObject enemy = Instantiate(enemyPrefab, point, Quaternion.Euler(0, angle * Mathf.Rad2Deg, 0), transform);
-            enemy.name = enemyPrefab.name;
+            SpawnRole spawnRole = GetRole(index);
             enemies[index] = enemy.GetComponent<MeleeEnemy>();
+            enemies[index].ConfigureRole(spawnRole.role, spawnRole.rank);
+            enemy.name = spawnRole.role == EnemyRole.Zombie ? enemyPrefab.name :
+                spawnRole.rank + " " + spawnRole.role;
+        }
+
+        private SpawnRole GetRole(int index)
+        {
+            if (authoredRoles != null && index < authoredRoles.Length) return authoredRoles[index];
+            if (zoneId == "riftblade-practice") return default;
+            if (index == count - 1)
+                return new SpawnRole { role = EnemyRole.Skirmisher,
+                    rank = dangerTier >= 3 ? EnemyRank.Elite : dangerTier >= 2 ? EnemyRank.Veteran : EnemyRank.Normal };
+            if (dangerTier >= 2 && index == count - 2)
+                return new SpawnRole { role = EnemyRole.Brute,
+                    rank = dangerTier >= 3 ? EnemyRank.Veteran : EnemyRank.Normal };
+            return default;
         }
 
         private void OnDrawGizmosSelected()

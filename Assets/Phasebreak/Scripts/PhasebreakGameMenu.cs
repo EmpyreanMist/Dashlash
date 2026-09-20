@@ -77,18 +77,17 @@ namespace Phasebreak.Gameplay
                 ApplyUiScale();
             }
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null) return;
             if (open)
             {
-                if (rebindingId != null) { CaptureBinding(keyboard); return; }
-                if (keyboard.escapeKey.wasPressedThisFrame)
+                if (rebindingId != null) { CaptureBinding(keyboard, Mouse.current); return; }
+                if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
                 {
                     if (settingsPanel.gameObject.activeSelf) ShowMain();
                     else Close();
                 }
                 return;
             }
-            if (keyboard.escapeKey.wasPressedThisFrame && !GameplayInputFocus.GameplayInputBlocked &&
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame && !GameplayInputFocus.GameplayInputBlocked &&
                 !PhasebreakInventoryHud.IsMajorMenuOpen && !WorldQuestHud.IsWorldMenuOpen)
                 Open();
         }
@@ -336,14 +335,14 @@ namespace Phasebreak.Gameplay
         private void BeginRebind(string id)
         {
             rebindingId = id;
-            status.text = "Press a key for " + id + ". Escape cancels.";
+            status.text = "Press a key or mouse button for " + id + ". Escape cancels.";
         }
 
-        private void CaptureBinding(Keyboard keyboard)
+        private void CaptureBinding(Keyboard keyboard, Mouse mouse)
         {
-            if (keyboard.escapeKey.wasPressedThisFrame)
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
             { rebindingId = null; status.text = "Rebinding cancelled."; return; }
-            foreach (KeyControl key in keyboard.allKeys)
+            if (keyboard != null) foreach (KeyControl key in keyboard.allKeys)
             {
                 if (!key.wasPressedThisFrame || key.keyCode == Key.LeftShift || key.keyCode == Key.RightShift ||
                     key.keyCode == Key.LeftCtrl || key.keyCode == Key.RightCtrl ||
@@ -355,6 +354,16 @@ namespace Phasebreak.Gameplay
                 if (saved) { rebindingId = null; RefreshBindingLabels(); }
                 return;
             }
+            if (mouse == null) return;
+            string mousePath = mouse.leftButton.wasPressedThisFrame ? "<Mouse>/leftButton" :
+                mouse.rightButton.wasPressedThisFrame ? "<Mouse>/rightButton" :
+                mouse.middleButton.wasPressedThisFrame ? "<Mouse>/middleButton" :
+                mouse.backButton.wasPressedThisFrame ? "<Mouse>/backButton" :
+                mouse.forwardButton.wasPressedThisFrame ? "<Mouse>/forwardButton" : null;
+            if (mousePath == null) return;
+            bool mouseSaved = PhasebreakSettings.TryRebind(rebindingId, mousePath, out string mouseMessage);
+            status.text = mouseMessage;
+            if (mouseSaved) { rebindingId = null; RefreshBindingLabels(); }
         }
 
         private void RefreshBindingLabels()

@@ -88,7 +88,13 @@ namespace Phasebreak.Gameplay
 
         public static bool TryRebind(string id, string path, out string message)
         {
-            if (!path.StartsWith("<Keyboard>/", StringComparison.OrdinalIgnoreCase) ||
+            bool keyboard = path.StartsWith("<Keyboard>/", StringComparison.OrdinalIgnoreCase);
+            bool mouseButton = path.Equals("<Mouse>/leftButton", StringComparison.OrdinalIgnoreCase) ||
+                path.Equals("<Mouse>/rightButton", StringComparison.OrdinalIgnoreCase) ||
+                path.Equals("<Mouse>/middleButton", StringComparison.OrdinalIgnoreCase) ||
+                path.Equals("<Mouse>/backButton", StringComparison.OrdinalIgnoreCase) ||
+                path.Equals("<Mouse>/forwardButton", StringComparison.OrdinalIgnoreCase);
+            if ((!keyboard && !mouseButton) ||
                 path.Equals("<Keyboard>/escape", StringComparison.OrdinalIgnoreCase))
             { message = "Escape is reserved for closing menus."; return false; }
             if (id != "chat" && path.Equals("<Keyboard>/numpadEnter", StringComparison.OrdinalIgnoreCase))
