@@ -37,6 +37,7 @@ namespace Phasebreak.Gameplay
         private Vector3 worldReturnPosition;
         private Quaternion worldReturnRotation;
         private Transform activeCheckpoint;
+        private Transform pendingCheckpoint;
         private float startedAt;
         private float completedAt;
         private Coroutine deathRoutine;
@@ -51,7 +52,7 @@ namespace Phasebreak.Gameplay
         {
             if (!IsInDungeon) return;
             if (deathRoutine != null) { StopCoroutine(deathRoutine); deathRoutine = null; }
-            CurrentEncounter?.ResetEncounter();
+            if (State == RiftDungeonState.InProgress) CurrentEncounter?.ResetEncounter();
             Transform checkpoint = activeCheckpoint != null ? activeCheckpoint : dungeonSpawn;
             if (checkpoint != null) TeleportPlayer(checkpoint.position, checkpoint.rotation);
             playerHealth?.ResetHealth();
@@ -160,6 +161,11 @@ namespace Phasebreak.Gameplay
 
             if (State != RiftDungeonState.InProgress)
                 return;
+            if (pendingCheckpoint != null && IsNear(pendingCheckpoint))
+            {
+                activeCheckpoint = pendingCheckpoint;
+                pendingCheckpoint = null;
+            }
             RiftDungeonEncounter encounter = CurrentEncounter;
             if (encounter != null && encounter.IsComplete)
                 AdvanceEncounter();
@@ -201,6 +207,7 @@ namespace Phasebreak.Gameplay
             State = RiftDungeonState.InProgress;
             CurrentEncounterIndex = 0;
             activeCheckpoint = dungeonSpawn;
+            pendingCheckpoint = null;
             TeleportPlayer(dungeonSpawn.position, dungeonSpawn.rotation);
             CurrentEncounter?.Begin();
             StateChanged?.Invoke();
@@ -231,6 +238,7 @@ namespace Phasebreak.Gameplay
             State = RiftDungeonState.Outside;
             CurrentEncounterIndex = -1;
             activeCheckpoint = null;
+            pendingCheckpoint = null;
             if (worldArenaReset != null)
                 worldArenaReset.enabled = true;
             StateChanged?.Invoke();
@@ -252,7 +260,7 @@ namespace Phasebreak.Gameplay
 
             CurrentEncounterIndex++;
             RiftDungeonEncounter next = CurrentEncounter;
-            activeCheckpoint = next != null && next.Checkpoint != null ? next.Checkpoint : activeCheckpoint;
+            pendingCheckpoint = next != null ? next.Checkpoint : null;
             next?.Begin();
             StateChanged?.Invoke();
         }
@@ -286,7 +294,8 @@ namespace Phasebreak.Gameplay
         private IEnumerator ResetAfterDeath()
         {
             yield return new WaitForSecondsRealtime(deathResetDelay);
-            CurrentEncounter?.ResetEncounter();
+            if (State == RiftDungeonState.InProgress)
+                CurrentEncounter?.ResetEncounter();
             Transform checkpoint = activeCheckpoint != null ? activeCheckpoint : dungeonSpawn;
             if (checkpoint != null)
                 TeleportPlayer(checkpoint.position, checkpoint.rotation);
