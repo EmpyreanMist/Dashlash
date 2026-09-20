@@ -419,9 +419,9 @@ namespace Phasebreak.Gameplay
             NavButton(nav, MenuMode.Character, EquipmentSlot.Chest, 1, "Character", "character");
             NavButton(nav, MenuMode.Talents, EquipmentSlot.WildcardArtifact, 2, "Talents", "talents");
             NavButton(nav, MenuMode.Spellbook, EquipmentSlot.Sigil1, 3, "Spellbook", "spellbook");
-            journalNavImage = NavWorldButton(nav, 4, "Journal", "journal", "JOURNAL", "✦",
+            journalNavImage = NavWorldButton(nav, 4, "Journal", "journal", "JOURNAL", "J",
                 WorldQuestHud.ToggleJournalMenu);
-            mapNavImage = NavWorldButton(nav, 5, "Map", "worldmap", "MAP", "◇",
+            mapNavImage = NavWorldButton(nav, 5, "Map", "worldmap", "MAP", "M",
                 WorldQuestHud.ToggleMapMenu);
             navTooltip = Text("Navigation Tooltip", root, string.Empty, 13f,
                 TextAlignmentOptions.Center, Vector2.zero, Vector2.zero, TextPrimary);
