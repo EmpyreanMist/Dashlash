@@ -7,8 +7,12 @@ namespace Phasebreak.Gameplay
         Melee,
         PhaseLunge,
         PhaseDash,
-        Charge
+        Charge,
+        Guard,
+        Area
     }
+
+    public enum AbilitySpecialEffect { None, ExecuteHeal, Cleave, Guard, Release, Mark, MarkDetonate }
 
     [CreateAssetMenu(menuName = "Phasebreak/Combat Ability", fileName = "Ability")]
     public sealed class CombatAbilityDefinition : ScriptableObject
@@ -26,6 +30,7 @@ namespace Phasebreak.Gameplay
         [Min(0f)] public float windup = 0.1f;
         [Min(0f)] public float recovery = 0.1f;
         public AbilityExecutionType executionType = AbilityExecutionType.Melee;
+        public AbilitySpecialEffect specialEffect;
         public bool requiresTarget = true;
         public bool usesGlobalCooldown = true;
         [Min(0f)] public float minimumRange;

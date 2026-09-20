@@ -151,6 +151,16 @@ namespace Phasebreak.Gameplay
                     AddRotation(rightUpperArm, -72f * weight, 18f * weight, 58f * weight);
                     AddRotation(rightLowerArm, 0f, 0f, -32f * weight);
                     break;
+                case AbilityExecutionType.Guard:
+                    AddRotation(spine, -9f * weight, 0f, 0f);
+                    AddRotation(leftUpperArm, -65f * weight, 0f, -38f * weight);
+                    AddRotation(rightUpperArm, -55f * weight, 0f, 38f * weight);
+                    break;
+                case AbilityExecutionType.Area:
+                    AddRotation(spine, -20f * weight, 0f, 0f);
+                    AddRotation(leftUpperArm, -100f * weight, 0f, -65f * weight);
+                    AddRotation(rightUpperArm, -100f * weight, 0f, 65f * weight);
+                    break;
                 default:
                     ApplyMeleePose(activeAbility.Index, t, weight);
                     break;

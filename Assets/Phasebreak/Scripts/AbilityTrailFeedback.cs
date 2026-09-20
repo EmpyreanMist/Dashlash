@@ -59,6 +59,7 @@ namespace Phasebreak.Gameplay
             if (combat != null)
             {
                 combat.AbilityStarted += HandleAbilityStarted;
+                combat.AbilityImpact += HandleAbilityImpact;
                 combat.RiftChainKill += HandleChainKill;
             }
         }
@@ -68,6 +69,7 @@ namespace Phasebreak.Gameplay
             if (combat != null)
             {
                 combat.AbilityStarted -= HandleAbilityStarted;
+                combat.AbilityImpact -= HandleAbilityImpact;
                 combat.RiftChainKill -= HandleChainKill;
             }
             if (stopRoutine != null)
@@ -100,6 +102,21 @@ namespace Phasebreak.Gameplay
         }
 
         private void HandleChainKill(int count) => sparks.Emit(6 + Mathf.Min(count, 4) * 3);
+
+        private void HandleAbilityImpact(AbilityPresentationEvent value)
+        {
+            Color color = value.Name switch
+            {
+                "Blood Rush" or "Reaper's Arc" => new Color(.86f, .18f, .12f),
+                "Iron Guard" or "Bastion Pulse" => new Color(.85f, .62f, .3f),
+                "Rift Mark" or "Echo Strike" => new Color(.62f, .34f, .9f),
+                _ => Color.clear
+            };
+            if (color == Color.clear) return;
+            var main = sparks.main;
+            main.startColor = color;
+            sparks.Emit(value.Type == AbilityExecutionType.Area ? 24 : 12);
+        }
 
         private IEnumerator StopAfter(float duration)
         {
