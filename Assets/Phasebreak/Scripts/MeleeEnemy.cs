@@ -65,6 +65,8 @@ namespace Phasebreak.Gameplay
         private EnemyRoleDefinition roleDefinition;
         private Vector3 chargeDirection;
         private bool namedEncounter;
+        private LineRenderer chargeLane;
+        private static Material chargeLaneMaterial;
 
         public int CurrentHealth { get; private set; }
         public int MaxHealth => maxHealth;
@@ -136,6 +138,7 @@ namespace Phasebreak.Gameplay
                 (GetComponent<EnemyRoleVisual>() ?? gameObject.AddComponent<EnemyRoleVisual>()).Configure(newRole, newRank, roleDefinition);
                 renderers = GetComponentsInChildren<Renderer>(true);
             }
+            if (newRole == EnemyRole.Charger) EnsureChargeLane();
         }
 
         public void ConfigureNamedEncounter(string displayName)
@@ -420,6 +423,30 @@ namespace Phasebreak.Gameplay
                 telegraphVisual.gameObject.SetActive(nextState == EnemyState.Windup);
                 telegraphVisual.localScale = telegraphBaseScale;
             }
+            if (chargeLane != null) chargeLane.enabled = nextState == EnemyState.Windup;
+        }
+
+        private void EnsureChargeLane()
+        {
+            if (chargeLane != null) return;
+            GameObject lane = new("Charge Lane");
+            lane.transform.SetParent(transform, false);
+            chargeLane = lane.AddComponent<LineRenderer>();
+            if (chargeLaneMaterial == null)
+                chargeLaneMaterial = new Material(Shader.Find("Sprites/Default")) { hideFlags = HideFlags.DontSave };
+            chargeLane.sharedMaterial = chargeLaneMaterial;
+            chargeLane.useWorldSpace = false;
+            chargeLane.loop = true;
+            chargeLane.positionCount = 4;
+            chargeLane.startWidth = chargeLane.endWidth = .08f;
+            chargeLane.startColor = chargeLane.endColor = new Color(.95f, .2f, .12f, .8f);
+            float width = controller != null ? controller.radius * 1.5f : .8f;
+            float length = Mathf.Min(attackRange, 8f);
+            chargeLane.SetPosition(0, new Vector3(-width, .1f, .4f));
+            chargeLane.SetPosition(1, new Vector3(-width, .1f, length));
+            chargeLane.SetPosition(2, new Vector3(width, .1f, length));
+            chargeLane.SetPosition(3, new Vector3(width, .1f, .4f));
+            chargeLane.enabled = false;
         }
 
         private void RotateToward(Vector3 direction)

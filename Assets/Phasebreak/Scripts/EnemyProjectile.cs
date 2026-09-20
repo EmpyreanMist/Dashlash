@@ -6,6 +6,7 @@ namespace Phasebreak.Gameplay
     {
         private static Material emberMaterial;
         private static Material riftMaterial;
+        private static Material trailMaterial;
         private MeleeEnemy owner;
         private Vector3 direction;
         private int damage;
@@ -34,6 +35,18 @@ namespace Phasebreak.Gameplay
                 riftMaterial = new Material(shader) { color = new Color(.58f, .29f, .85f, 1f), enableInstancing = true };
             }
             visual.GetComponent<Renderer>().sharedMaterial = isRift ? riftMaterial : emberMaterial;
+            TrailRenderer trail = visual.AddComponent<TrailRenderer>();
+            trail.time = isRift ? .32f : .18f;
+            trail.minVertexDistance = .08f;
+            trail.startWidth = isRift ? .26f : .12f;
+            trail.endWidth = 0f;
+            if (trailMaterial == null)
+                trailMaterial = new Material(Shader.Find("Sprites/Default")) { hideFlags = HideFlags.DontSave };
+            trail.sharedMaterial = trailMaterial;
+            Color trailColor = isRift ? new Color(.65f, .35f, .95f, .9f) : new Color(1f, .48f, .15f, .8f);
+            trail.startColor = trailColor;
+            trail.endColor = new Color(trailColor.r, trailColor.g, trailColor.b, 0f);
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             EnemyProjectile projectile = visual.AddComponent<EnemyProjectile>();
             projectile.owner = source;
             projectile.direction = heading.normalized;

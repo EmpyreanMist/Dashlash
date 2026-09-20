@@ -319,7 +319,7 @@ namespace Phasebreak.Gameplay
             spellbookPanel = WindowPanel("Spellbook Panel", root, new Vector2(.15f, .12f), new Vector2(.85f, .88f));
             BuildTitleBar(spellbookPanel, "FIELD ARCANUM", "SPELLBOOK", MenuMode.Spellbook);
             RectTransform list = Section("Abilities", spellbookPanel, new Vector2(.035f, .11f), new Vector2(.48f, .87f));
-            Text("List Heading", list, "KNOWN ABILITIES", 14f, TextAlignmentOptions.Left,
+            Text("List Heading", list, "ABILITIES  /  SCROLL TO BROWSE", 14f, TextAlignmentOptions.Left,
                 new Vector2(.04f, .91f), new Vector2(.96f, .98f), TextMuted);
             RectTransform scrollRoot = Block("Ability Scroll", list, PanelLight);
             Place(scrollRoot, new Vector2(.035f, .035f), new Vector2(.965f, .9f), 0f);
@@ -376,7 +376,7 @@ namespace Phasebreak.Gameplay
                         RefreshSpellbook(); }, 15f);
                 spellbookSlots.Add(button.GetComponentInChildren<TextMeshProUGUI>());
             }
-            Text("Help", details, "Select an ability, then choose an action bar slot.", 12f,
+            Text("Help", details, "Select an unlocked ability, then choose an action bar slot.", 12f,
                 TextAlignmentOptions.Left, new Vector2(.055f, .045f), new Vector2(.945f, .12f), TextMuted);
         }
 

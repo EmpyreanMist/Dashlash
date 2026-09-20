@@ -14,6 +14,9 @@ namespace Phasebreak.Gameplay
         private Material trailMaterial;
         private Coroutine stopRoutine;
         private ParticleSystem sparks;
+        private LineRenderer guardRing;
+        private LineRenderer pulseRing;
+        private float pulseStartedAt;
 
         private void Awake()
         {
@@ -52,6 +55,46 @@ namespace Phasebreak.Gameplay
             var emission = sparks.emission;
             emission.enabled = false;
             if (trailMaterial != null) sparks.GetComponent<ParticleSystemRenderer>().sharedMaterial = trailMaterial;
+            guardRing = CreateRing("Iron Guard Ring", new Color(.88f, .61f, .3f, .75f), .045f);
+            pulseRing = CreateRing("Bastion Pulse Ring", new Color(1f, .72f, .36f, .9f), .085f);
+            SetRingRadius(guardRing, 1.1f);
+        }
+
+        private LineRenderer CreateRing(string name, Color color, float width)
+        {
+            GameObject ring = new(name);
+            ring.transform.SetParent(transform, false);
+            ring.transform.localPosition = Vector3.up * .08f;
+            LineRenderer line = ring.AddComponent<LineRenderer>();
+            line.useWorldSpace = false;
+            line.loop = true;
+            line.positionCount = 32;
+            line.startWidth = line.endWidth = width;
+            line.startColor = line.endColor = color;
+            line.sharedMaterial = trailMaterial;
+            line.enabled = false;
+            return line;
+        }
+
+        private static void SetRingRadius(LineRenderer line, float radius)
+        {
+            for (int i = 0; i < line.positionCount; i++)
+            {
+                float angle = i * Mathf.PI * 2f / line.positionCount;
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
+            }
+        }
+
+        private void Update()
+        {
+            if (guardRing != null)
+            {
+                guardRing.enabled = combat != null && combat.ActiveGuardReduction > 0f;
+            }
+            if (pulseRing == null || !pulseRing.enabled) return;
+            float progress = (Time.time - pulseStartedAt) / .35f;
+            if (progress >= 1f) { pulseRing.enabled = false; return; }
+            SetRingRadius(pulseRing, Mathf.Lerp(.8f, 4f, progress));
         }
 
         private void OnEnable()
@@ -76,6 +119,8 @@ namespace Phasebreak.Gameplay
                 StopCoroutine(stopRoutine);
             if (trail != null) trail.emitting = false;
             if (sparks != null) sparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            if (guardRing != null) guardRing.enabled = false;
+            if (pulseRing != null) pulseRing.enabled = false;
         }
 
         private void OnDestroy()
@@ -116,6 +161,11 @@ namespace Phasebreak.Gameplay
             var main = sparks.main;
             main.startColor = color;
             sparks.Emit(value.Type == AbilityExecutionType.Area ? 24 : 12);
+            if (value.Name == "Bastion Pulse" && pulseRing != null)
+            {
+                pulseStartedAt = Time.time;
+                pulseRing.enabled = true;
+            }
         }
 
         private IEnumerator StopAfter(float duration)

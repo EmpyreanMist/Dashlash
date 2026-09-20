@@ -17,6 +17,7 @@ namespace Phasebreak.Gameplay
         private Targetable player;
         private PlayerCombat combat;
         private PlayerProgression progression;
+        private PlayerBuildSystem build;
 
         public void Configure(TextMeshProUGUI unitName, TextMeshProUGUI level, TextMeshProUGUI initial,
             UnityEngine.UI.Image portrait, HealthBarUI health, ResourceBarUI resource,
@@ -36,6 +37,7 @@ namespace Phasebreak.Gameplay
             player = playerTarget;
             combat = playerCombat;
             progression = playerProgression;
+            build = playerTarget != null ? playerTarget.GetComponent<PlayerBuildSystem>() : null;
             Refresh();
         }
 
@@ -44,6 +46,7 @@ namespace Phasebreak.Gameplay
             if (portraitImage == null)
                 return;
             portraitImage.sprite = sprite;
+            portraitImage.color = sprite != null ? Color.white : new Color(.18f, .17f, .16f, 1f);
             portraitImage.preserveAspect = true;
             if (portraitInitial != null)
                 portraitInitial.gameObject.SetActive(sprite == null);
@@ -59,6 +62,13 @@ namespace Phasebreak.Gameplay
                 nameLabel.text = player.DisplayName.ToUpperInvariant();
             if (levelLabel != null)
                 levelLabel.text = (progression != null ? progression.Level : player.Level).ToString();
+            if (portraitImage != null)
+            {
+                PhasebreakIconCatalog icons = PhasebreakIconCatalog.Current;
+                Sprite portrait = build != null && build.Specialization != Specialization.Unchosen
+                    ? icons?.GetSpecializationIcon(build.Specialization) : icons?.GetSlotIcon(EquipmentSlot.Head);
+                if (portraitImage.sprite != portrait) SetPortrait(portrait);
+            }
             if (portraitInitial != null && portraitImage != null && portraitImage.sprite == null)
                 portraitInitial.text = Initial(player.DisplayName);
             healthBar?.SetValue(player.CurrentHealth, player.MaxHealth);

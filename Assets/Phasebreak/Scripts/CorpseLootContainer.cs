@@ -45,7 +45,7 @@ namespace Phasebreak.Gameplay
             if (hovered == value) return; hovered = value;
             if (renderers == null) return;
             block ??= new MaterialPropertyBlock();
-            foreach (Renderer r in renderers) { if (r == null) continue; r.GetPropertyBlock(block); block.SetColor("_EmissionColor", value ? new Color(.08f,.38f,.55f) : Color.black); r.SetPropertyBlock(block); }
+            foreach (Renderer r in renderers) { if (r == null) continue; r.GetPropertyBlock(block); block.SetColor("_EmissionColor", value ? new Color(.36f,.22f,.09f) : Color.black); r.SetPropertyBlock(block); }
         }
         private void Update()
         {

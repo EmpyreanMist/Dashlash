@@ -29,6 +29,13 @@ namespace Phasebreak.Gameplay
         public bool IsUnlocked => unlocked;
         public static bool IsDraggingAny => activeDragCount > 0;
 
+        public void SetAccentPalette(Color normal, Color unlockedAccent)
+        {
+            lockedColor = normal;
+            unlockedColor = unlockedAccent;
+            UpdateVisualState();
+        }
+
         public void Configure(string saveKey, TextMeshProUGUI modeLabel, UnityEngine.UI.Image accentImage,
             Color normal, Color unlockedAccent)
         {
