@@ -56,6 +56,13 @@ namespace Phasebreak.Gameplay
     {
         private const int AbilityCountValue = 5;
         private const int MaximumCatalogSize = 16;
+        // Presentation-only index; basic attacks never occupy an action-bar/catalog slot.
+        private const int BasicAttackIndex = -1;
+
+        [Header("Basic Attack")]
+        [SerializeField, Min(0.1f)] private float basicAttackInterval = 1.8f;
+        [SerializeField, Min(0.1f)] private float basicAttackRange = 2.4f;
+        [SerializeField, Min(1f)] private float basicAttackDamage = 3f;
 
         [Header("References")]
         [SerializeField] private PhasebreakPlayerMovement movement;
@@ -109,6 +116,15 @@ namespace Phasebreak.Gameplay
         private float globalReadyAt;
         private float currentResource;
         private Coroutine attackRoutine;
+        private InputAction autoAttackAction;
+        private bool basicAttackActive;
+        private float basicAttackReadyAt;
+        private AbilityPresentationEvent basicPresentation;
+        public bool AutoAttackArmed { get; private set; }
+        public float BasicAttackInterval => Mathf.Max(.5f, basicAttackInterval /
+            Mathf.Max(.1f, build != null ? build.AttackSpeedMultiplier : 1f));
+        private bool CombatInputBlocked => GameplayInputFocus.GameplayInputBlocked ||
+            PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen;
         private Coroutine hitStopRoutine;
         private int riftChainCount;
         private float riftChainUntil;
@@ -188,12 +204,14 @@ namespace Phasebreak.Gameplay
                 CreateInputActions();
             foreach (InputAction action in abilityActions)
                 action.Enable();
+            autoAttackAction.Enable();
         }
 
         private void OnDisable()
         {
             foreach (InputAction action in abilityActions)
                 action?.Disable();
+            autoAttackAction?.Disable();
             StopCombatRoutines();
         }
 
@@ -202,6 +220,8 @@ namespace Phasebreak.Gameplay
             if (health != null) health.HitReceived -= OnPlayerHit;
             ClearMark();
             if (markMaterial != null) Destroy(markMaterial);
+            PhasebreakSettings.Unregister(autoAttackAction);
+            autoAttackAction?.Dispose();
             foreach (InputAction action in abilityActions)
             {
                 PhasebreakSettings.Unregister(action);
@@ -211,6 +231,9 @@ namespace Phasebreak.Gameplay
 
         private void CreateInputActions()
         {
+            PhasebreakSettings.Unregister(autoAttackAction);
+            autoAttackAction?.Dispose();
+            autoAttackAction = PhasebreakSettings.Button("combat.autoAttack", "Toggle auto-attack");
             for (int i = 0; i < abilityActions.Length; i++)
             {
                 abilityActions[i]?.Dispose();
@@ -231,6 +254,58 @@ namespace Phasebreak.Gameplay
             for (int i = 0; i < abilityActions.Length; i++)
                 if (abilityActions[i].WasPressedThisFrame())
                     TryUseAssignedAbility(i);
+        }
+
+        // Run after menu/target/input Updates so an opening menu or active ability wins this frame.
+        private void LateUpdate()
+        {
+            if (health != null && !health.IsAlive)
+            {
+                SetAutoAttackArmed(false);
+                return;
+            }
+            if (CombatInputBlocked)
+            {
+                CancelBasicAttack();
+                return;
+            }
+            if (autoAttackAction.WasPressedThisFrame()) SetAutoAttackArmed(!AutoAttackArmed);
+            Targetable target = targeting != null ? targeting.CurrentTarget : null;
+            if (!AutoAttackArmed || IsAttacking || Time.time < basicAttackReadyAt ||
+                Time.time < globalReadyAt || Time.timeScale <= 0f ||
+                (movement != null && movement.IsDashing) || !IsTargetValid(target, 0f, basicAttackRange)) return;
+
+            float damage = CalculateWeaponDamage(basicAttackDamage, target, 0f, out bool critical);
+            basicAttackReadyAt = Time.time + BasicAttackInterval;
+            basicAttackActive = true;
+            attackRoutine = StartCoroutine(PerformAttack(BasicAttackIndex, target, damage, critical));
+        }
+
+        public bool SetAutoAttackArmed(bool armed)
+        {
+            if (armed && (!isActiveAndEnabled || CombatInputBlocked || health != null && !health.IsAlive)) return false;
+            AutoAttackArmed = armed;
+            if (!armed) CancelBasicAttack();
+            return true;
+        }
+
+        private void CancelBasicAttack()
+        {
+            if (!basicAttackActive) return;
+            if (attackRoutine != null) StopCoroutine(attackRoutine);
+            attackRoutine = null;
+            basicAttackActive = false;
+            SetSlashVisible(false);
+            AbilityCompleted?.Invoke(basicPresentation);
+        }
+
+        private float CalculateWeaponDamage(float baseDamage, Targetable target, float criticalBonus, out bool critical)
+        {
+            float damage = baseDamage * (progression != null ? progression.PowerMultiplier : 1f) *
+                (build != null ? build.PowerMultiplier : 1f);
+            if (build != null && target.GetComponent<RiftWardenBoss>() != null) damage *= build.BossDamageMultiplier;
+            critical = UnityEngine.Random.value < Mathf.Clamp01(CriticalChance + criticalBonus);
+            return critical ? damage * CriticalDamageMultiplier : damage;
         }
 
         public CombatAbilityDefinition GetAbilityDefinition(int index) =>
@@ -329,13 +404,8 @@ namespace Phasebreak.Gameplay
 
             float talentDamage = talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityDamage, GetAbilityId(index)) + talents.RhythmDamageBonus : 0f;
             if (index == 1 && talents != null) talentDamage += talents.HeavyImpactBonus;
-            float damage = GetDamage(index) * (1f + talentDamage) * (progression != null ? progression.PowerMultiplier : 1f) *
-                           (build != null ? build.PowerMultiplier : 1f);
-            if (build != null && target.GetComponent<RiftWardenBoss>() != null)
-                damage *= build.BossDamageMultiplier;
-            bool critical = UnityEngine.Random.value < Mathf.Clamp01(CriticalChance + GetCriticalBonus(index));
-            if (critical)
-                damage *= CriticalDamageMultiplier;
+            float damage = CalculateWeaponDamage(GetDamage(index) * (1f + talentDamage), target,
+                GetCriticalBonus(index), out bool critical);
 
             ConsumeAbility(index);
             talents?.NotifyAbilityUsed(type is AbilityExecutionType.PhaseDash or AbilityExecutionType.PhaseLunge or AbilityExecutionType.Charge);
@@ -387,7 +457,7 @@ namespace Phasebreak.Gameplay
                 return false;
             if (!IsAbilityUnlocked(index))
                 return Reject(report, "Unlock this ability in its talent tree");
-            if (IsAttacking)
+            if (IsAttacking && !basicAttackActive)
                 return Reject(report, "Another ability is already active");
             if (UsesGlobalCooldown(index) && Time.time < globalReadyAt)
                 return Reject(report, "Global cooldown");
@@ -432,7 +502,8 @@ namespace Phasebreak.Gameplay
 
         private bool IsTargetValid(Targetable target, float minimumRange, float maximumRange)
         {
-            if (target == null || !target.IsHostile || !target.IsAlive)
+            if (target == null || !target.isActiveAndEnabled || !target.IsHostile || !target.IsAlive ||
+                target.GetComponent<ICombatTarget>() == null)
                 return false;
             Vector3 origin = transform.position + Vector3.up * 1.1f;
             CharacterController targetController = target.GetComponent<CharacterController>();
@@ -553,16 +624,18 @@ namespace Phasebreak.Gameplay
 
         private IEnumerator PerformAttack(int index, Targetable target, float damage, bool critical)
         {
+            bool basic = index == BasicAttackIndex;
             int chainBefore = RiftChainCount;
             Vector3 toTarget = target.transform.position - transform.position;
             toTarget.y = 0f;
             if (toTarget.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
-            movement?.CancelDashForAttack();
+            if (!basic) movement?.CancelDashForAttack();
             float attackSpeed = build != null ? build.AttackSpeedMultiplier : 1f;
-            float windup = GetWindup(index) / attackSpeed;
-            float recovery = GetRecovery(index) / attackSpeed;
+            float windup = basic ? .3f : GetWindup(index) / attackSpeed;
+            float recovery = basic ? .35f : GetRecovery(index) / attackSpeed;
             AbilityPresentationEvent presentation = Event(index, windup + recovery + 0.12f, critical);
+            if (basic) basicPresentation = presentation;
             AbilityStarted?.Invoke(presentation);
 
             bool riftLunge = GetExecutionType(index) == AbilityExecutionType.PhaseLunge &&
@@ -587,10 +660,18 @@ namespace Phasebreak.Gameplay
             }
             else if (!riftLunge && GetExecutionType(index) == AbilityExecutionType.PhaseLunge && toTarget.sqrMagnitude > 0.01f)
                 movement?.AddCombatImpulse(toTarget.normalized * GetImpulse(index));
-            else if (!riftLunge)
+            else if (!riftLunge && !basic)
                 movement?.AddCombatImpulse(transform.forward * GetImpulse(index));
 
             yield return new WaitForSeconds(windup);
+            if (basic && (!AutoAttackArmed || CombatInputBlocked || health != null && !health.IsAlive ||
+                targeting == null || targeting.CurrentTarget != target || !IsTargetValid(target, 0f, basicAttackRange)))
+            {
+                basicAttackActive = false;
+                attackRoutine = null;
+                AbilityCompleted?.Invoke(presentation);
+                yield break;
+            }
             SetSlashVisible(true);
             if (slashVisual != null)
                 slashVisual.localScale = Vector3.one * (critical ? 1.55f : index == 1 ? 1.3f : 1f);
@@ -606,6 +687,7 @@ namespace Phasebreak.Gameplay
             SetSlashVisible(false);
             yield return new WaitForSeconds(riftLunge && RiftChainCount > chainBefore && LastChainChargeRestored ? Mathf.Min(recovery, .04f) : recovery);
             AbilityCompleted?.Invoke(presentation);
+            if (basic) basicAttackActive = false;
             attackRoutine = null;
         }
 
@@ -687,6 +769,8 @@ namespace Phasebreak.Gameplay
 
         private void StopCombatRoutines()
         {
+            SetAutoAttackArmed(false);
+            basicAttackReadyAt = 0f;
             riftChainCount = 0;
             riftChainUntil = 0f;
             LastChainEnergyRestored = 0f;
@@ -794,6 +878,8 @@ namespace Phasebreak.Gameplay
 
         private void ConsumeAbility(int index)
         {
+            // A validated active ability preempts the filler swing before starting its routine.
+            CancelBasicAttack();
             currentResource = Mathf.Max(0f, currentResource - GetCost(index));
             int maximum = GetMaximumCharges(index);
             if (charges[index] == maximum)
@@ -824,7 +910,7 @@ namespace Phasebreak.Gameplay
         {
             1 => "crushing-blow", 2 => "phase-lunge", 3 => "phase-dash", 4 => "rift-charge", _ => "strike"
         };
-        private string GetAbilityName(int index) => Ability(index) != null ? Ability(index).displayName : index switch
+        private string GetAbilityName(int index) => index == BasicAttackIndex ? "Basic Attack" : Ability(index) != null ? Ability(index).displayName : index switch
         {
             1 => "Crushing Blow", 2 => "Phase Lunge", 3 => "Phase Dash", 4 => "Rift Charge", _ => "Strike"
         };
