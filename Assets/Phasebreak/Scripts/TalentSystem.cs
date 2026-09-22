@@ -212,7 +212,7 @@ namespace Phasebreak.Gameplay
             if (abilitiesChanged) AbilityAvailabilityChanged?.Invoke();
         }
 
-        private void ResetTransientEffects()
+        public void ResetTransientEffects()
         {
             criticalMomentumUntil = braceUntil = mobilityMomentumUntil = heavyImpactUntil = rhythmUntil = 0f;
             rhythmStacks = 0;

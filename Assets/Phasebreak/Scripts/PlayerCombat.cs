@@ -200,6 +200,7 @@ namespace Phasebreak.Gameplay
 
         private void OnEnable()
         {
+            if (health != null) health.Died += ResetCombat;
             if (abilityActions[0] == null)
                 CreateInputActions();
             foreach (InputAction action in abilityActions)
@@ -209,6 +210,7 @@ namespace Phasebreak.Gameplay
 
         private void OnDisable()
         {
+            if (health != null) health.Died -= ResetCombat;
             foreach (InputAction action in abilityActions)
                 action?.Disable();
             autoAttackAction?.Disable();
@@ -419,6 +421,7 @@ namespace Phasebreak.Gameplay
         public void ResetCombat()
         {
             StopCombatRoutines();
+            talents?.ResetTransientEffects();
             Array.Clear(nextChargeReadyAt, 0, nextChargeReadyAt.Length);
             globalReadyAt = 0f;
             currentResource = maximumResource;

@@ -292,6 +292,12 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            if (health != null && !health.IsAlive)
+            {
+                autoRun = false;
+                ResetMotion();
+                return;
+            }
             bool blocked = GameplayInputFocus.GameplayInputBlocked;
             bool leftMouseHeld = Mouse.current != null && Mouse.current.leftButton.isPressed;
             bool leftMousePressed = leftMouseHeld && !debugLeftMouseWasPressed;

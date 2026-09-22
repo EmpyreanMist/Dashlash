@@ -109,7 +109,7 @@ namespace Phasebreak.Gameplay
             int previousMaximum = MaxHealth;
             progressionBonusHealth = Mathf.Max(0, bonusHealth);
             int gainedHealth = Mathf.Max(0, MaxHealth - previousMaximum);
-            CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + gainedHealth);
+            if (IsAlive) CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + gainedHealth);
         }
 
         public void ApplyEquipmentBonus(int bonusHealth)
@@ -117,7 +117,7 @@ namespace Phasebreak.Gameplay
             int previousMaximum = MaxHealth;
             equipmentBonusHealth = Mathf.Max(0, bonusHealth);
             int gainedHealth = Mathf.Max(0, MaxHealth - previousMaximum);
-            CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + gainedHealth);
+            if (IsAlive) CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + gainedHealth);
         }
 
         private IEnumerator Flash()

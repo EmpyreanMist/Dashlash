@@ -20,12 +20,14 @@ namespace Phasebreak.Gameplay
         private readonly List<Targetable> candidateBuffer = new List<Targetable>();
         private InputAction nextTargetAction;
         private InputAction clearTargetAction;
+        private PlayerHealth health;
 
         public Targetable CurrentTarget { get; private set; }
         public event Action<Targetable> TargetChanged;
 
         private void Awake()
         {
+            health = GetComponent<PlayerHealth>();
             if (worldCamera == null)
                 worldCamera = Camera.main;
             if (followCamera == null && worldCamera != null)
@@ -56,6 +58,11 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            if (health != null && !health.IsAlive)
+            {
+                SetTarget(null);
+                return;
+            }
             if (CurrentTarget == null && !ReferenceEquals(CurrentTarget, null))
                 SetTarget(null);
             if (CurrentTarget != null && (!CurrentTarget.IsAlive || !IsWithinRange(CurrentTarget)))
@@ -81,6 +88,7 @@ namespace Phasebreak.Gameplay
 
         public void SetTarget(Targetable newTarget)
         {
+            if (health != null && !health.IsAlive) newTarget = null;
             if (ReferenceEquals(newTarget, CurrentTarget))
                 return;
             if (newTarget != null && (!newTarget.IsHostile || !newTarget.IsAlive || !IsWithinRange(newTarget)))

@@ -49,6 +49,8 @@ namespace Phasebreak.Editor
                 PolishSettlements();
                 PolishConnections();
                 PolishForestBelts();
+                ConfigureOpenWorldRecovery.Apply();
+                EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
                 Debug.Log("STARTER_ZONE_V2_COMPLETE: full deterministic world rebuilt and saved");
             }
             catch (Exception error) { Debug.LogException(error); }
