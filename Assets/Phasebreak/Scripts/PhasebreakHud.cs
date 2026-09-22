@@ -54,6 +54,7 @@ namespace Phasebreak.Gameplay
         private float lootToastStartedAt = float.NegativeInfinity;
         private float abilityFeedbackUntil = float.NegativeInfinity;
         private float nextRefreshAt;
+        private OpenWorldRecovery recovery;
 
         private static readonly Color PanelColor = PhasebreakUiTheme.Panel;
         private static readonly Color BarBackgroundColor = new Color(0.08f, 0.09f, 0.12f, 0.98f);
@@ -85,6 +86,7 @@ namespace Phasebreak.Gameplay
                     player = health.GetComponent<Targetable>();
             }
             BuildCanvas();
+            recovery = player != null ? player.GetComponent<OpenWorldRecovery>() : null;
             debugHudAction = PhasebreakSettings.Button("debug.hud", "Debug Build Snapshot");
         }
 
@@ -93,6 +95,7 @@ namespace Phasebreak.Gameplay
         private void OnEnable()
         {
             debugHudAction?.Enable();
+            if (recovery != null) recovery.Feedback += HandleRecoveryFeedback;
             if (targeting != null)
                 targeting.TargetChanged += HandleTargetChanged;
             CombatEvents.DamageNumberRequested += HandleDamageNumber;
@@ -107,6 +110,7 @@ namespace Phasebreak.Gameplay
         private void OnDisable()
         {
             debugHudAction?.Disable();
+            if (recovery != null) recovery.Feedback -= HandleRecoveryFeedback;
             if (targeting != null)
                 targeting.TargetChanged -= HandleTargetChanged;
             CombatEvents.DamageNumberRequested -= HandleDamageNumber;
@@ -230,11 +234,21 @@ namespace Phasebreak.Gameplay
             gameMenu.Initialize();
         }
 
+        private void HandleRecoveryFeedback(string message)
+        {
+            if (abilityFeedback == null) return;
+            abilityFeedback.text = message;
+            abilityFeedback.color = PhasebreakUiTheme.Text;
+            abilityFeedbackUntil = Time.unscaledTime + 3f;
+            abilityFeedback.gameObject.SetActive(true);
+        }
+
         private void HandleAbilityFailed(string message)
         {
-            if (abilityFeedback == null)
+            if (abilityFeedback == null || (recovery != null && recovery.IsRecovering))
                 return;
             abilityFeedback.text = message;
+            abilityFeedback.color = new Color(1f, 0.38f, 0.26f, 1f);
             abilityFeedbackUntil = Time.unscaledTime + 1.15f;
             abilityFeedback.gameObject.SetActive(true);
         }

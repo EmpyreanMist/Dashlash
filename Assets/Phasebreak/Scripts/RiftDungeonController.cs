@@ -174,6 +174,7 @@ namespace Phasebreak.Gameplay
 
         public bool TryInteract()
         {
+            if (playerHealth != null && !playerHealth.IsAlive) return false;
             if (State == RiftDungeonState.Outside && IsNear(worldEntrance))
             {
                 EnterDungeon();
@@ -194,7 +195,7 @@ namespace Phasebreak.Gameplay
 
         public void EnterDungeon()
         {
-            if (player == null || dungeonSpawn == null)
+            if (player == null || dungeonSpawn == null || (playerHealth != null && !playerHealth.IsAlive))
                 return;
             worldReturnPosition = player.position;
             worldReturnRotation = player.rotation;

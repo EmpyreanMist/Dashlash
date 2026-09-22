@@ -88,6 +88,16 @@ namespace Phasebreak.Gameplay
             ProgressChanged?.Invoke();
         }
 
+        // Integer division rounds the 10% loss down (63 XP loses 6). Never changes level.
+        public int ApplyDeathPenalty()
+        {
+            int loss = Mathf.Max(0, CurrentExperience) / 10;
+            CurrentExperience = IsMaximumLevel ? 0 : Mathf.Max(0, CurrentExperience - loss);
+            Save();
+            ProgressChanged?.Invoke();
+            return loss;
+        }
+
         public bool SetDebugLevel(int level)
         {
             if (level < 1 || level > maximumLevel) return false;
