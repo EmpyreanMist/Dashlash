@@ -57,7 +57,8 @@ namespace Phasebreak.Gameplay
                 return false;
 
             HitCount++;
-            int mitigated = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - (build != null ? Mathf.Clamp(build.Defense, 0f, .75f) : 0f))));
+            float guard = GetComponent<PlayerCombat>()?.ActiveGuardReduction ?? 0f;
+            int mitigated = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - (build != null ? Mathf.Clamp(build.Defense, 0f, .75f) : 0f)) * (1f - guard)));
             CurrentHealth = Mathf.Max(0, CurrentHealth - mitigated);
             invulnerableUntil = Time.time + invulnerabilityDuration;
             if (knockback > 0f)
@@ -77,6 +78,11 @@ namespace Phasebreak.Gameplay
         }
 
         public void SetDebugGodMode(bool enabled) => debugGodMode = enabled;
+
+        public void Heal(int amount)
+        {
+            if (IsAlive && amount > 0) CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + amount);
+        }
 
         public void DebugKill()
         {

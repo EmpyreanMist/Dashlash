@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767621614a61dbe48a13a17647766051, type: 3}
+  m_Name: berserker-reapers-arc
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.TalentNodeDefinition
+  id: berserker-reapers-arc
+  displayName: Reaper's Arc
+  description: Unlock a broad cleaving attack.
+  icon: {fileID: 5157614764518513496, guid: 49d2ed51b0f003f45b4e48a34b352288, type: 3}
+  specialization: 1
+  nodeType: 1
+  maximumRank: 1
+  pointCost: 2
+  requiredPlayerLevel: 4
+  prerequisiteIds:
+  - berserker-blood-momentum
+  choiceGroup:
+  effect: 0
+  secondaryEffect: 0
+  targetAbilityId:
+  grantedAbilityId: reapers-arc
+  synergyTag: 0
+  effectValuePerRank: 0
+  secondaryValuePerRank: 0
+  presentationPosition: {x: 0.88, y: 0.62}

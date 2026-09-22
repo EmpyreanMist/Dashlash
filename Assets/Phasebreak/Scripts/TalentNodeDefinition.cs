@@ -30,6 +30,9 @@ namespace Phasebreak.Gameplay
         public string RankEffect(int rank)
         {
             rank = Mathf.Clamp(rank, 0, maximumRank);
+            if (!string.IsNullOrWhiteSpace(grantedAbilityId))
+                return "Unlock " + System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
+                    grantedAbilityId.Replace('-', ' ')) + " in the Spellbook.";
             float primary = effectValuePerRank * rank;
             float secondary = secondaryValuePerRank * rank;
             return TalentText.Describe(effect, primary, targetAbilityId) +

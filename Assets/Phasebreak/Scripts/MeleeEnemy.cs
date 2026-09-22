@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Phasebreak.Gameplay
 {
-    public enum EnemyRole { Zombie, Brute, Skirmisher }
+    public enum EnemyRole { Zombie, Brute, Skirmisher, Caster, Charger }
     public enum EnemyRank { Normal, Veteran, Elite }
 
     [RequireComponent(typeof(CharacterController))]
@@ -63,6 +63,10 @@ namespace Phasebreak.Gameplay
         private float nextSidestepAt;
         private int sidestepDirection = 1;
         private EnemyRoleDefinition roleDefinition;
+        private Vector3 chargeDirection;
+        private bool namedEncounter;
+        private LineRenderer chargeLane;
+        private static Material chargeLaneMaterial;
 
         public int CurrentHealth { get; private set; }
         public int MaxHealth => maxHealth;
@@ -74,7 +78,9 @@ namespace Phasebreak.Gameplay
         public int AttackCount { get; private set; }
         public bool IsCasting => state == EnemyState.Windup;
         public string CastName => role == EnemyRole.Brute ? "Crushing Swing" :
-            role == EnemyRole.Skirmisher ? "Ember Bolt" : "Savage Strike";
+            role == EnemyRole.Skirmisher ? "Ember Bolt" :
+            role == EnemyRole.Caster ? "Rift Lance" :
+            role == EnemyRole.Charger ? "Headlong Charge" : "Savage Strike";
         public float CastProgress => !IsCasting || windupDuration <= 0f
             ? 0f : 1f - Mathf.Clamp01(stateRemaining / windupDuration);
         public bool IsCastInterruptible => true;
@@ -113,15 +119,15 @@ namespace Phasebreak.Gameplay
             if (newRole != EnemyRole.Zombie)
             {
                 float rankScale = Mathf.Lerp(1f, Mathf.Max(1f, tuning.scaleMultiplier), .75f);
-                controller.height = (newRole == EnemyRole.Brute ? 2.65f : 1.7f) * rankScale;
-                controller.radius = (newRole == EnemyRole.Brute ? .75f : .34f) * rankScale;
+                controller.height = (newRole == EnemyRole.Brute ? 2.65f : newRole == EnemyRole.Charger ? 2.25f : 1.7f) * rankScale;
+                controller.radius = (newRole == EnemyRole.Brute ? .75f : newRole == EnemyRole.Charger ? .55f : .34f) * rankScale;
                 controller.center = Vector3.up * (controller.height * .5f);
             }
             maxHealth = Mathf.RoundToInt(maxHealth * tuning.healthMultiplier);
             attackDamage = Mathf.Max(1, Mathf.CeilToInt(attackDamage * tuning.damageMultiplier));
             experienceReward = Mathf.RoundToInt(experienceReward * tuning.experienceMultiplier);
             CurrentHealth = maxHealth;
-            telegraphBaseScale = telegraphOriginalScale * (role == EnemyRole.Brute ? 1.45f : 1f);
+            telegraphBaseScale = telegraphOriginalScale * (role == EnemyRole.Brute ? 1.45f : role == EnemyRole.Charger ? 1.25f : 1f);
             Targetable identity = GetComponent<Targetable>();
             string name = roleDefinition != null ? roleDefinition.displayName : "Risen Zombie";
             identity?.Configure((newRank == EnemyRank.Normal ? "" : newRank + " ") + name,
@@ -132,6 +138,14 @@ namespace Phasebreak.Gameplay
                 (GetComponent<EnemyRoleVisual>() ?? gameObject.AddComponent<EnemyRoleVisual>()).Configure(newRole, newRank, roleDefinition);
                 renderers = GetComponentsInChildren<Renderer>(true);
             }
+            if (newRole == EnemyRole.Charger) EnsureChargeLane();
+        }
+
+        public void ConfigureNamedEncounter(string displayName)
+        {
+            namedEncounter = !string.IsNullOrWhiteSpace(displayName);
+            if (namedEncounter)
+                GetComponent<Targetable>()?.Configure(displayName, TargetFaction.Hostile, 3);
         }
 
         public void Configure(Transform newTarget, Transform telegraph)
@@ -252,6 +266,7 @@ namespace Phasebreak.Gameplay
             CurrentHealth = maxHealth;
             AttackCount = 0;
             defeatRewardGranted = false;
+            chargeDirection = Vector3.zero;
             verticalVelocity = -2f;
             knockbackVelocity = Vector3.zero;
             SetState(EnemyState.Idle, 0f);
@@ -271,19 +286,27 @@ namespace Phasebreak.Gameplay
 
         private void TickChase(Vector3 toTarget, float distance)
         {
-            if (role == EnemyRole.Skirmisher)
+            if (role == EnemyRole.Skirmisher || role == EnemyRole.Caster)
             {
                 RotateToward(toTarget);
                 Vector3 direction = Vector3.zero;
-                if (distance < 5f) direction = -toTarget.normalized;
-                else if (distance > 9f) direction = toTarget.normalized;
+                float near = role == EnemyRole.Caster ? 8f : 5f;
+                float far = role == EnemyRole.Caster ? 13f : 9f;
+                if (distance < near) direction = -toTarget.normalized;
+                else if (distance > far) direction = toTarget.normalized;
                 else if (Time.time >= nextSidestepAt)
                 { nextSidestepAt = Time.time + 1.6f; sidestepDirection = -sidestepDirection; }
                 if (direction == Vector3.zero)
                     direction = Vector3.Cross(Vector3.up, toTarget.normalized) * sidestepDirection * .55f;
                 controller.Move(direction * (moveSpeed * Time.deltaTime));
-                if (distance >= 5f && distance <= attackRange && HasLineOfSight())
+                if (distance >= near && distance <= attackRange && HasLineOfSight())
                     SetState(EnemyState.Windup, windupDuration);
+                return;
+            }
+            if (role == EnemyRole.Charger && distance >= 3f && distance <= attackRange && HasLineOfSight())
+            {
+                chargeDirection = toTarget.normalized;
+                SetState(EnemyState.Windup, windupDuration);
                 return;
             }
             if (distance <= attackRange)
@@ -314,7 +337,7 @@ namespace Phasebreak.Gameplay
 
         private void TickWindup(Vector3 toTarget)
         {
-            RotateToward(toTarget);
+            RotateToward(role == EnemyRole.Charger ? chargeDirection : toTarget);
             stateRemaining -= Time.deltaTime;
             if (telegraphVisual != null && windupDuration > 0f)
             {
@@ -328,6 +351,17 @@ namespace Phasebreak.Gameplay
 
         private void TickActive()
         {
+            if (role == EnemyRole.Charger)
+            {
+                controller.Move(chargeDirection * (moveSpeed * 3.2f * Time.deltaTime));
+                if (!attackFired && playerHealth != null && Vector3.Distance(transform.position, target.position) < 1.8f)
+                {
+                    attackFired = true;
+                    if (playerHealth.TakeHit(attackDamage, chargeDirection)) AttackCount++;
+                }
+                TickTimer(EnemyState.Recovery);
+                return;
+            }
             if (!attackFired)
             {
                 attackFired = true;
@@ -341,11 +375,14 @@ namespace Phasebreak.Gameplay
             if (playerHealth == null || !playerHealth.IsAlive)
                 return;
 
-            if (role == EnemyRole.Skirmisher)
+            if (role == EnemyRole.Skirmisher || role == EnemyRole.Caster)
             {
                 Vector3 origin = transform.position + Vector3.up * 1.25f + transform.forward * .7f;
                 Vector3 direction = (target.position + Vector3.up * .45f - origin).normalized;
-                EnemyProjectile.Spawn(origin, direction, this, attackDamage);
+                EnemyProjectile.Spawn(origin, direction, this, attackDamage, role == EnemyRole.Caster);
+                if (enemyRank == EnemyRank.Elite)
+                    EnemyProjectile.Spawn(origin, Quaternion.Euler(0f, 11f, 0f) * direction, this,
+                        Mathf.Max(1, attackDamage - 1), role == EnemyRole.Caster);
                 AttackCount++;
                 return;
             }
@@ -386,6 +423,30 @@ namespace Phasebreak.Gameplay
                 telegraphVisual.gameObject.SetActive(nextState == EnemyState.Windup);
                 telegraphVisual.localScale = telegraphBaseScale;
             }
+            if (chargeLane != null) chargeLane.enabled = nextState == EnemyState.Windup;
+        }
+
+        private void EnsureChargeLane()
+        {
+            if (chargeLane != null) return;
+            GameObject lane = new("Charge Lane");
+            lane.transform.SetParent(transform, false);
+            chargeLane = lane.AddComponent<LineRenderer>();
+            if (chargeLaneMaterial == null)
+                chargeLaneMaterial = new Material(Shader.Find("Sprites/Default")) { hideFlags = HideFlags.DontSave };
+            chargeLane.sharedMaterial = chargeLaneMaterial;
+            chargeLane.useWorldSpace = false;
+            chargeLane.loop = true;
+            chargeLane.positionCount = 4;
+            chargeLane.startWidth = chargeLane.endWidth = .08f;
+            chargeLane.startColor = chargeLane.endColor = new Color(.95f, .2f, .12f, .8f);
+            float width = controller != null ? controller.radius * 1.5f : .8f;
+            float length = Mathf.Min(attackRange, 8f);
+            chargeLane.SetPosition(0, new Vector3(-width, .1f, .4f));
+            chargeLane.SetPosition(1, new Vector3(-width, .1f, length));
+            chargeLane.SetPosition(2, new Vector3(width, .1f, length));
+            chargeLane.SetPosition(3, new Vector3(width, .1f, .4f));
+            chargeLane.enabled = false;
         }
 
         private void RotateToward(Vector3 direction)
@@ -418,7 +479,7 @@ namespace Phasebreak.Gameplay
                     GetComponent<Targetable>()?.DisplayName ?? gameObject.name, transform.position);
                 PlayerBuildSystem build = FindAnyObjectByType<PlayerBuildSystem>();
                 CorpseLootContainer corpse = GetComponent<CorpseLootContainer>() ?? gameObject.AddComponent<CorpseLootContainer>();
-                corpse.Initialize(this, build != null ? build.GenerateCorpseLoot() : null);
+                corpse.Initialize(this, build != null ? build.GenerateCorpseLoot(namedEncounter) : null);
             }
             knockbackVelocity = Vector3.zero;
             controller.enabled = false;

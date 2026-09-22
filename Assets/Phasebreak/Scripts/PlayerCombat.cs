@@ -55,6 +55,7 @@ namespace Phasebreak.Gameplay
     public sealed class PlayerCombat : MonoBehaviour
     {
         private const int AbilityCountValue = 5;
+        private const int MaximumCatalogSize = 16;
 
         [Header("References")]
         [SerializeField] private PhasebreakPlayerMovement movement;
@@ -100,8 +101,8 @@ namespace Phasebreak.Gameplay
         [Header("Soft Auto Target")]
         [SerializeField, Range(10f, 180f)] private float autoTargetCone = 110f;
 
-        private readonly int[] charges = new int[AbilityCountValue];
-        private readonly float[] nextChargeReadyAt = new float[AbilityCountValue];
+        private readonly int[] charges = new int[MaximumCatalogSize];
+        private readonly float[] nextChargeReadyAt = new float[MaximumCatalogSize];
         private readonly InputAction[] abilityActions = new InputAction[AbilityCountValue];
         private readonly int[] slotAbilities = new int[AbilityCountValue];
         private const string AssignmentPrefix = "Phasebreak.ActionBar.v1.slot.";
@@ -111,6 +112,12 @@ namespace Phasebreak.Gameplay
         private Coroutine hitStopRoutine;
         private int riftChainCount;
         private float riftChainUntil;
+        private float guardUntil;
+        private float storedGuardDamage;
+        private Targetable markedTarget;
+        private float markUntil;
+        private GameObject markVisual;
+        private Material markMaterial;
         public int RiftChainCount => Time.time < riftChainUntil && (health == null || health.IsAlive) ? riftChainCount : 0;
         public float RiftChainRemaining => RiftChainCount > 0 ? Mathf.Max(0f, riftChainUntil - Time.time) : 0f;
         public float LastChainEnergyRestored { get; private set; }
@@ -119,13 +126,14 @@ namespace Phasebreak.Gameplay
 
         public int AbilityCount => AbilityCountValue;
         public int CatalogCount => abilityDefinitions != null && abilityDefinitions.Length > 0
-            ? Mathf.Min(abilityDefinitions.Length, AbilityCountValue) : AbilityCountValue;
+            ? Mathf.Min(abilityDefinitions.Length, MaximumCatalogSize) : AbilityCountValue;
         public event Action AssignmentsChanged;
         public bool IsAttacking => attackRoutine != null;
         public float CurrentResource => currentResource;
         public void SetDebugResource(float amount) => currentResource = Mathf.Clamp(amount, 0f, maximumResource);
         public float MaximumResource => maximumResource;
         public float ResourceFraction => maximumResource <= 0f ? 0f : currentResource / maximumResource;
+        public float ActiveGuardReduction => Time.time < guardUntil ? .6f : 0f;
         public float CriticalChance => Mathf.Clamp01(criticalChance +
             (progression != null ? progression.CriticalChanceBonus : 0f) +
             (build != null ? build.CriticalChanceBonus : 0f));
@@ -156,6 +164,17 @@ namespace Phasebreak.Gameplay
             build ??= GetComponent<PlayerBuildSystem>() ?? gameObject.AddComponent<PlayerBuildSystem>();
             talents ??= GetComponent<TalentSystem>() ?? gameObject.AddComponent<TalentSystem>();
             health ??= GetComponent<PlayerHealth>();
+            CombatAbilityDefinition[] additions = Resources.LoadAll<CombatAbilityDefinition>("Abilities");
+            if (additions.Length > 0)
+            {
+                Array.Sort(additions, (a, b) => string.CompareOrdinal(a?.id, b?.id));
+                var catalog = new System.Collections.Generic.List<CombatAbilityDefinition>(abilityDefinitions ?? Array.Empty<CombatAbilityDefinition>());
+                foreach (CombatAbilityDefinition addition in additions)
+                    if (addition != null && !catalog.Exists(existing => existing != null && existing.id == addition.id))
+                        catalog.Add(addition);
+                abilityDefinitions = catalog.ToArray();
+            }
+            if (health != null) health.HitReceived += OnPlayerHit;
             LoadAssignments();
             CreateInputActions();
             currentResource = maximumResource;
@@ -180,6 +199,9 @@ namespace Phasebreak.Gameplay
 
         private void OnDestroy()
         {
+            if (health != null) health.HitReceived -= OnPlayerHit;
+            ClearMark();
+            if (markMaterial != null) Destroy(markMaterial);
             foreach (InputAction action in abilityActions)
             {
                 PhasebreakSettings.Unregister(action);
@@ -198,6 +220,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            if (markedTarget != null && (!markedTarget.IsAlive || Time.time >= markUntil)) ClearMark();
             float pressureRegeneration = talents != null && health != null && health.MaxHealth > 0 && health.CurrentHealth < health.MaxHealth * .5f
                 ? 1f + talents.GetEffect(TalentEffect.ResourceUnderPressure) : 1f;
             currentResource = Mathf.MoveTowards(currentResource, maximumResource,
@@ -213,14 +236,15 @@ namespace Phasebreak.Gameplay
         public CombatAbilityDefinition GetAbilityDefinition(int index) =>
             IsValidIndex(index) ? Ability(index) : null;
 
-        public int GetAssignedAbilityIndex(int slot) => IsValidIndex(slot) ? slotAbilities[slot] : -1;
+        public int GetAssignedAbilityIndex(int slot) => IsValidSlot(slot) ? slotAbilities[slot] : -1;
 
         public bool AssignAbilityToSlot(int slot, string abilityId)
         {
-            if (!IsValidIndex(slot) || string.IsNullOrWhiteSpace(abilityId)) return false;
+            if (!IsValidSlot(slot) || string.IsNullOrWhiteSpace(abilityId)) return false;
             for (int index = 0; index < CatalogCount; index++)
             {
                 if (!string.Equals(GetAbilityId(index), abilityId, StringComparison.Ordinal)) continue;
+                if (!IsAbilityUnlocked(index)) return false;
                 slotAbilities[slot] = index;
                 PlayerPrefs.SetString(AssignmentPrefix + slot, abilityId);
                 PlayerPrefs.Save();
@@ -232,14 +256,14 @@ namespace Phasebreak.Gameplay
 
         public AbilityState GetAssignedAbilityState(int slot)
         {
-            if (!IsValidIndex(slot)) return default;
+            if (!IsValidSlot(slot)) return default;
             AbilityState ability = GetAbilityState(slotAbilities[slot]);
             return new AbilityState(ability.Name, GetKey(slot), ability.CooldownRemaining,
                 ability.CooldownDuration, ability.ResourceCost, ability.IsUsable,
                 ability.Charges, ability.MaximumCharges, ability.Icon);
         }
 
-        public bool TryUseAssignedAbility(int slot) => IsValidIndex(slot) && TryUseAbility(slotAbilities[slot]);
+        public bool TryUseAssignedAbility(int slot) => IsValidSlot(slot) && TryUseAbility(slotAbilities[slot]);
 
         private void LoadAssignments()
         {
@@ -275,6 +299,13 @@ namespace Phasebreak.Gameplay
             if (!ValidateCommonRequirements(index, true))
                 return false;
             AbilityExecutionType type = GetExecutionType(index);
+            if (type == AbilityExecutionType.Guard || type == AbilityExecutionType.Area)
+            {
+                ConsumeAbility(index);
+                attackRoutine = StartCoroutine(type == AbilityExecutionType.Guard
+                    ? PerformGuard(index) : PerformArea(index));
+                return true;
+            }
             if (type == AbilityExecutionType.PhaseDash)
             {
                 if (movement == null || !movement.CanDashNow)
@@ -326,15 +357,15 @@ namespace Phasebreak.Gameplay
 
         public int[] CaptureMaximumCharges()
         {
-            int[] maximum = new int[AbilityCountValue];
+            int[] maximum = new int[CatalogCount];
             for (int i = 0; i < maximum.Length; i++) maximum[i] = GetMaximumCharges(i);
             return maximum;
         }
 
         public void ReconcileAbilityModifiers(int[] previousMaximumCharges)
         {
-            if (previousMaximumCharges == null || previousMaximumCharges.Length != AbilityCountValue) return;
-            for (int i = 0; i < AbilityCountValue; i++)
+            if (previousMaximumCharges == null || previousMaximumCharges.Length != CatalogCount) return;
+            for (int i = 0; i < CatalogCount; i++)
             {
                 int maximum = GetMaximumCharges(i);
                 charges[i] = Mathf.Min(charges[i], maximum);
@@ -354,6 +385,8 @@ namespace Phasebreak.Gameplay
                 return Reject(report, "Cannot attack while defeated");
             if (!IsValidIndex(index))
                 return false;
+            if (!IsAbilityUnlocked(index))
+                return Reject(report, "Unlock this ability in its talent tree");
             if (IsAttacking)
                 return Reject(report, "Another ability is already active");
             if (UsesGlobalCooldown(index) && Time.time < globalReadyAt)
@@ -369,6 +402,8 @@ namespace Phasebreak.Gameplay
         {
             if (!ValidateCommonRequirements(index, false))
                 return false;
+            if (GetExecutionType(index) is AbilityExecutionType.Guard or AbilityExecutionType.Area)
+                return true;
             if (GetExecutionType(index) == AbilityExecutionType.PhaseDash)
                 return movement != null && movement.CanDashNow;
             Targetable target = targeting != null ? targeting.CurrentTarget : null;
@@ -432,6 +467,41 @@ namespace Phasebreak.Gameplay
             }
             while (movement.IsDashing)
                 yield return null;
+            AbilityCompleted?.Invoke(presentation);
+            attackRoutine = null;
+        }
+
+        private IEnumerator PerformGuard(int index)
+        {
+            AbilityPresentationEvent presentation = Event(index, 2.5f, false);
+            AbilityStarted?.Invoke(presentation);
+            guardUntil = Time.time + 2.5f;
+            yield return new WaitForSeconds(.2f);
+            AbilityImpact?.Invoke(presentation);
+            AbilityCompleted?.Invoke(presentation);
+            attackRoutine = null;
+        }
+
+        private IEnumerator PerformArea(int index)
+        {
+            AbilityPresentationEvent presentation = Event(index, GetWindup(index) + GetRecovery(index), false);
+            AbilityStarted?.Invoke(presentation);
+            yield return new WaitForSeconds(GetWindup(index));
+            float power = (GetDamage(index) + storedGuardDamage * .8f) *
+                (progression != null ? progression.PowerMultiplier : 1f) *
+                (build != null ? build.PowerMultiplier : 1f) *
+                (1f + (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityDamage, GetAbilityId(index)) : 0f));
+            storedGuardDamage = 0f;
+            foreach (Targetable other in Targetable.ActiveTargets)
+            {
+                if (other == null || !other.IsHostile || !other.IsAlive ||
+                    FlatDistance(transform.position, other.transform.position) > GetRange(index)) continue;
+                other.GetComponent<ICombatTarget>()?.ReceiveHit(new CombatHit(other.transform.position + Vector3.up,
+                    (other.transform.position - transform.position).normalized, power, knockback * 2f,
+                    false, false, GetAbilityName(index)));
+            }
+            AbilityImpact?.Invoke(presentation);
+            yield return new WaitForSeconds(GetRecovery(index));
             AbilityCompleted?.Invoke(presentation);
             attackRoutine = null;
         }
@@ -549,15 +619,28 @@ namespace Phasebreak.Gameplay
             if (direction.sqrMagnitude < 0.01f)
                 direction = transform.forward;
             direction.Normalize();
+            AbilitySpecialEffect special = Ability(index)?.specialEffect ?? AbilitySpecialEffect.None;
+            if (special == AbilitySpecialEffect.ExecuteHeal && target.GetComponent<MeleeEnemy>() is MeleeEnemy enemy &&
+                enemy.MaxHealth > 0 && enemy.CurrentHealth <= enemy.MaxHealth * .35f)
+                damage *= 1.75f;
+            if (special == AbilitySpecialEffect.MarkDetonate && target == markedTarget && Time.time < markUntil)
+            {
+                damage *= 1.5f;
+                ClearMark();
+                PerformCleave(target, damage * .5f, critical, 4f);
+            }
             combatTarget.ReceiveHit(new CombatHit(target.transform.position + Vector3.up * 1.15f,
                 direction, damage, knockback * (index == 1 ? 1.5f : 1f), mobilityHit, critical,
                 GetAbilityName(index)));
+            if (special == AbilitySpecialEffect.Mark) ShowMark(target);
+            if (special == AbilitySpecialEffect.ExecuteHeal && !target.IsAlive) health?.Heal(2);
+            if (special == AbilitySpecialEffect.Cleave) PerformCleave(target, damage * .55f, critical, GetRange(index) + 1f);
 
             if (critical && build != null && build.CritEnergyRestore > 0f)
                 currentResource = Mathf.Min(maximumResource, currentResource + build.CritEnergyRestore);
             if (critical) talents?.NotifyCriticalHit();
             if (index == 1 && build != null && build.CrushingBlowCleave)
-                PerformCleave(target, damage * 0.6f, critical);
+                PerformCleave(target, damage * 0.6f, critical, GetRange(index) + 1.2f);
             bool riftblade = build != null && build.Specialization == Specialization.Riftblade;
             if (riftblade && mobilityHit && !target.IsAlive)
             {
@@ -608,6 +691,9 @@ namespace Phasebreak.Gameplay
             riftChainUntil = 0f;
             LastChainEnergyRestored = 0f;
             LastChainChargeRestored = false;
+            guardUntil = 0f;
+            storedGuardDamage = 0f;
+            ClearMark();
             if (attackRoutine != null)
             {
                 StopCoroutine(attackRoutine);
@@ -623,6 +709,42 @@ namespace Phasebreak.Gameplay
             SetSlashVisible(false);
         }
 
+        private void OnPlayerHit(Vector3 direction, int damage)
+        {
+            if (Time.time < guardUntil) storedGuardDamage = Mathf.Min(30f, storedGuardDamage + damage);
+        }
+
+        private void ShowMark(Targetable target)
+        {
+            ClearMark();
+            markedTarget = target;
+            markUntil = Time.time + 6f;
+            markVisual = new GameObject("Rift Mark Ring");
+            markVisual.transform.SetParent(target.transform, false);
+            markVisual.transform.localPosition = Vector3.up * .08f;
+            LineRenderer line = markVisual.AddComponent<LineRenderer>();
+            line.useWorldSpace = false;
+            line.loop = true;
+            line.positionCount = 25;
+            line.startWidth = line.endWidth = .045f;
+            line.startColor = line.endColor = new Color(.64f, .35f, .9f);
+            if (markMaterial == null)
+                markMaterial = new Material(Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit"));
+            line.sharedMaterial = markMaterial;
+            for (int i = 0; i < line.positionCount; i++)
+            {
+                float angle = i * Mathf.PI * 2f / line.positionCount;
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * .85f, 0f, Mathf.Sin(angle) * .85f));
+            }
+        }
+
+        private void ClearMark()
+        {
+            markedTarget = null;
+            if (markVisual != null) Destroy(markVisual);
+            markVisual = null;
+        }
+
         private void SetSlashVisible(bool visible)
         {
             if (slashVisual == null)
@@ -635,12 +757,12 @@ namespace Phasebreak.Gameplay
             }
         }
 
-        private void PerformCleave(Targetable primary, float damage, bool critical)
+        private void PerformCleave(Targetable primary, float damage, bool critical, float radius)
         {
             foreach (Targetable other in Targetable.ActiveTargets)
             {
                 if (other == null || other == primary || !other.IsHostile || !other.IsAlive ||
-                    FlatDistance(transform.position, other.transform.position) > GetRange(1) + 1.2f)
+                    FlatDistance(transform.position, other.transform.position) > radius)
                     continue;
                 ICombatTarget victim = other.GetComponent<ICombatTarget>();
                 if (victim == null)
@@ -653,13 +775,13 @@ namespace Phasebreak.Gameplay
 
         private void FillCharges()
         {
-            for (int i = 0; i < AbilityCountValue; i++)
+            for (int i = 0; i < CatalogCount; i++)
                 charges[i] = GetMaximumCharges(i);
         }
 
         private void UpdateCharges()
         {
-            for (int i = 0; i < AbilityCountValue; i++)
+            for (int i = 0; i < CatalogCount; i++)
             {
                 int maximum = GetMaximumCharges(i);
                 charges[i] = Mathf.Min(charges[i], maximum);
@@ -691,7 +813,10 @@ namespace Phasebreak.Gameplay
 
         private AbilityPresentationEvent Event(int index, float duration, bool critical) =>
             new(index, GetAbilityName(index), GetExecutionType(index), duration, critical);
-        private bool IsValidIndex(int index) => index >= 0 && index < AbilityCountValue;
+        private bool IsValidSlot(int slot) => slot >= 0 && slot < AbilityCountValue;
+        private bool IsValidIndex(int index) => index >= 0 && index < CatalogCount;
+        public bool IsAbilityUnlocked(int index) => IsValidIndex(index) &&
+            (index < AbilityCountValue || talents != null && talents.IsAbilityUnlocked(GetAbilityId(index), false));
         private CombatAbilityDefinition Ability(int index) =>
             abilityDefinitions != null && index >= 0 && index < abilityDefinitions.Length
                 ? abilityDefinitions[index] : null;
@@ -708,7 +833,8 @@ namespace Phasebreak.Gameplay
             Sprite icon = Ability(index)?.icon;
             return icon != null ? icon : PhasebreakIconCatalog.Current?.fallbackAbility;
         }
-        private string GetKey(int index) => PhasebreakSettings.Display($"ability.{index + 1}");
+        private string GetKey(int index) => index < AbilityCountValue
+            ? PhasebreakSettings.Display($"ability.{index + 1}") : string.Empty;
         private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null
             ? Ability(index).executionType : index switch
             {

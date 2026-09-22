@@ -319,7 +319,7 @@ namespace Phasebreak.Gameplay
             spellbookPanel = WindowPanel("Spellbook Panel", root, new Vector2(.15f, .12f), new Vector2(.85f, .88f));
             BuildTitleBar(spellbookPanel, "FIELD ARCANUM", "SPELLBOOK", MenuMode.Spellbook);
             RectTransform list = Section("Abilities", spellbookPanel, new Vector2(.035f, .11f), new Vector2(.48f, .87f));
-            Text("List Heading", list, "KNOWN ABILITIES", 14f, TextAlignmentOptions.Left,
+            Text("List Heading", list, "ABILITIES  /  SCROLL TO BROWSE", 14f, TextAlignmentOptions.Left,
                 new Vector2(.04f, .91f), new Vector2(.96f, .98f), TextMuted);
             RectTransform scrollRoot = Block("Ability Scroll", list, PanelLight);
             Place(scrollRoot, new Vector2(.035f, .035f), new Vector2(.965f, .9f), 0f);
@@ -376,7 +376,7 @@ namespace Phasebreak.Gameplay
                         RefreshSpellbook(); }, 15f);
                 spellbookSlots.Add(button.GetComponentInChildren<TextMeshProUGUI>());
             }
-            Text("Help", details, "Select an ability, then choose an action bar slot.", 12f,
+            Text("Help", details, "Select an unlocked ability, then choose an action bar slot.", 12f,
                 TextAlignmentOptions.Left, new Vector2(.055f, .045f), new Vector2(.945f, .12f), TextMuted);
         }
 
@@ -385,16 +385,17 @@ namespace Phasebreak.Gameplay
             if (combat == null || spellbookDetails == null || spellbookRows.Count == 0) return;
             selectedAbility = Mathf.Clamp(selectedAbility, 0, spellbookRows.Count - 1);
             for (int index = 0; index < spellbookRows.Count; index++)
-                spellbookRows[index].text = (index == selectedAbility ? "◆  " : "    ") + combat.GetAbilityState(index).Name;
+                spellbookRows[index].text = (index == selectedAbility ? ">  " : "    ") +
+                    (combat.IsAbilityUnlocked(index) ? "" : "[LOCKED] ") + combat.GetAbilityState(index).Name;
             AbilityState state = combat.GetAbilityState(selectedAbility);
             CombatAbilityDefinition definition = combat.GetAbilityDefinition(selectedAbility);
             string description = definition != null ? definition.description : string.Empty;
-            spellbookDetails.text = $"<b>{state.Name}</b>\n\n{description}\n\n" +
+            spellbookDetails.text = $"<b>{state.Name}</b>\n{(combat.IsAbilityUnlocked(selectedAbility) ? "" : "<color=#C9A86C>Unlock in its specialization tree</color>\n")}\n{description}\n\n" +
                 $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}   •   Cooldown {state.CooldownDuration:0.#}s\n" +
                 $"Range {(definition != null ? definition.range : 0f):0.#}   •   Charges {state.MaximumCharges}</color>";
             for (int slot = 0; slot < spellbookSlots.Count; slot++)
                 spellbookSlots[slot].text = PhasebreakSettings.Display($"ability.{slot + 1}") +
-                    (combat.GetAssignedAbilityIndex(slot) == selectedAbility ? " ◆" : string.Empty);
+                    (combat.GetAssignedAbilityIndex(slot) == selectedAbility ? " *" : string.Empty);
         }
 
         private void BuildLootWindow(RectTransform root)

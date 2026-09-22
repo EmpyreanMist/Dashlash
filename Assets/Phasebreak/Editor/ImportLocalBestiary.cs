@@ -78,6 +78,10 @@ namespace Phasebreak.Editor
                 2.25f, 10f, 18f, 2.25f, 1.15f, .2f, 1.35f);
             CreateRole(folder + "/Skirmisher.asset", EnemyRole.Skirmisher, "Imp", 24, 2, 17,
                 5.2f, 16f, 25f, 11f, .8f, .1f, 1.3f);
+            CreateRole(folder + "/Caster.asset", EnemyRole.Caster, "Imp", 35, 4, 25,
+                3.1f, 18f, 28f, 15f, 1.55f, .12f, 2f);
+            CreateRole(folder + "/Charger.asset", EnemyRole.Charger, "Puglin", 54, 4, 23,
+                3.7f, 15f, 26f, 8f, .95f, .7f, 1.85f);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }

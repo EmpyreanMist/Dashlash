@@ -106,12 +106,12 @@ namespace Phasebreak.Gameplay
             if (item == null || !byId.ContainsKey(item.id)) return false;
             inventory.Add(item); Save(); LootAcquired?.Invoke(item); BuildChanged?.Invoke(); return true;
         }
-        public List<PhasebreakItemDefinition> GenerateCorpseLoot()
+        public List<PhasebreakItemDefinition> GenerateCorpseLoot(bool guaranteed = false)
         {
             List<PhasebreakItemDefinition> drops = new(); enemiesDefeated++;
             PhasebreakItemDefinition[] pool = itemCatalog?.Where(item => item != null && !item.excludedFromRandomLoot).ToArray();
             if (pool == null || pool.Length == 0 ||
-                (enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return drops;
+                (!guaranteed && enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return drops;
             drops.Add(pool[(enemiesDefeated - 1) % pool.Length]);
             if (enemiesDefeated % 5 == 0 && pool.Length > 1)
                 drops.Add(pool[enemiesDefeated % pool.Length]);

@@ -59,7 +59,7 @@ namespace Phasebreak.Gameplay
         private static readonly Color PlayerHealthColor = new Color(0.16f, 0.72f, 0.3f, 1f);
         private static readonly Color EnemyHealthColor = new Color(0.78f, 0.13f, 0.12f, 1f);
         private static readonly Color SelectedColor = new Color(1f, 0.58f, 0.12f, 1f);
-        private static readonly Color ResourceColor = new Color(0.2f, 0.55f, 1f, 1f);
+        private static readonly Color ResourceColor = new Color(.34f, .46f, .62f, 1f);
         private static readonly Color NormalDamageColor = new Color(1f, 0.9f, 0.68f, 1f);
         private static readonly Color CriticalDamageColor = new Color(1f, 0.48f, 0.05f, 1f);
 
@@ -752,7 +752,9 @@ namespace Phasebreak.Gameplay
             root.pivot = anchor;
             root.anchoredPosition = position;
             RestyleUnitFrame(root, typeof(T) == typeof(TargetFrameUI));
-            root.GetComponent<HudFrameDragHandle>()?.CaptureDefaultPosition();
+            HudFrameDragHandle dragHandle = root.GetComponent<HudFrameDragHandle>();
+            dragHandle?.SetAccentPalette(PhasebreakUiTheme.MetalEdge, PhasebreakUiTheme.Accent);
+            dragHandle?.CaptureDefaultPosition();
             return instance.GetComponent<T>();
         }
 

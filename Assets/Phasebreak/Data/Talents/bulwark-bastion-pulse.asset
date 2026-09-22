@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767621614a61dbe48a13a17647766051, type: 3}
+  m_Name: bulwark-bastion-pulse
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.TalentNodeDefinition
+  id: bulwark-bastion-pulse
+  displayName: Bastion Pulse
+  description: Unlock a shockwave powered by stored guard impact.
+  icon: {fileID: -5367340226741837565, guid: 9bd07d757595a6449824910853a4a48f, type: 3}
+  specialization: 2
+  nodeType: 1
+  maximumRank: 1
+  pointCost: 2
+  requiredPlayerLevel: 4
+  prerequisiteIds:
+  - bulwark-brace
+  choiceGroup:
+  effect: 0
+  secondaryEffect: 0
+  targetAbilityId:
+  grantedAbilityId: bastion-pulse
+  synergyTag: 0
+  effectValuePerRank: 0
+  secondaryValuePerRank: 0
+  presentationPosition: {x: 0.88, y: 0.62}

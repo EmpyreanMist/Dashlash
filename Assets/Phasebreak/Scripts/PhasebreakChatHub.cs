@@ -275,15 +275,15 @@ namespace Phasebreak.Gameplay
             panel = Rect("Local Chat", canvas);
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0f, 0f);
             panel.anchoredPosition = new Vector2(26f, 30f);
-            panel.sizeDelta = new Vector2(520f, 254f);
+            panel.sizeDelta = new Vector2(440f, 210f);
             PhasebreakUiTheme.StyleSurface(AddImage(panel, Backdrop, true), Backdrop);
             panelGroup = panel.gameObject.AddComponent<CanvasGroup>();
 
             TextMeshProUGUI heading = AddText("Chat Heading", panel, "LOCAL  /  PHASEBREAK", 13f, Accent);
-            Place(heading.rectTransform, new Vector2(14f, 222f), new Vector2(492f, 20f));
+            Place(heading.rectTransform, new Vector2(14f, 180f), new Vector2(412f, 20f));
 
             RectTransform scrollRoot = Rect("Chat Scroll", panel);
-            Place(scrollRoot, new Vector2(12f, 70f), new Vector2(496f, 148f));
+            Place(scrollRoot, new Vector2(12f, 62f), new Vector2(416f, 113f));
             AddImage(scrollRoot, new Color(.008f, .015f, .026f, .6f), true);
             scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scroll.horizontal = false;
@@ -311,7 +311,7 @@ namespace Phasebreak.Gameplay
             scroll.content = messageContent;
 
             RectTransform fieldRoot = Rect("Chat Input", panel);
-            Place(fieldRoot, new Vector2(12f, 14f), new Vector2(496f, 43f));
+            Place(fieldRoot, new Vector2(12f, 12f), new Vector2(416f, 40f));
             PhasebreakUiTheme.StyleSurface(AddImage(fieldRoot, Raised, true), Raised);
             input = fieldRoot.gameObject.AddComponent<TMP_InputField>();
             input.lineType = TMP_InputField.LineType.SingleLine;
@@ -330,7 +330,7 @@ namespace Phasebreak.Gameplay
             input.onValueChanged.AddListener(RefreshSuggestion);
 
             suggestion = AddText("Command Suggestion", panel, string.Empty, 13f, Accent);
-            Place(suggestion.rectTransform, new Vector2(16f, 58f), new Vector2(486f, 16f));
+            Place(suggestion.rectTransform, new Vector2(16f, 54f), new Vector2(408f, 16f));
             suggestion.gameObject.SetActive(false);
 
             debugOverlay = AddText("Debug Overlay", canvas, string.Empty, 15f, Accent);

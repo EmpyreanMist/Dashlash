@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0e7b0b302cee744e9e8d079d68049b4, type: 3}
+  m_Name: reapers-arc
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
+  id: reapers-arc
+  displayName: Reaper's Arc
+  description: A wide sweep that catches nearby enemies.
+  key: 5
+  damage: 8
+  range: 3.2
+  cooldown: 6
+  resourceCost: 25
+  criticalBonus: 0.05
+  impulse: 0
+  windup: 0
+  recovery: 0.35
+  executionType: 0
+  specialEffect: 2
+  requiresTarget: 1
+  usesGlobalCooldown: 1
+  minimumRange: 0
+  maximumCharges: 1
+  movementDistance: 0
+  movementDuration: 0.16
+  stopDistance: 1.35
+  icon: {fileID: 5157614764518513496, guid: 49d2ed51b0f003f45b4e48a34b352288, type: 3}

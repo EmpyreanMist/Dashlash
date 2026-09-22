@@ -43,7 +43,8 @@ namespace Phasebreak.Gameplay
             modelRoot.localRotation = Quaternion.identity;
             if (source != null)
             {
-                float height = role == EnemyRole.Brute ? 2.65f : 1.7f;
+                float height = role == EnemyRole.Brute ? 2.65f : role == EnemyRole.Charger ? 2.25f :
+                    role == EnemyRole.Caster ? 2.05f : 1.7f;
                 Renderer[] renderers = model.GetComponentsInChildren<Renderer>(true);
                 if (renderers.Length > 0)
                 {
@@ -68,13 +69,23 @@ namespace Phasebreak.Gameplay
             int colorVariant = tuning.colorVariant > 0 ? tuning.colorVariant : (int)rank + 1;
             Texture2D texture = Resources.Load<Texture2D>($"LocalMonsters/T_{species}_BaseColor_{colorVariant}");
             Texture2D normal = Resources.Load<Texture2D>($"LocalMonsters/T_{species}_Normal");
-            Color tint = role == EnemyRole.Brute ? new Color(.82f, .65f, .49f) : new Color(1f, .52f, .3f);
+            Color tint = role == EnemyRole.Brute ? new Color(.82f, .65f, .49f) :
+                role == EnemyRole.Charger ? new Color(.72f, .28f, .25f) :
+                role == EnemyRole.Caster ? new Color(.61f, .38f, .82f) : new Color(1f, .52f, .3f);
             if (rank == EnemyRank.Veteran) tint = Color.Lerp(tint, new Color(.45f, .78f, 1f), .35f);
             if (rank == EnemyRank.Elite) tint = Color.Lerp(tint, new Color(1f, .57f, .18f), .35f);
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             Material material = new Material(shader) { color = tint };
             ownedMaterial = material;
             if (texture != null) material.SetTexture("_BaseMap", texture);
+            if (species == "Imp" && texture != null)
+            {
+                // The Imp has cutout cards; opaque URP Lit renders their square texture bounds.
+                material.SetFloat("_AlphaClip", 1f);
+                material.SetFloat("_Cutoff", .45f);
+                material.EnableKeyword("_ALPHATEST_ON");
+                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            }
             if (normal != null)
             {
                 material.SetTexture("_BumpMap", normal);
