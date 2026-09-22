@@ -49,6 +49,7 @@ namespace Phasebreak.Gameplay
             new("journal", "Journal", "Panels", "<Keyboard>/j"),
             new("worldmap", "World map", "Panels", "<Keyboard>/m"),
             new("target.next", "Cycle targets", "Combat", "<Keyboard>/tab"),
+            new("combat.autoAttack", "Toggle auto-attack", "Combat", "<Keyboard>/f"),
             new("interact", "Interact", "World", "<Keyboard>/e"),
             new("chat", "Chat", "Interface", "<Keyboard>/enter"),
             new("teleport", "Godmode cursor teleport", "Debug", "<Keyboard>/g"),

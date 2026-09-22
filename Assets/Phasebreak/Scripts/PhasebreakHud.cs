@@ -32,6 +32,7 @@ namespace Phasebreak.Gameplay
         private AbilitySlotView[] abilitySlots;
         private RectTransform resourceFill;
         private TextMeshProUGUI resourceLabel;
+        private TextMeshProUGUI autoAttackLabel;
         private RectTransform experienceFill;
         private TextMeshProUGUI experienceLabel;
         private TextMeshProUGUI levelUpBanner;
@@ -411,7 +412,7 @@ namespace Phasebreak.Gameplay
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0f);
             root.pivot = new Vector2(0.5f, 0f);
             root.anchoredPosition = new Vector2(0f, 25f);
-            root.sizeDelta = new Vector2(414f, 99f);
+            root.sizeDelta = new Vector2(414f, 119f);
             PhasebreakUiTheme.StyleSurface(AddImage(root, PhasebreakUiTheme.Window), PhasebreakUiTheme.Window);
 
             RectTransform energy = CreateRect("Energy", root);
@@ -430,6 +431,12 @@ namespace Phasebreak.Gameplay
             resourceLabel = AddText("Resource Label", energy, 11f, TextAlignmentOptions.Center);
             Stretch(resourceLabel.rectTransform);
             resourceLabel.fontStyle = FontStyles.Bold;
+
+            autoAttackLabel = AddText("Auto Attack Status", root, 12f, TextAlignmentOptions.Center);
+            autoAttackLabel.rectTransform.anchorMin = autoAttackLabel.rectTransform.anchorMax = new Vector2(.5f, 0f);
+            autoAttackLabel.rectTransform.anchoredPosition = new Vector2(0f, 108f);
+            autoAttackLabel.rectTransform.sizeDelta = new Vector2(388f, 20f);
+            autoAttackLabel.raycastTarget = false;
 
             int abilityCount = combat != null ? combat.AbilityCount : 5;
             abilitySlots = new AbilitySlotView[abilityCount];
@@ -549,6 +556,11 @@ namespace Phasebreak.Gameplay
                 return;
 
             SetFill(resourceFill, combat.ResourceFraction);
+            if (autoAttackLabel != null)
+            {
+                autoAttackLabel.text = $"[{PhasebreakSettings.Display("combat.autoAttack")}] AUTO-ATTACK  {(combat.AutoAttackArmed ? "ARMED" : "OFF")}";
+                autoAttackLabel.color = combat.AutoAttackArmed ? PhasebreakUiTheme.Accent : PhasebreakUiTheme.Text;
+            }
             if (resourceLabel != null)
                 resourceLabel.text = $"ENERGY  {Mathf.CeilToInt(combat.CurrentResource)}/{Mathf.CeilToInt(combat.MaximumResource)}";
             for (int i = 0; i < abilitySlots.Length; i++)
