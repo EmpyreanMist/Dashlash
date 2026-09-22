@@ -383,17 +383,22 @@ namespace Phasebreak.Gameplay
                     ? PerformGuard(index) : PerformArea(index));
                 return true;
             }
-            if (type == AbilityExecutionType.PhaseDash)
+            if (type is AbilityExecutionType.PhaseDash or AbilityExecutionType.Quickstep)
             {
-                if (movement == null || !movement.CanDashNow)
+                bool canMove = movement != null && (type == AbilityExecutionType.Quickstep
+                    ? movement.CanQuickstepNow : movement.CanDashNow);
+                if (!canMove)
                 {
-                    Fail("Phase Dash cannot be used right now");
+                    Fail(type == AbilityExecutionType.Quickstep
+                        ? "Quickstep requires solid ground" : "Phase Dash cannot be used right now");
                     return false;
                 }
                 ConsumeAbility(index);
-                if (build != null && build.Specialization == Specialization.Riftblade)
+                if (type == AbilityExecutionType.PhaseDash && build != null &&
+                    build.Specialization == Specialization.Riftblade)
                     talents?.NotifyAbilityUsed(true);
-                attackRoutine = StartCoroutine(PerformDash(index));
+                attackRoutine = StartCoroutine(type == AbilityExecutionType.Quickstep
+                    ? PerformQuickstep(index) : PerformDash(index));
                 return true;
             }
 
@@ -479,6 +484,8 @@ namespace Phasebreak.Gameplay
                 return true;
             if (GetExecutionType(index) == AbilityExecutionType.PhaseDash)
                 return movement != null && movement.CanDashNow;
+            if (GetExecutionType(index) == AbilityExecutionType.Quickstep)
+                return movement != null && movement.CanQuickstepNow;
             Targetable target = targeting != null ? targeting.CurrentTarget : null;
             return target != null && IsTargetValid(target, GetMinimumRange(index), GetRange(index));
         }
@@ -539,6 +546,25 @@ namespace Phasebreak.Gameplay
                 attackRoutine = null;
                 yield break;
             }
+            while (movement.IsDashing)
+                yield return null;
+            AbilityCompleted?.Invoke(presentation);
+            attackRoutine = null;
+        }
+
+        private IEnumerator PerformQuickstep(int index)
+        {
+            AbilityPresentationEvent presentation = Event(index, GetMovementDuration(index), false);
+            AbilityStarted?.Invoke(presentation);
+            if (!movement.TryQuickstep(GetMovementDistance(index), GetMovementDuration(index)))
+            {
+                RefundCharge(index);
+                AbilityCompleted?.Invoke(presentation);
+                attackRoutine = null;
+                yield break;
+            }
+            health?.GrantInvulnerability(0.15f);
+            followCamera?.AddImpulse(0.07f);
             while (movement.IsDashing)
                 yield return null;
             AbilityCompleted?.Invoke(presentation);
@@ -904,8 +930,29 @@ namespace Phasebreak.Gameplay
             new(index, GetAbilityName(index), GetExecutionType(index), duration, critical);
         private bool IsValidSlot(int slot) => slot >= 0 && slot < AbilityCountValue;
         private bool IsValidIndex(int index) => index >= 0 && index < CatalogCount;
-        public bool IsAbilityUnlocked(int index) => IsValidIndex(index) &&
-            (index < AbilityCountValue || talents != null && talents.IsAbilityUnlocked(GetAbilityId(index), false));
+        public bool IsAbilityUnlocked(int index)
+        {
+            if (!IsValidIndex(index)) return false;
+            CombatAbilityDefinition definition = Ability(index);
+            if (definition == null) return index < AbilityCountValue;
+            return definition.unlockType switch
+            {
+                AbilityUnlockType.CharacterLevel => progression != null &&
+                    progression.Level >= Mathf.Max(1, definition.requiredLevel),
+                AbilityUnlockType.Talent => talents != null &&
+                    talents.IsAbilityUnlocked(GetAbilityId(index), false),
+                _ => true
+            };
+        }
+
+        public string GetAbilityUnlockText(int index)
+        {
+            CombatAbilityDefinition definition = IsValidIndex(index) ? Ability(index) : null;
+            if (definition == null || IsAbilityUnlocked(index)) return string.Empty;
+            return definition.unlockType == AbilityUnlockType.CharacterLevel
+                ? $"Unlocks at level {Mathf.Max(1, definition.requiredLevel)}"
+                : "Unlock in its specialization tree";
+        }
         private CombatAbilityDefinition Ability(int index) =>
             abilityDefinitions != null && index >= 0 && index < abilityDefinitions.Length
                 ? abilityDefinitions[index] : null;
@@ -947,6 +994,7 @@ namespace Phasebreak.Gameplay
             {
                 1 => crushingCooldown, 2 => lungeCooldown, 3 => 6f, 4 => 10f, _ => 0f
             };
+            if (GetExecutionType(index) == AbilityExecutionType.Quickstep) return value;
             if (index == 2 && build != null) value *= build.PhaseLungeCooldownMultiplier;
             else if (talents != null) value *= Mathf.Clamp01(1f - talents.GetAbilityEffect(TalentEffect.AbilityCooldown, GetAbilityId(index)));
             return value;
@@ -954,6 +1002,7 @@ namespace Phasebreak.Gameplay
         private float GetCost(int index)
         {
             float value = Ability(index) != null ? Ability(index).resourceCost : index switch { 1 => crushingCost, 2 => lungeCost, 4 => 15f, _ => 0f };
+            if (GetExecutionType(index) == AbilityExecutionType.Quickstep) return value;
             return value * Mathf.Clamp01(1f - (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityCost, GetAbilityId(index)) : 0f));
         }
         private float GetCriticalBonus(int index) => Ability(index) != null ? Ability(index).criticalBonus : index switch

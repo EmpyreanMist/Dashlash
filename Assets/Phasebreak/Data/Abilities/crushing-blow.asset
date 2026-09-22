@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Crushing Blow
   description: A heavy close-range attack that spends energy for a stronger hit.
   key: 2
+  unlockType: 0
+  requiredLevel: 1
   damage: 10
   range: 2.65
   cooldown: 5

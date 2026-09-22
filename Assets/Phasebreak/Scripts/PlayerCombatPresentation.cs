@@ -133,6 +133,12 @@ namespace Phasebreak.Gameplay
             float weight = Mathf.Sin(t * Mathf.PI);
             switch (activeAbility.Type)
             {
+                case AbilityExecutionType.Quickstep:
+                    AddRotation(spine, 18f * weight, 0f, 0f);
+                    AddRotation(chest, 12f * weight, 0f, 0f);
+                    AddRotation(rightUpperArm, -14f * weight, 0f, 10f * weight);
+                    AddRotation(leftUpperArm, -14f * weight, 0f, -10f * weight);
+                    break;
                 case AbilityExecutionType.PhaseDash:
                     AddRotation(spine, 26f * weight, 0f, 0f);
                     AddRotation(chest, 18f * weight, 0f, 0f);

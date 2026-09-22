@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Echo Strike
   description: Lunge through a marked enemy, detonating its mark across nearby foes.
   key: 5
+  unlockType: 2
+  requiredLevel: 1
   damage: 7
   range: 9
   cooldown: 9

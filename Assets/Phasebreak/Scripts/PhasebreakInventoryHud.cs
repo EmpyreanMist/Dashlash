@@ -390,7 +390,8 @@ namespace Phasebreak.Gameplay
             AbilityState state = combat.GetAbilityState(selectedAbility);
             CombatAbilityDefinition definition = combat.GetAbilityDefinition(selectedAbility);
             string description = definition != null ? definition.description : string.Empty;
-            spellbookDetails.text = $"<b>{state.Name}</b>\n{(combat.IsAbilityUnlocked(selectedAbility) ? "" : "<color=#C9A86C>Unlock in its specialization tree</color>\n")}\n{description}\n\n" +
+            string unlockText = combat.GetAbilityUnlockText(selectedAbility);
+            spellbookDetails.text = $"<b>{state.Name}</b>\n{(unlockText.Length == 0 ? "" : $"<color=#C9A86C>{unlockText}</color>\n")}\n{description}\n\n" +
                 $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}   •   Cooldown {state.CooldownDuration:0.#}s\n" +
                 $"Range {(definition != null ? definition.range : 0f):0.#}   •   Charges {state.MaximumCharges}</color>";
             for (int slot = 0; slot < spellbookSlots.Count; slot++)

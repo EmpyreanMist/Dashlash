@@ -61,6 +61,8 @@ namespace Phasebreak.Gameplay
             int mitigated = Mathf.Max(1, Mathf.RoundToInt(damage * (1f - (build != null ? Mathf.Clamp(build.Defense, 0f, .75f) : 0f)) * (1f - guard)));
             CurrentHealth = Mathf.Max(0, CurrentHealth - mitigated);
             invulnerableUntil = Time.time + invulnerabilityDuration;
+            CombatEvents.RaiseDamageNumber(transform.position + Vector3.up * 1.7f, mitigated, false,
+                "Incoming damage", true);
             if (knockback > 0f)
                 movement.AddCombatImpulse(direction.normalized * knockback);
             followCamera?.AddImpulse(cameraImpulse);
@@ -78,6 +80,12 @@ namespace Phasebreak.Gameplay
         }
 
         public void SetDebugGodMode(bool enabled) => debugGodMode = enabled;
+
+        public void GrantInvulnerability(float duration)
+        {
+            if (duration > 0f)
+                invulnerableUntil = Mathf.Max(invulnerableUntil, Time.time + duration);
+        }
 
         public void Heal(int amount)
         {

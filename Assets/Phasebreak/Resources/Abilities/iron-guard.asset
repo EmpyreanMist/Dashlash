@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Iron Guard
   description: Brace for 2.5 seconds, reducing incoming damage and storing its impact.
   key: 5
+  unlockType: 2
+  requiredLevel: 1
   damage: 0
   range: 0
   cooldown: 12

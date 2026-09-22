@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Rift Mark
   description: Brand a nearby enemy for six seconds to set up a teleport payoff.
   key: 5
+  unlockType: 2
+  requiredLevel: 1
   damage: 4
   range: 4
   cooldown: 5

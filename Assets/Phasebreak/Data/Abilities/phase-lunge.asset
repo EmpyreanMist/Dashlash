@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Phase Lunge
   description: Lunge through the rift to strike a nearby target.
   key: 3
+  unlockType: 0
+  requiredLevel: 1
   damage: 6
   range: 7
   cooldown: 8

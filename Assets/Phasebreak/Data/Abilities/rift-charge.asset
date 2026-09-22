@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Rift Charge
   description: Charge a distant target. Requires room to build momentum.
   key: 5
+  unlockType: 0
+  requiredLevel: 1
   damage: 7
   range: 14
   cooldown: 10
