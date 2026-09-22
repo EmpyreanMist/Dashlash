@@ -67,6 +67,10 @@ namespace Phasebreak.Gameplay
             catalog?.trees?.FirstOrDefault(t => t != null && t.specialization == specialization);
 
         public TalentNodeDefinition GetNode(string id) => !string.IsNullOrWhiteSpace(id) && nodes.TryGetValue(id, out TalentNodeDefinition node) ? node : null;
+        public IEnumerable<TalentNodeDefinition> AllNodes => nodes.Values;
+        public TalentNodeDefinition GetAbilityGrantNode(string abilityId) => nodes.Values.FirstOrDefault(n =>
+            !string.IsNullOrWhiteSpace(abilityId) && string.Equals(n.grantedAbilityId, abilityId, StringComparison.OrdinalIgnoreCase));
+        public bool IsNodeActive(TalentNodeDefinition node) => node != null && IsActive(node) && GetRank(node.id) > 0;
         public int GetRank(string id) => !string.IsNullOrWhiteSpace(id) && ranks.TryGetValue(id, out int rank) ? rank : 0;
         private bool IsActive(TalentNodeDefinition node) => build != null && node.specialization == build.Specialization;
         public bool HasEffect(TalentEffect effect) => nodes.Values.Any(n => IsActive(n) && GetRank(n.id) > 0 &&

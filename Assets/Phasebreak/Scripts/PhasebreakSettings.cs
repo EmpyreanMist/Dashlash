@@ -37,11 +37,30 @@ namespace Phasebreak.Gameplay
             new("strafe.right", "Strafe right", "Movement", "<Keyboard>/e"),
             new("jump", "Jump / fly rise", "Movement", "<Keyboard>/space"),
             new("autorun", "Toggle auto run", "Movement", "<Keyboard>/numLock"),
-            new("ability.1", "Ability 1", "Abilities", "<Keyboard>/1"),
-            new("ability.2", "Ability 2", "Abilities", "<Keyboard>/2"),
-            new("ability.3", "Ability 3", "Abilities", "<Keyboard>/3"),
-            new("ability.4", "Ability 4", "Abilities", "<Keyboard>/4"),
-            new("ability.5", "Ability 5", "Abilities", "<Keyboard>/5"),
+            new("ability.1", "Action Slot 1", "Abilities", "<Keyboard>/1"),
+            new("ability.2", "Action Slot 2", "Abilities", "<Keyboard>/2"),
+            new("ability.3", "Action Slot 3", "Abilities", "<Keyboard>/3"),
+            new("ability.4", "Action Slot 4", "Abilities", "<Keyboard>/4"),
+            new("ability.5", "Action Slot 5", "Abilities", "<Keyboard>/5"),
+            new("ability.6", "Action Slot 6", "Abilities", ""),
+            new("ability.7", "Action Slot 7", "Abilities", ""),
+            new("ability.8", "Action Slot 8", "Abilities", ""),
+            new("ability.9", "Action Slot 9", "Abilities", ""),
+            new("ability.10", "Action Slot 10", "Abilities", ""),
+            new("ability.11", "Action Slot 11", "Abilities", ""),
+            new("ability.12", "Action Slot 12", "Abilities", ""),
+            new("ability.13", "Action Slot 13", "Abilities", ""),
+            new("ability.14", "Action Slot 14", "Abilities", ""),
+            new("ability.15", "Action Slot 15", "Abilities", ""),
+            new("ability.16", "Action Slot 16", "Abilities", ""),
+            new("ability.17", "Action Slot 17", "Abilities", ""),
+            new("ability.18", "Action Slot 18", "Abilities", ""),
+            new("ability.19", "Action Slot 19", "Abilities", ""),
+            new("ability.20", "Action Slot 20", "Abilities", ""),
+            new("ability.21", "Action Slot 21", "Abilities", ""),
+            new("ability.22", "Action Slot 22", "Abilities", ""),
+            new("ability.23", "Action Slot 23", "Abilities", ""),
+            new("ability.24", "Action Slot 24", "Abilities", ""),
             new("inventory", "Inventory", "Panels", "<Keyboard>/b"),
             new("character", "Character", "Panels", "<Keyboard>/c"),
             new("talents", "Talents", "Panels", "<Keyboard>/t"),
@@ -69,12 +88,17 @@ namespace Phasebreak.Gameplay
             throw new ArgumentException("Unknown binding: " + id);
         }
 
-        public static string Display(string id) => InputControlPath.ToHumanReadableString(Path(id),
-            InputControlPath.HumanReadableStringOptions.OmitDevice);
+        public static string Display(string id)
+        {
+            string path = Path(id);
+            return string.IsNullOrWhiteSpace(path) ? "Unbound" : InputControlPath.ToHumanReadableString(path,
+                InputControlPath.HumanReadableStringOptions.OmitDevice);
+        }
 
         public static InputAction Button(string id, string actionName)
         {
-            InputAction action = new(actionName, InputActionType.Button, Path(id));
+            InputAction action = new(actionName, InputActionType.Button);
+            action.AddBinding(new InputBinding { path = Path(id) });
             Actions.Add(new RegisteredAction(id, action, 0));
             return action;
         }
