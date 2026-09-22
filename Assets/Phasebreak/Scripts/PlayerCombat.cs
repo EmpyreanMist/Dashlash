@@ -16,9 +16,12 @@ namespace Phasebreak.Gameplay
         public readonly int Charges;
         public readonly int MaximumCharges;
         public readonly Sprite Icon;
+        public readonly bool HasAbility;
+        public readonly float RechargeRemaining;
 
         public AbilityState(string name, string key, float cooldownRemaining, float cooldownDuration,
-            float resourceCost, bool isUsable, int charges, int maximumCharges, Sprite icon)
+            float resourceCost, bool isUsable, int charges, int maximumCharges, Sprite icon,
+            bool hasAbility = true, float rechargeRemaining = 0f)
         {
             Name = name;
             Key = key;
@@ -29,6 +32,8 @@ namespace Phasebreak.Gameplay
             Charges = charges;
             MaximumCharges = maximumCharges;
             Icon = icon;
+            HasAbility = hasAbility;
+            RechargeRemaining = rechargeRemaining;
         }
     }
 
@@ -54,8 +59,9 @@ namespace Phasebreak.Gameplay
     [DisallowMultipleComponent]
     public sealed class PlayerCombat : MonoBehaviour
     {
-        private const int AbilityCountValue = 5;
-        private const int MaximumCatalogSize = 16;
+        private const int AbilityCountValue = 24;
+        private const int LegacyAssignedSlotCount = 5;
+        private const int MaximumCatalogSize = 64;
         // Presentation-only index; basic attacks never occupy an action-bar/catalog slot.
         private const int BasicAttackIndex = -1;
 
@@ -238,6 +244,7 @@ namespace Phasebreak.Gameplay
             autoAttackAction = PhasebreakSettings.Button("combat.autoAttack", "Toggle auto-attack");
             for (int i = 0; i < abilityActions.Length; i++)
             {
+                PhasebreakSettings.Unregister(abilityActions[i]);
                 abilityActions[i]?.Dispose();
                 abilityActions[i] = PhasebreakSettings.Button($"ability.{i + 1}", GetAbilityName(i));
             }
@@ -313,6 +320,16 @@ namespace Phasebreak.Gameplay
         public CombatAbilityDefinition GetAbilityDefinition(int index) =>
             IsValidIndex(index) ? Ability(index) : null;
 
+        public string GetAbilitySourceText(int index)
+        {
+            CombatAbilityDefinition definition = IsValidIndex(index) ? Ability(index) : null;
+            if (definition == null || definition.unlockType == AbilityUnlockType.Baseline) return "General";
+            if (definition.unlockType == AbilityUnlockType.CharacterLevel)
+                return $"Level {Mathf.Max(1, definition.requiredLevel)}";
+            TalentNodeDefinition node = talents?.GetAbilityGrantNode(GetAbilityId(index));
+            return node != null ? node.specialization.ToString() : "Specialization talent tree";
+        }
+
         public int GetAssignedAbilityIndex(int slot) => IsValidSlot(slot) ? slotAbilities[slot] : -1;
 
         public bool AssignAbilityToSlot(int slot, string abilityId)
@@ -331,13 +348,47 @@ namespace Phasebreak.Gameplay
             return false;
         }
 
+        public bool ClearAbilitySlot(int slot)
+        {
+            if (!IsValidSlot(slot)) return false;
+            slotAbilities[slot] = -1;
+            SaveAssignment(slot);
+            PlayerPrefs.Save();
+            AssignmentsChanged?.Invoke();
+            return true;
+        }
+
+        public bool MoveAbilitySlot(int sourceSlot, int destinationSlot)
+        {
+            if (!IsValidSlot(sourceSlot) || !IsValidSlot(destinationSlot) || sourceSlot == destinationSlot)
+                return false;
+            int source = slotAbilities[sourceSlot];
+            if (!IsValidIndex(source)) return false;
+            int destination = slotAbilities[destinationSlot];
+            slotAbilities[destinationSlot] = source;
+            slotAbilities[sourceSlot] = destination;
+            SaveAssignment(sourceSlot);
+            SaveAssignment(destinationSlot);
+            PlayerPrefs.Save();
+            AssignmentsChanged?.Invoke();
+            return true;
+        }
+
+        private void SaveAssignment(int slot)
+        {
+            string id = IsValidIndex(slotAbilities[slot]) ? GetAbilityId(slotAbilities[slot]) : string.Empty;
+            PlayerPrefs.SetString(AssignmentPrefix + slot, id);
+        }
+
         public AbilityState GetAssignedAbilityState(int slot)
         {
             if (!IsValidSlot(slot)) return default;
+            if (!IsValidIndex(slotAbilities[slot]))
+                return new AbilityState(string.Empty, GetKey(slot), 0f, 0f, 0f, false, 0, 0, null, false);
             AbilityState ability = GetAbilityState(slotAbilities[slot]);
             return new AbilityState(ability.Name, GetKey(slot), ability.CooldownRemaining,
                 ability.CooldownDuration, ability.ResourceCost, ability.IsUsable,
-                ability.Charges, ability.MaximumCharges, ability.Icon);
+                ability.Charges, ability.MaximumCharges, ability.Icon, true, ability.RechargeRemaining);
         }
 
         public bool TryUseAssignedAbility(int slot) => IsValidSlot(slot) && TryUseAbility(slotAbilities[slot]);
@@ -346,9 +397,11 @@ namespace Phasebreak.Gameplay
         {
             for (int slot = 0; slot < slotAbilities.Length; slot++)
             {
-                slotAbilities[slot] = Mathf.Min(slot, CatalogCount - 1);
-                string savedId = PlayerPrefs.GetString(AssignmentPrefix + slot, string.Empty);
-                if (string.IsNullOrEmpty(savedId)) continue;
+                slotAbilities[slot] = slot < LegacyAssignedSlotCount ? Mathf.Min(slot, CatalogCount - 1) : -1;
+                string key = AssignmentPrefix + slot;
+                if (!PlayerPrefs.HasKey(key)) continue;
+                string savedId = PlayerPrefs.GetString(key, string.Empty);
+                if (string.IsNullOrEmpty(savedId)) { slotAbilities[slot] = -1; continue; }
                 for (int index = 0; index < CatalogCount; index++)
                     if (string.Equals(GetAbilityId(index), savedId, StringComparison.Ordinal))
                     { slotAbilities[slot] = index; break; }
@@ -364,11 +417,13 @@ namespace Phasebreak.Gameplay
                 ? Mathf.Max(0f, nextChargeReadyAt[index] - Time.time) : 0f;
             float globalRemaining = UsesGlobalCooldown(index)
                 ? Mathf.Max(0f, globalReadyAt - Time.time) : 0f;
-            bool globalIsLonger = globalRemaining > abilityRemaining;
+            float blockingRecharge = charges[index] <= 0 ? abilityRemaining : 0f;
+            bool globalIsLonger = globalRemaining > blockingRecharge;
             return new AbilityState(GetAbilityName(index), GetKey(index),
-                globalIsLonger ? globalRemaining : abilityRemaining,
+                globalIsLonger ? globalRemaining : blockingRecharge,
                 globalIsLonger ? globalCooldown : GetCooldown(index), GetCost(index),
-                CanUseAbility(index), charges[index], maximumCharges, GetAbilityIcon(index));
+                CanUseAbility(index), charges[index], maximumCharges, GetAbilityIcon(index), true,
+                abilityRemaining);
         }
 
         public bool TryUseAbility(int index)
@@ -969,7 +1024,7 @@ namespace Phasebreak.Gameplay
             Sprite icon = Ability(index)?.icon;
             return icon != null ? icon : PhasebreakIconCatalog.Current?.fallbackAbility;
         }
-        private string GetKey(int index) => index < AbilityCountValue
+        private string GetKey(int index) => index >= 0 && index < AbilityCountValue
             ? PhasebreakSettings.Display($"ability.{index + 1}") : string.Empty;
         private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null
             ? Ability(index).executionType : index switch

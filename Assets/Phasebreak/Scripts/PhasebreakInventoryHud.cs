@@ -31,6 +31,7 @@ namespace Phasebreak.Gameplay
         private PlayerBuildSystem build;
         private PlayerCombat combat;
         private PlayerProgression progression;
+        private TalentSystem talents;
         private PhasebreakFollowCamera cameraController;
         private Camera worldCamera;
         private InputAction inventoryAction;
@@ -47,8 +48,15 @@ namespace Phasebreak.Gameplay
         private RectTransform talentsPanel;
         private RectTransform spellbookPanel;
         private TextMeshProUGUI spellbookDetails;
-        private readonly List<TextMeshProUGUI> spellbookRows = new();
-        private readonly List<TextMeshProUGUI> spellbookSlots = new();
+        private RectTransform spellbookAbilityGrid;
+        private RectTransform spellbookPassiveGrid;
+        private TextMeshProUGUI spellbookAbilityTab;
+        private TextMeshProUGUI spellbookPassiveTab;
+        private readonly List<SpellbookTile> spellbookAbilityTiles = new();
+        private readonly List<SpellbookTile> spellbookPassiveTiles = new();
+        private readonly List<TalentNodeDefinition> spellbookPassiveNodes = new();
+        private bool spellbookShowsPassives;
+        private int selectedPassive = -1;
         private int selectedAbility;
         private TalentWindowView talentWindow;
         private RectTransform lootPanel;
@@ -100,6 +108,7 @@ namespace Phasebreak.Gameplay
             build = FindAnyObjectByType<PlayerBuildSystem>();
             combat = FindAnyObjectByType<PlayerCombat>();
             progression = FindAnyObjectByType<PlayerProgression>();
+            talents = FindAnyObjectByType<TalentSystem>();
             cameraController = FindAnyObjectByType<PhasebreakFollowCamera>();
             worldCamera = Camera.main;
             inventoryAction = PhasebreakSettings.Button("inventory", "Inventory");
@@ -145,6 +154,7 @@ namespace Phasebreak.Gameplay
             talentsPanel.gameObject.SetActive(target == MenuMode.Talents);
             spellbookPanel.gameObject.SetActive(target == MenuMode.Spellbook);
             lootPanel.gameObject.SetActive(target == MenuMode.Loot);
+            if (target == MenuMode.Spellbook) SetSpellbookTab(false);
             itemTooltip.Hide();
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -190,13 +200,14 @@ namespace Phasebreak.Gameplay
             modalBackdrop.anchorMin = Vector2.zero;
             modalBackdrop.anchorMax = Vector2.one;
             modalBackdrop.offsetMin = modalBackdrop.offsetMax = Vector2.zero;
-            modalBackdrop.GetComponent<Image>().raycastTarget = true;
+            // Gameplay is focus-blocked while a major menu is open; leave HUD action slots reachable for drag/drop.
+            modalBackdrop.GetComponent<Image>().raycastTarget = false;
             modalBackdrop.gameObject.SetActive(false);
             BuildNavigation(canvasRect);
             BuildInventoryWindow(canvasRect);
             BuildCharacterWindow(canvasRect);
             BuildTalentsWindow(canvasRect);
-            BuildSpellbookWindow(canvasRect);
+            BuildSpellbookGridWindow(canvasRect);
             BuildLootWindow(canvasRect);
             GameObject tooltipObject = new("Item Tooltip", typeof(RectTransform), typeof(PhasebreakItemTooltipUI));
             tooltipObject.transform.SetParent(canvasRect, false);
@@ -314,89 +325,191 @@ namespace Phasebreak.Gameplay
             talentWindow.Initialize(talentsPanel);
         }
 
-        private void BuildSpellbookWindow(RectTransform root)
+        private void BuildSpellbookGridWindow(RectTransform root)
         {
-            spellbookPanel = WindowPanel("Spellbook Panel", root, new Vector2(.15f, .12f), new Vector2(.85f, .88f));
+            spellbookPanel = WindowPanel("Spellbook Panel", root, new Vector2(.08f, .27f), new Vector2(.92f, .94f));
             BuildTitleBar(spellbookPanel, "FIELD ARCANUM", "SPELLBOOK", MenuMode.Spellbook);
-            RectTransform list = Section("Abilities", spellbookPanel, new Vector2(.035f, .11f), new Vector2(.48f, .87f));
-            Text("List Heading", list, "ABILITIES  /  SCROLL TO BROWSE", 14f, TextAlignmentOptions.Left,
-                new Vector2(.04f, .91f), new Vector2(.96f, .98f), TextMuted);
-            RectTransform scrollRoot = Block("Ability Scroll", list, PanelLight);
-            Place(scrollRoot, new Vector2(.035f, .035f), new Vector2(.965f, .9f), 0f);
+            Button abilities = TextButton("Abilities Tab", spellbookPanel, "ABILITIES",
+                new Vector2(.035f, .815f), new Vector2(.205f, .875f), () => SetSpellbookTab(false), 13f);
+            Button passives = TextButton("Passives Tab", spellbookPanel, "PASSIVE EFFECTS",
+                new Vector2(.215f, .815f), new Vector2(.405f, .875f), () => SetSpellbookTab(true), 13f);
+            spellbookAbilityTab = abilities.GetComponentInChildren<TextMeshProUGUI>();
+            spellbookPassiveTab = passives.GetComponentInChildren<TextMeshProUGUI>();
+
+            RectTransform browser = Section("Catalog", spellbookPanel, new Vector2(.035f, .075f), new Vector2(.695f, .8f));
+            spellbookAbilityGrid = CreateSpellbookGrid("Ability Grid", browser);
+            spellbookPassiveGrid = CreateSpellbookGrid("Passive Grid", browser);
+            BuildAbilityTiles();
+            BuildPassiveTiles();
+
+            RectTransform details = Section("Details", spellbookPanel, new Vector2(.715f, .075f), new Vector2(.965f, .8f));
+            spellbookDetails = Text("Details", details, string.Empty, 16f, TextAlignmentOptions.TopLeft,
+                new Vector2(.07f, .06f), new Vector2(.93f, .94f), TextPrimary);
+            SetSpellbookTab(false);
+        }
+
+        private RectTransform CreateSpellbookGrid(string name, Transform parent)
+        {
+            RectTransform scrollRoot = Block(name + " Scroll", parent, PanelLight);
+            Place(scrollRoot, new Vector2(.025f, .025f), new Vector2(.975f, .975f), 0f);
             ScrollRect scroll = scrollRoot.gameObject.AddComponent<ScrollRect>();
             scroll.horizontal = false;
             scroll.scrollSensitivity = 28f;
-            RectTransform viewport = Block("Viewport", scrollRoot, Color.white);
+            RectTransform viewport = Block("Viewport", scrollRoot, new Color(1f, 1f, 1f, .01f));
             Stretch(viewport, 5f);
-            viewport.GetComponent<Image>().color = new Color(1f, 1f, 1f, .01f);
             viewport.gameObject.AddComponent<Mask>().showMaskGraphic = false;
-            RectTransform content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter)).GetComponent<RectTransform>();
+            RectTransform content = new GameObject("Content", typeof(RectTransform), typeof(GridLayoutGroup),
+                typeof(ContentSizeFitter)).GetComponent<RectTransform>();
             content.SetParent(viewport, false);
             content.anchorMin = new Vector2(0f, 1f);
             content.anchorMax = Vector2.one;
             content.pivot = new Vector2(.5f, 1f);
             content.anchoredPosition = Vector2.zero;
             content.sizeDelta = Vector2.zero;
-            VerticalLayoutGroup layout = content.GetComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(8, 8, 8, 8);
-            layout.spacing = 6f;
-            layout.childControlHeight = false;
-            layout.childForceExpandHeight = false;
+            GridLayoutGroup grid = content.GetComponent<GridLayoutGroup>();
+            grid.padding = new RectOffset(12, 12, 12, 12);
+            grid.spacing = new Vector2(9f, 9f);
+            grid.cellSize = new Vector2(106f, 116f);
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 5;
             content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             scroll.viewport = viewport;
             scroll.content = content;
+            return content;
+        }
+
+        private void BuildAbilityTiles()
+        {
             int count = combat != null ? combat.CatalogCount : 0;
             for (int index = 0; index < count; index++)
             {
                 int captured = index;
-                RectTransform row = Block("Ability " + index, content, PanelLight);
-                row.gameObject.AddComponent<LayoutElement>().preferredHeight = 62f;
-                Button button = row.gameObject.AddComponent<Button>();
+                RectTransform tile = Block("Ability " + index, spellbookAbilityGrid, PanelLight);
+                Button button = tile.gameObject.AddComponent<Button>();
                 PhasebreakUiTheme.StyleButton(button);
                 button.onClick.AddListener(() => { selectedAbility = captured; RefreshSpellbook(); });
-                Image icon = IconImage("Icon", row, new Vector2(.025f, .12f), new Vector2(.16f, .88f));
-                icon.sprite = combat.GetAbilityState(index).Icon;
-                icon.preserveAspect = true;
-                spellbookRows.Add(Text("Name", row, string.Empty, 16f, TextAlignmentOptions.Left,
-                    new Vector2(.19f, .05f), new Vector2(.97f, .95f), TextPrimary));
+                Image icon = IconImage("Icon", tile, new Vector2(.17f, .36f), new Vector2(.83f, .96f));
+                TextMeshProUGUI label = Text("Name", tile, string.Empty, 11f, TextAlignmentOptions.Top,
+                    new Vector2(.04f, .04f), new Vector2(.96f, .34f), TextPrimary);
+                TextMeshProUGUI status = Text("Status", tile, string.Empty, 9f, TextAlignmentOptions.Bottom,
+                    new Vector2(.04f, .01f), new Vector2(.96f, .19f), TextMuted);
+                CanvasGroup fade = tile.gameObject.AddComponent<CanvasGroup>();
+                AbilityDragSource drag = tile.gameObject.AddComponent<AbilityDragSource>();
+                drag.Configure(() => combat != null && combat.IsAbilityUnlocked(captured),
+                    () => combat.GetAbilityState(captured).Icon,
+                    () => new AbilityDragPayload(AbilityDragOrigin.Spellbook, captured,
+                        combat.GetAbilityDefinition(captured)?.id), null,
+                    muted => fade.alpha = muted ? .35f : 1f);
+                spellbookAbilityTiles.Add(new SpellbookTile(icon, label, status));
             }
-            RectTransform details = Section("Ability Details", spellbookPanel, new Vector2(.5f, .11f), new Vector2(.965f, .87f));
-            spellbookDetails = Text("Details", details, string.Empty, 18f, TextAlignmentOptions.TopLeft,
-                new Vector2(.055f, .38f), new Vector2(.945f, .95f), TextPrimary);
-            Text("Assign Heading", details, "ASSIGN SELECTED ABILITY TO SLOT", 12f, TextAlignmentOptions.Left,
-                new Vector2(.055f, .31f), new Vector2(.945f, .37f), TextMuted);
-            for (int slot = 0; slot < (combat != null ? combat.AbilityCount : 0); slot++)
+        }
+
+        private void BuildPassiveTiles()
+        {
+            if (talents != null)
+                spellbookPassiveNodes.AddRange(talents.AllNodes.Where(node => node != null &&
+                    node.nodeType != TalentNodeType.AbilityUnlock).OrderBy(node => node.specialization).ThenBy(node => node.displayName));
+            int count = 1 + spellbookPassiveNodes.Count;
+            for (int index = 0; index < count; index++)
             {
-                int captured = slot;
-                float x = .055f + slot * .18f;
-                Button button = TextButton("Slot " + (slot + 1), details, string.Empty,
-                    new Vector2(x, .14f), new Vector2(x + .16f, .28f),
-                    () => { CombatAbilityDefinition ability = combat.GetAbilityDefinition(selectedAbility);
-                        if (ability != null) combat.AssignAbilityToSlot(captured, ability.id);
-                        RefreshSpellbook(); }, 15f);
-                spellbookSlots.Add(button.GetComponentInChildren<TextMeshProUGUI>());
+                int captured = index - 1;
+                RectTransform tile = Block(index == 0 ? "Keen Edge" : "Passive " + index,
+                    spellbookPassiveGrid, PanelLight);
+                Button button = tile.gameObject.AddComponent<Button>();
+                PhasebreakUiTheme.StyleButton(button);
+                button.onClick.AddListener(() => { selectedPassive = captured; RefreshSpellbook(); });
+                Image icon = IconImage("Icon", tile, new Vector2(.17f, .36f), new Vector2(.83f, .96f));
+                TextMeshProUGUI label = Text("Name", tile, string.Empty, 11f, TextAlignmentOptions.Top,
+                    new Vector2(.04f, .04f), new Vector2(.96f, .34f), TextPrimary);
+                TextMeshProUGUI status = Text("Status", tile, string.Empty, 9f, TextAlignmentOptions.Bottom,
+                    new Vector2(.04f, .01f), new Vector2(.96f, .19f), TextMuted);
+                spellbookPassiveTiles.Add(new SpellbookTile(icon, label, status));
             }
-            Text("Help", details, "Select an unlocked ability, then choose an action bar slot.", 12f,
-                TextAlignmentOptions.Left, new Vector2(.055f, .045f), new Vector2(.945f, .12f), TextMuted);
+        }
+
+        private void SetSpellbookTab(bool passives)
+        {
+            spellbookShowsPassives = passives;
+            if (spellbookAbilityGrid != null) spellbookAbilityGrid.parent.parent.gameObject.SetActive(!passives);
+            if (spellbookPassiveGrid != null) spellbookPassiveGrid.parent.parent.gameObject.SetActive(passives);
+            RefreshSpellbook();
         }
 
         private void RefreshSpellbook()
         {
-            if (combat == null || spellbookDetails == null || spellbookRows.Count == 0) return;
-            selectedAbility = Mathf.Clamp(selectedAbility, 0, spellbookRows.Count - 1);
-            for (int index = 0; index < spellbookRows.Count; index++)
-                spellbookRows[index].text = (index == selectedAbility ? ">  " : "    ") +
-                    (combat.IsAbilityUnlocked(index) ? "" : "[LOCKED] ") + combat.GetAbilityState(index).Name;
-            AbilityState state = combat.GetAbilityState(selectedAbility);
+            if (spellbookDetails == null || combat == null) return;
+            spellbookAbilityTab.color = spellbookShowsPassives ? TextMuted : Cyan;
+            spellbookPassiveTab.color = spellbookShowsPassives ? Cyan : TextMuted;
+            if (spellbookShowsPassives) RefreshPassiveCatalog();
+            else RefreshAbilityCatalog();
+        }
+
+        private void RefreshAbilityCatalog()
+        {
+            if (spellbookAbilityTiles.Count == 0) return;
+            selectedAbility = Mathf.Clamp(selectedAbility, 0, spellbookAbilityTiles.Count - 1);
+            for (int index = 0; index < spellbookAbilityTiles.Count; index++)
+            {
+                AbilityState state = combat.GetAbilityState(index);
+                bool unlocked = combat.IsAbilityUnlocked(index);
+                SpellbookTile tile = spellbookAbilityTiles[index];
+                tile.Icon.sprite = state.Icon;
+                tile.Icon.color = unlocked ? Color.white : new Color(.34f, .36f, .39f, .85f);
+                tile.Label.text = state.Name;
+                tile.Label.color = index == selectedAbility ? Cyan : unlocked ? TextPrimary : TextMuted;
+                tile.Status.text = unlocked ? combat.GetAbilitySourceText(index) : combat.GetAbilityUnlockText(index);
+            }
+            AbilityState selected = combat.GetAbilityState(selectedAbility);
             CombatAbilityDefinition definition = combat.GetAbilityDefinition(selectedAbility);
-            string description = definition != null ? definition.description : string.Empty;
-            string unlockText = combat.GetAbilityUnlockText(selectedAbility);
-            spellbookDetails.text = $"<b>{state.Name}</b>\n{(unlockText.Length == 0 ? "" : $"<color=#C9A86C>{unlockText}</color>\n")}\n{description}\n\n" +
-                $"<color=#9CAABD>Energy {Mathf.CeilToInt(state.ResourceCost)}   •   Cooldown {state.CooldownDuration:0.#}s\n" +
-                $"Range {(definition != null ? definition.range : 0f):0.#}   •   Charges {state.MaximumCharges}</color>";
-            for (int slot = 0; slot < spellbookSlots.Count; slot++)
-                spellbookSlots[slot].text = PhasebreakSettings.Display($"ability.{slot + 1}") +
-                    (combat.GetAssignedAbilityIndex(slot) == selectedAbility ? " *" : string.Empty);
+            string unlock = combat.IsAbilityUnlocked(selectedAbility) ? "AVAILABLE" : combat.GetAbilityUnlockText(selectedAbility);
+            spellbookDetails.text = $"<color=#C9A86C><b>{selected.Name}</b></color>\n" +
+                $"<color=#AAA69B>{combat.GetAbilitySourceText(selectedAbility)}  •  {unlock}</color>\n\n" +
+                $"{definition?.description}\n\n" +
+                $"<color=#9CAABD>Energy {Mathf.CeilToInt(selected.ResourceCost)}\nCooldown {selected.CooldownDuration:0.#}s\n" +
+                $"Charges {selected.MaximumCharges}\nRange {(definition != null ? definition.range : 0f):0.#}</color>\n\n" +
+                (combat.IsAbilityUnlocked(selectedAbility) ? "Drag this icon to any action slot." : "Meet the listed requirement to use this ability.");
+        }
+
+        private void RefreshPassiveCatalog()
+        {
+            if (spellbookPassiveTiles.Count == 0) return;
+            int selectedIndex = Mathf.Clamp(selectedPassive + 1, 0, spellbookPassiveTiles.Count - 1);
+            for (int index = 0; index < spellbookPassiveTiles.Count; index++)
+            {
+                SpellbookTile tile = spellbookPassiveTiles[index];
+                bool general = index == 0;
+                TalentNodeDefinition node = general ? null : spellbookPassiveNodes[index - 1];
+                bool active = general ? progression != null && progression.HasKeenEdge : talents != null && talents.IsNodeActive(node);
+                tile.Icon.sprite = general ? progression?.PassiveIcon : node.icon;
+                tile.Icon.color = active ? Color.white : new Color(.34f, .36f, .39f, .85f);
+                tile.Label.text = general ? progression?.PassiveName ?? "Keen Edge" : node.displayName;
+                tile.Label.color = index == selectedIndex ? Cyan : active ? TextPrimary : TextMuted;
+                tile.Status.text = general ? "General • Level 2" : node.specialization.ToString();
+            }
+            if (selectedIndex == 0)
+            {
+                bool active = progression != null && progression.HasKeenEdge;
+                spellbookDetails.text = $"<color=#C9A86C><b>{progression?.PassiveName ?? "Keen Edge"}</b></color>\n" +
+                    $"<color=#AAA69B>General  •  {(active ? "ACTIVE" : "Requires Level 2")}</color>\n\n" +
+                    "A permanent level reward that increases critical chance and critical damage.\n\nPassive effects are read-only and cannot be placed on the action bar.";
+                return;
+            }
+            TalentNodeDefinition selected = spellbookPassiveNodes[selectedIndex - 1];
+            int rank = talents != null ? talents.GetRank(selected.id) : 0;
+            bool isActive = talents != null && talents.IsNodeActive(selected);
+            string missingPrerequisite = (selected.prerequisiteIds ?? Array.Empty<string>())
+                .Select(id => talents?.GetNode(id)).FirstOrDefault(node => node != null && talents.GetRank(node.id) <= 0)?.displayName;
+            string requirement = isActive ? "ACTIVE" : rank > 0
+                ? $"Allocated • Activate {selected.specialization}"
+                : progression != null && progression.Level < selected.requiredPlayerLevel
+                    ? $"Requires Level {selected.requiredPlayerLevel}"
+                    : !string.IsNullOrWhiteSpace(missingPrerequisite)
+                        ? $"Requires {missingPrerequisite}"
+                        : $"Invest in the {selected.specialization} tree";
+            spellbookDetails.text = $"<color=#C9A86C><b>{selected.displayName}</b></color>\n" +
+                $"<color=#AAA69B>{selected.specialization}  •  {requirement}</color>\n\n{selected.description}\n\n" +
+                $"<color=#9CAABD>Rank {rank}/{selected.maximumRank}\n{selected.RankEffect(Mathf.Max(1, rank))}</color>\n\n" +
+                "Passive effects are read-only and cannot be placed on the action bar.";
         }
 
         private void BuildLootWindow(RectTransform root)
@@ -874,5 +987,14 @@ namespace Phasebreak.Gameplay
         private static void EnsureEventSystem() { if (EventSystem.current == null) new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule)); }
         private static Color RarityColor(ItemRarity rarity) => rarity switch { ItemRarity.Mythic => new Color(.67f, .38f, .24f, 1f), ItemRarity.Epic => new Color(.43f, .34f, .57f, 1f), ItemRarity.Rare => new Color(.28f, .43f, .57f, 1f), ItemRarity.Uncommon => new Color(.31f, .46f, .35f, 1f), _ => PhasebreakUiTheme.MetalEdge };
         private static Color RarityTint(ItemRarity rarity) => rarity switch { ItemRarity.Mythic => new Color(1f, .47f, .3f), ItemRarity.Epic => new Color(.72f, .55f, 1f), ItemRarity.Rare => new Color(.3f, .68f, 1f), ItemRarity.Uncommon => new Color(.4f, .88f, .55f), _ => new Color(.82f, .86f, .92f) };
+
+        private sealed class SpellbookTile
+        {
+            public readonly Image Icon;
+            public readonly TextMeshProUGUI Label;
+            public readonly TextMeshProUGUI Status;
+            public SpellbookTile(Image icon, TextMeshProUGUI label, TextMeshProUGUI status)
+            { Icon = icon; Label = label; Status = status; }
+        }
     }
 }
