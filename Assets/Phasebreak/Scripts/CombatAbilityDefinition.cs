@@ -9,8 +9,11 @@ namespace Phasebreak.Gameplay
         PhaseDash,
         Charge,
         Guard,
-        Area
+        Area,
+        Quickstep
     }
+
+    public enum AbilityUnlockType { Baseline, CharacterLevel, Talent }
 
     public enum AbilitySpecialEffect { None, ExecuteHeal, Cleave, Guard, Release, Mark, MarkDetonate }
 
@@ -21,6 +24,8 @@ namespace Phasebreak.Gameplay
         public string displayName;
         [TextArea(2, 4)] public string description;
         public string key = "1";
+        public AbilityUnlockType unlockType = AbilityUnlockType.Baseline;
+        [Min(1)] public int requiredLevel = 1;
         [Min(0f)] public float damage = 5f;
         [Min(0.1f)] public float range = 2.5f;
         [Min(0f)] public float cooldown;

@@ -78,7 +78,12 @@ namespace Phasebreak.Gameplay
                 CurrentExperience -= ExperienceToNextLevel;
                 Level++;
                 ApplyLevelBenefits();
-                string reward = Level == 2 ? passiveName : $"+{Mathf.RoundToInt(powerPerLevel * 100f)}% Power";
+                string reward = Level switch
+                {
+                    2 => passiveName,
+                    3 => "Quickstep",
+                    _ => $"+{Mathf.RoundToInt(powerPerLevel * 100f)}% Power"
+                };
                 LevelGained?.Invoke(Level, reward);
             }
 

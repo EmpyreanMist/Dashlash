@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Reaper's Arc
   description: A wide sweep that catches nearby enemies.
   key: 5
+  unlockType: 2
+  requiredLevel: 1
   damage: 8
   range: 3.2
   cooldown: 6

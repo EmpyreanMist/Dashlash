@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Phase Dash
   description: Dash in your movement direction without requiring a target.
   key: 4
+  unlockType: 0
+  requiredLevel: 1
   damage: 0
   range: 0.1
   cooldown: 6

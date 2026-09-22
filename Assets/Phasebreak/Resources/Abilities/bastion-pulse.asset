@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Bastion Pulse
   description: Release stored impact as a close shockwave that knocks enemies away.
   key: 5
+  unlockType: 2
+  requiredLevel: 1
   damage: 5
   range: 4
   cooldown: 9

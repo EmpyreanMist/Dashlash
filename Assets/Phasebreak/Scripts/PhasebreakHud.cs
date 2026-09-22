@@ -64,6 +64,8 @@ namespace Phasebreak.Gameplay
         private static readonly Color ResourceColor = new Color(.34f, .46f, .62f, 1f);
         private static readonly Color NormalDamageColor = new Color(1f, 0.9f, 0.68f, 1f);
         private static readonly Color CriticalDamageColor = new Color(1f, 0.48f, 0.05f, 1f);
+        private static readonly Color IncomingDamageColor = new Color(1f, 0.3f, 0.22f, 1f);
+        private int incomingDamageSequence;
 
         private void Awake()
         {
@@ -663,11 +665,19 @@ namespace Phasebreak.Gameplay
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, null,
                 out Vector2 localPoint);
 
-            RectTransform root = CreateRect(damageEvent.IsCritical ? "Critical Damage" : "Damage",
+            RectTransform root = CreateRect(damageEvent.IsIncoming ? "Incoming Damage" :
+                damageEvent.IsCritical ? "Critical Damage" : "Damage",
                 combatTextLayer);
             root.anchorMin = root.anchorMax = root.pivot = new Vector2(0.5f, 0.5f);
             root.sizeDelta = new Vector2(320f, 90f);
-            localPoint += new Vector2(Random.Range(-20f, 20f), Random.Range(4f, 20f));
+            if (damageEvent.IsIncoming)
+            {
+                int stagger = incomingDamageSequence++ % 4;
+                localPoint += new Vector2((stagger % 2 == 0 ? -1f : 1f) * (18f + stagger * 9f),
+                    18f + stagger * 16f);
+            }
+            else
+                localPoint += new Vector2(Random.Range(-20f, 20f), Random.Range(4f, 20f));
             root.anchoredPosition = localPoint;
 
             TextMeshProUGUI label = root.gameObject.AddComponent<TextMeshProUGUI>();
@@ -676,9 +686,11 @@ namespace Phasebreak.Gameplay
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.fontStyle = FontStyles.Bold;
             label.characterSpacing = damageEvent.IsCritical ? 3f : 1f;
-            label.fontSize = damageEvent.IsCritical ? 50f : 34f;
-            label.text = damageEvent.IsCritical ? $"CRIT!  {damageEvent.Amount}" : damageEvent.Amount.ToString();
-            label.color = damageEvent.IsCritical ? CriticalDamageColor : NormalDamageColor;
+            label.fontSize = damageEvent.IsCritical ? 50f : damageEvent.IsIncoming ? 38f : 34f;
+            label.text = damageEvent.IsCritical ? $"CRIT!  {damageEvent.Amount}" :
+                damageEvent.IsIncoming ? $"-{damageEvent.Amount}" : damageEvent.Amount.ToString();
+            label.color = damageEvent.IsIncoming ? IncomingDamageColor :
+                damageEvent.IsCritical ? CriticalDamageColor : NormalDamageColor;
             label.outlineWidth = damageEvent.IsCritical ? 0.28f : 0.18f;
             label.outlineColor = new Color32(20, 5, 0, 255);
 

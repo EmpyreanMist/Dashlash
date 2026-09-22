@@ -15,6 +15,7 @@ namespace Phasebreak.Gameplay
         [SerializeField] private CharacterController characterController;
         [SerializeField] private Animator animator;
         [SerializeField, Min(0.01f)] private float animationDampTime = 0.1f;
+        [SerializeField, Min(0.01f)] private float animationReferenceSpeed = 6f;
         [SerializeField, Min(0f)] private float jumpVelocityThreshold = 0.1f;
         [SerializeField, Min(0f)] private float fallVelocityThreshold = -0.1f;
 
@@ -51,8 +52,13 @@ namespace Phasebreak.Gameplay
             bool grounded = movement.IsGrounded;
             float verticalSpeed = movement.VerticalSpeed;
 
-            animator.SetFloat(SpeedId, planarSpeed, animationDampTime, Time.deltaTime);
-            animator.SetFloat(MotionSpeedId, planarSpeed > 0.05f ? 1f : 0f);
+            float locomotionSpeed = Mathf.Clamp(planarSpeed, 0f, animationReferenceSpeed);
+            animator.SetFloat(SpeedId, locomotionSpeed, animationDampTime, Time.deltaTime);
+            float visualSpeed = animator.GetFloat(SpeedId);
+            float playbackSpeed = planarSpeed > 0.05f
+                ? Mathf.Clamp(planarSpeed / Mathf.Max(0.5f, visualSpeed), 0.75f, 1.25f)
+                : 1f;
+            animator.SetFloat(MotionSpeedId, playbackSpeed, animationDampTime, Time.deltaTime);
             animator.SetBool(GroundedId, grounded);
             animator.SetBool(JumpId, !grounded && verticalSpeed > jumpVelocityThreshold);
             animator.SetBool(FreeFallId, !grounded && verticalSpeed < fallVelocityThreshold);

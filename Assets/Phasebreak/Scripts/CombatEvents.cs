@@ -9,13 +9,16 @@ namespace Phasebreak.Gameplay
         public readonly int Amount;
         public readonly bool IsCritical;
         public readonly string AbilityName;
+        public readonly bool IsIncoming;
 
-        public DamageNumberEvent(Vector3 worldPosition, int amount, bool isCritical, string abilityName)
+        public DamageNumberEvent(Vector3 worldPosition, int amount, bool isCritical, string abilityName,
+            bool isIncoming = false)
         {
             WorldPosition = worldPosition;
             Amount = amount;
             IsCritical = isCritical;
             AbilityName = abilityName;
+            IsIncoming = isIncoming;
         }
     }
 
@@ -40,10 +43,10 @@ namespace Phasebreak.Gameplay
         public static event Action<EnemyDefeatedEvent> EnemyDefeatedDetailed;
 
         public static void RaiseDamageNumber(Vector3 worldPosition, int amount, bool isCritical,
-            string abilityName)
+            string abilityName, bool isIncoming = false)
         {
             DamageNumberRequested?.Invoke(new DamageNumberEvent(worldPosition, Mathf.Max(1, amount),
-                isCritical, abilityName));
+                isCritical, abilityName, isIncoming));
         }
 
         public static void RaiseEnemyDefeated(int experienceReward, string enemyName = "Enemy",

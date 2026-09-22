@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: Blood Rush
   description: Rush a wounded target; a finishing kill restores Health.
   key: 5
+  unlockType: 2
+  requiredLevel: 1
   damage: 7
   range: 12
   cooldown: 8
