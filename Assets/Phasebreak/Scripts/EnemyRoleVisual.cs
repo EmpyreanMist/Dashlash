@@ -40,7 +40,9 @@ namespace Phasebreak.Gameplay
             modelRoot = model.transform;
             modelRoot.SetParent(transform, false);
             modelRoot.localPosition = Vector3.zero;
-            modelRoot.localRotation = Quaternion.identity;
+            // The imported Puglin faces local -Z; gameplay forward is +Z.
+            modelRoot.localRotation = source != null && species == "Puglin"
+                ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.identity;
             if (source != null)
             {
                 float height = role == EnemyRole.Brute ? 2.65f : role == EnemyRole.Charger ? 2.25f :
