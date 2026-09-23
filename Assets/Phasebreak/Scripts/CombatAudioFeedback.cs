@@ -33,6 +33,8 @@ namespace Phasebreak.Gameplay
             combat.AbilityStarted += HandleStarted;
             combat.AbilityImpact += HandleImpact;
             combat.AbilityFailed += HandleFailed;
+            combat.FlickerDeparted += HandleDeparture;
+            combat.FlickerArrived += HandleArrival;
         }
 
         private void OnDisable()
@@ -42,6 +44,8 @@ namespace Phasebreak.Gameplay
             combat.AbilityStarted -= HandleStarted;
             combat.AbilityImpact -= HandleImpact;
             combat.AbilityFailed -= HandleFailed;
+            combat.FlickerDeparted -= HandleDeparture;
+            combat.FlickerArrived -= HandleArrival;
         }
 
         private void OnDestroy()
@@ -52,8 +56,19 @@ namespace Phasebreak.Gameplay
             if (denied != null) Destroy(denied);
         }
 
+        private void HandleDeparture(AbilityPresentationEvent value)
+        {
+            source.pitch = 1.65f;
+            source.PlayOneShot(mobility, volume * .5f);
+        }
+        private void HandleArrival(AbilityPresentationEvent value)
+        {
+            source.pitch = value.Finisher ? .9f : 1.4f;
+            source.PlayOneShot(swing, volume * .7f);
+        }
         private void HandleStarted(AbilityPresentationEvent value)
         {
+            if (value.Type == AbilityExecutionType.FlickerStrike) return;
             source.pitch = value.Type switch
             {
                 AbilityExecutionType.PhaseDash => 1.35f,
@@ -67,6 +82,12 @@ namespace Phasebreak.Gameplay
 
         private void HandleImpact(AbilityPresentationEvent value)
         {
+            if (value.Type == AbilityExecutionType.FlickerStrike)
+            {
+                source.pitch = value.Finisher ? .7f : 1.2f;
+                source.PlayOneShot(impact, volume * (value.Finisher ? 1.3f : .65f));
+                return;
+            }
             source.pitch = value.Critical ? 0.72f : value.Index == 1 ? 0.82f : 1f;
             if (value.Type is AbilityExecutionType.PhaseLunge or AbilityExecutionType.Charge && combat.RiftChainCount > 0)
                 source.pitch = 1f + Mathf.Min(combat.RiftChainCount, 5) * .07f;
