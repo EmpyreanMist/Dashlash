@@ -20,6 +20,9 @@ namespace Phasebreak.Gameplay
         private const string SaveKey = "Phasebreak.Talents.v1";
         private readonly Dictionary<string, int> ranks = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, TalentNodeDefinition> nodes = new(StringComparer.OrdinalIgnoreCase);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private readonly HashSet<string> debugAbilityUnlocks = new(StringComparer.OrdinalIgnoreCase);
+#endif
         private TalentCatalog catalog;
         private PlayerProgression progression;
         private PlayerBuildSystem build;
@@ -145,7 +148,13 @@ namespace Phasebreak.Gameplay
         }
 
         public bool IsAbilityUnlocked(string abilityId, bool isBaseAbility = true) => isBaseAbility ||
-            nodes.Values.Any(n => IsActive(n) && GetRank(n.id) > 0 && string.Equals(n.grantedAbilityId, abilityId, StringComparison.OrdinalIgnoreCase));
+            nodes.Values.Any(n => IsActive(n) &&
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                (GetRank(n.id) > 0 || debugAbilityUnlocks.Contains(abilityId)) &&
+#else
+                GetRank(n.id) > 0 &&
+#endif
+                string.Equals(n.grantedAbilityId, abilityId, StringComparison.OrdinalIgnoreCase));
 
         public IReadOnlyList<string> GetTalentGrantedAbilities() => nodes.Values
             .Where(n => IsActive(n) && GetRank(n.id) > 0 && !string.IsNullOrWhiteSpace(n.grantedAbilityId))
@@ -221,5 +230,24 @@ namespace Phasebreak.Gameplay
             criticalMomentumUntil = braceUntil = mobilityMomentumUntil = heavyImpactUntil = rhythmUntil = 0f;
             rhythmStacks = 0;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool DebugActivateAbilityGrant(string abilityId)
+        {
+            TalentNodeDefinition node = GetAbilityGrantNode(abilityId);
+            if (node == null || !IsActive(node)) return false;
+            bool changed = debugAbilityUnlocks.Add(abilityId);
+            if (changed) AbilityAvailabilityChanged?.Invoke();
+            return true;
+        }
+
+        public void DebugClearAbilityGrant(string abilityId)
+        {
+            if (!string.IsNullOrWhiteSpace(abilityId) && debugAbilityUnlocks.Remove(abilityId))
+                AbilityAvailabilityChanged?.Invoke();
+        }
+
+        public static void DebugDeleteSavedState() => PlayerPrefs.DeleteKey(SaveKey);
+#endif
     }
 }

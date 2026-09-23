@@ -114,6 +114,19 @@ namespace Phasebreak.Gameplay
             return true;
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool SetDebugExperience(int experience)
+        {
+            if (experience < 0) return false;
+            CurrentExperience = IsMaximumLevel ? 0 : Mathf.Clamp(experience, 0, ExperienceToNextLevel - 1);
+            Save();
+            ProgressChanged?.Invoke();
+            return true;
+        }
+
+        public static void DebugDeleteSavedState() => PlayerPrefs.DeleteKey(SaveKey);
+#endif
+
         private void Save()
         {
             PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(new ProgressionSave { level = Level, experience = CurrentExperience }));

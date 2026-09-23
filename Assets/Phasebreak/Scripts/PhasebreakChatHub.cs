@@ -237,6 +237,12 @@ namespace Phasebreak.Gameplay
             while (messages.Count > 0) Destroy(messages.Dequeue().gameObject);
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public string RunDeveloperCommand(string command) => commands != null
+            ? commands.Run(command)
+            : "Developer command registry is unavailable.";
+#endif
+
         public void SetHudVisible(bool visible)
         {
             if (hudRoot == null || HudVisible == visible) return;

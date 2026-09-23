@@ -267,5 +267,9 @@ namespace Phasebreak.Gameplay
             PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(data));
             PlayerPrefs.Save();
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public static void DebugDeleteSavedState() => PlayerPrefs.DeleteKey(SaveKey);
+#endif
     }
 }

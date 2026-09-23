@@ -234,6 +234,11 @@ namespace Phasebreak.Gameplay
             PhasebreakGameMenu gameMenu = GetComponent<PhasebreakGameMenu>();
             if (gameMenu == null) gameMenu = gameObject.AddComponent<PhasebreakGameMenu>();
             gameMenu.Initialize();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            PhasebreakDeveloperTools developerTools = GetComponent<PhasebreakDeveloperTools>();
+            if (developerTools == null) developerTools = gameObject.AddComponent<PhasebreakDeveloperTools>();
+            developerTools.Initialize();
+#endif
         }
 
         private void HandleRecoveryFeedback(string message)

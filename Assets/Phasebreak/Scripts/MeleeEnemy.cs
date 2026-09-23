@@ -67,6 +67,10 @@ namespace Phasebreak.Gameplay
         private bool namedEncounter;
         private LineRenderer chargeLane;
         private static Material chargeLaneMaterial;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private bool debugRewardsSuppressed;
+        private bool debugAiFrozen;
+#endif
 
         public int CurrentHealth { get; private set; }
         public int MaxHealth => maxHealth;
@@ -89,6 +93,9 @@ namespace Phasebreak.Gameplay
         public bool IsRecovering => state == EnemyState.Recovery;
         public bool IsStaggered => state == EnemyState.Stagger;
         public bool IsDead => state == EnemyState.Dead;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool DebugAiFrozen => debugAiFrozen;
+#endif
 
         public void SetRespawnEnabled(bool enabled) => respawnEnabled = enabled;
 
@@ -181,6 +188,9 @@ namespace Phasebreak.Gameplay
         {
             if (state == EnemyState.Dead || target == null)
                 return;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (debugAiFrozen) return;
+#endif
 
             ApplyGravityAndKnockback();
             Vector3 toTarget = target.position - transform.position;
@@ -283,6 +293,50 @@ namespace Phasebreak.Gameplay
             GetComponent<CorpseLootContainer>()?.ClearForReset();
             controller.enabled = false;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void DebugConfigure(float healthMultiplier, float scaleMultiplier, float damageMultiplier,
+            bool suppressRewards, bool freezeAi)
+        {
+            maxHealth = Mathf.Max(1, Mathf.RoundToInt(maxHealth * Mathf.Clamp(healthMultiplier, .1f, 10f)));
+            CurrentHealth = maxHealth;
+            attackDamage = Mathf.Max(1, Mathf.RoundToInt(attackDamage * Mathf.Clamp(damageMultiplier, .1f, 10f)));
+            transform.localScale *= Mathf.Clamp(scaleMultiplier, .5f, 3f);
+            spawnScale = transform.localScale;
+            debugRewardsSuppressed = suppressRewards;
+            debugAiFrozen = freezeAi;
+            SetRespawnEnabled(false);
+        }
+
+        public void DebugSetMaximumHealth(int value)
+        {
+            maxHealth = Mathf.Clamp(value, 1, 1000000);
+            if (!IsAlive) ResetEnemy();
+            CurrentHealth = maxHealth;
+        }
+
+        public int DebugSetHealth(int value)
+        {
+            if (!IsAlive && value > 0) ResetEnemy();
+            CurrentHealth = Mathf.Clamp(value, 0, maxHealth);
+            if (CurrentHealth == 0) DebugDefeatWithoutRewards();
+            return CurrentHealth;
+        }
+
+        public void DebugHeal() => DebugSetHealth(maxHealth);
+        public void DebugSetAiFrozen(bool frozen) => debugAiFrozen = frozen;
+
+        public void DebugTeleport(Vector3 position)
+        {
+            controller ??= GetComponent<CharacterController>();
+            bool enabled = controller != null && controller.enabled;
+            if (controller != null) controller.enabled = false;
+            transform.position = position;
+            if (controller != null) controller.enabled = enabled;
+            knockbackVelocity = Vector3.zero;
+            verticalVelocity = -2f;
+        }
+#endif
 
         private void TickChase(Vector3 toTarget, float distance)
         {
@@ -475,11 +529,18 @@ namespace Phasebreak.Gameplay
             if (!defeatRewardGranted)
             {
                 defeatRewardGranted = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (!debugRewardsSuppressed)
+                {
+#endif
                 CombatEvents.RaiseEnemyDefeated(experienceReward,
                     GetComponent<Targetable>()?.DisplayName ?? gameObject.name, transform.position);
                 PlayerBuildSystem build = FindAnyObjectByType<PlayerBuildSystem>();
                 CorpseLootContainer corpse = GetComponent<CorpseLootContainer>() ?? gameObject.AddComponent<CorpseLootContainer>();
                 corpse.Initialize(this, build != null ? build.GenerateCorpseLoot(namedEncounter) : null);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                }
+#endif
             }
             knockbackVelocity = Vector3.zero;
             controller.enabled = false;

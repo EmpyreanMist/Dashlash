@@ -81,6 +81,20 @@ namespace Phasebreak.Gameplay
 
         public void SetDebugGodMode(bool enabled) => debugGodMode = enabled;
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public int DebugSetHealth(int value)
+        {
+            int clamped = Mathf.Clamp(value, 0, MaxHealth);
+            if (clamped == 0)
+            {
+                DebugKill();
+                return CurrentHealth;
+            }
+            CurrentHealth = clamped;
+            return CurrentHealth;
+        }
+#endif
+
         public void GrantInvulnerability(float duration)
         {
             if (duration > 0f)
