@@ -39,14 +39,17 @@ namespace Phasebreak.Gameplay
         private CharacterController controller;
         private PlayerHealth health;
         private PlayerBuildSystem build;
-        private InputAction moveAction;
-        private InputAction strafeAction;
+        private InputAction forwardAction;
+        private InputAction backwardAction;
+        private InputAction turnLeftAction;
+        private InputAction turnRightAction;
+        private InputAction strafeLeftAction;
+        private InputAction strafeRightAction;
         private InputAction jumpAction;
         private InputAction autoRunAction;
         private bool autoRun;
         public bool AutoRun => autoRun;
         private InputAction teleportAction;
-        private InputAction descendAction;
         private Vector3 planarVelocity;
         private Vector3 desiredMoveDirection;
         private Vector3 dashDirection;
@@ -231,39 +234,29 @@ namespace Phasebreak.Gameplay
             if (followCamera == null && cameraTransform != null)
                 followCamera = cameraTransform.GetComponent<PhasebreakFollowCamera>();
 
-            moveAction = new InputAction("Move", InputActionType.Value);
-            moveAction.AddCompositeBinding("2DVector")
-                .With("Up", "<Keyboard>/w")
-                .With("Down", "<Keyboard>/s")
-                .With("Left", "<Keyboard>/a")
-                .With("Right", "<Keyboard>/d");
-            PhasebreakSettings.RegisterCompositePart("move.forward", moveAction, 1);
-            PhasebreakSettings.RegisterCompositePart("move.backward", moveAction, 2);
-            PhasebreakSettings.RegisterCompositePart("move.left", moveAction, 3);
-            PhasebreakSettings.RegisterCompositePart("move.right", moveAction, 4);
-
-            strafeAction = new InputAction("Strafe", InputActionType.Value);
-            strafeAction.AddCompositeBinding("1DAxis")
-                .With("Negative", "<Keyboard>/q")
-                .With("Positive", "<Keyboard>/e");
-            PhasebreakSettings.RegisterCompositePart("strafe.left", strafeAction, 1);
-            PhasebreakSettings.RegisterCompositePart("strafe.right", strafeAction, 2);
-
+            forwardAction = PhasebreakSettings.Button("move.forward", "Move forward");
+            backwardAction = PhasebreakSettings.Button("move.backward", "Move backward");
+            turnLeftAction = PhasebreakSettings.Button("move.left", "Turn left");
+            turnRightAction = PhasebreakSettings.Button("move.right", "Turn right");
+            strafeLeftAction = PhasebreakSettings.Button("strafe.left", "Strafe left");
+            strafeRightAction = PhasebreakSettings.Button("strafe.right", "Strafe right");
             jumpAction = PhasebreakSettings.Button("jump", "Jump");
             autoRunAction = PhasebreakSettings.Button("autorun", "Toggle auto run");
             teleportAction = PhasebreakSettings.Button("teleport", "Godmode cursor teleport");
-            descendAction = PhasebreakSettings.Button("strafe.left", "Fly descend");
             airDashesRemaining = airDashesPerJump;
         }
 
         private void OnEnable()
         {
-            moveAction.Enable();
-            strafeAction.Enable();
+            forwardAction.Enable();
+            backwardAction.Enable();
+            turnLeftAction.Enable();
+            turnRightAction.Enable();
+            strafeLeftAction.Enable();
+            strafeRightAction.Enable();
             jumpAction.Enable();
             autoRunAction.Enable();
             teleportAction.Enable();
-            descendAction.Enable();
         }
 
         private void OnDisable()
@@ -275,29 +268,38 @@ namespace Phasebreak.Gameplay
             debugLeftMouseWasPressed = false;
             debugTeleportReleaseFrame = -1;
             if (controller != null) controller.enabled = true;
-            moveAction.Disable();
-            strafeAction.Disable();
+            forwardAction.Disable();
+            backwardAction.Disable();
+            turnLeftAction.Disable();
+            turnRightAction.Disable();
+            strafeLeftAction.Disable();
+            strafeRightAction.Disable();
             jumpAction.Disable();
             autoRunAction.Disable();
             autoRun = false;
             teleportAction.Disable();
-            descendAction.Disable();
         }
 
         private void OnDestroy()
         {
-            PhasebreakSettings.Unregister(moveAction);
-            PhasebreakSettings.Unregister(strafeAction);
+            PhasebreakSettings.Unregister(forwardAction);
+            PhasebreakSettings.Unregister(backwardAction);
+            PhasebreakSettings.Unregister(turnLeftAction);
+            PhasebreakSettings.Unregister(turnRightAction);
+            PhasebreakSettings.Unregister(strafeLeftAction);
+            PhasebreakSettings.Unregister(strafeRightAction);
             PhasebreakSettings.Unregister(jumpAction);
             PhasebreakSettings.Unregister(autoRunAction);
             PhasebreakSettings.Unregister(teleportAction);
-            PhasebreakSettings.Unregister(descendAction);
-            moveAction.Dispose();
-            strafeAction.Dispose();
+            forwardAction.Dispose();
+            backwardAction.Dispose();
+            turnLeftAction.Dispose();
+            turnRightAction.Dispose();
+            strafeLeftAction.Dispose();
+            strafeRightAction.Dispose();
             jumpAction.Dispose();
             autoRunAction.Dispose();
             teleportAction.Dispose();
-            descendAction.Dispose();
         }
 
         private void Update()
@@ -337,14 +339,17 @@ namespace Phasebreak.Gameplay
                 ResetMotion();
             inputWasBlocked = blocked;
             if (!blocked && autoRunAction.WasPressedThisFrame()) autoRun = !autoRun;
-            Vector2 input = blocked ? Vector2.zero : Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
+            Vector2 input = blocked ? Vector2.zero : new Vector2(
+                (turnRightAction.IsPressed() ? 1f : 0f) - (turnLeftAction.IsPressed() ? 1f : 0f),
+                (forwardAction.IsPressed() ? 1f : 0f) - (backwardAction.IsPressed() ? 1f : 0f));
             if (!blocked && autoRun)
             {
                 if (input.y < -.01f) autoRun = false;
                 else input.y = 1f;
             }
-            float strafeInput = blocked ? 0f : strafeAction.ReadValue<float>();
-            if ((debugFly || debugNoClip) && descendAction.IsPressed())
+            float strafeInput = blocked ? 0f : (strafeRightAction.IsPressed() ? 1f : 0f) -
+                (strafeLeftAction.IsPressed() ? 1f : 0f);
+            if ((debugFly || debugNoClip) && strafeLeftAction.IsPressed())
                 strafeInput = Mathf.Max(0f, strafeInput);
             bool mouseSteering = !blocked && followCamera != null && followCamera.IsRightMouseHeld;
             if (!mouseSteering && Mathf.Abs(input.x) > 0.001f)
@@ -379,7 +384,7 @@ namespace Phasebreak.Gameplay
             if (debugFly || debugNoClip)
             {
                 float rise = blocked || Keyboard.current == null ? 0f : (jumpAction.IsPressed() ? 1f : 0f) -
-                    (descendAction.IsPressed() || Keyboard.current.leftCtrlKey.isPressed ||
+                    (strafeLeftAction.IsPressed() || Keyboard.current.leftCtrlKey.isPressed ||
                      Keyboard.current.rightCtrlKey.isPressed ? 1f : 0f);
                 Vector3 motion = (desiredMoveDirection * inputMagnitude + Vector3.up * rise) *
                     (moveSpeed * debugSpeedMultiplier * Time.deltaTime);

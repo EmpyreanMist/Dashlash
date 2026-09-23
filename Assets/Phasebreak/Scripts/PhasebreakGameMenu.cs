@@ -36,6 +36,11 @@ namespace Phasebreak.Gameplay
         private RectTransform content;
         private TMP_InputField search;
         private TextMeshProUGUI status;
+        private RectTransform conflictRoot;
+        private TextMeshProUGUI conflictHeading;
+        private TextMeshProUGUI conflictBody;
+        private PhasebreakSettings.PendingBindingChange pendingBindingChange;
+        private bool hasPendingBindingChange;
         private PhasebreakFollowCamera followCamera;
         private string rebindingId;
         private bool open;
@@ -79,6 +84,11 @@ namespace Phasebreak.Gameplay
             Keyboard keyboard = Keyboard.current;
             if (open)
             {
+                if (hasPendingBindingChange)
+                {
+                    if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) CancelPendingBinding();
+                    return;
+                }
                 if (rebindingId != null) { CaptureBinding(keyboard, Mouse.current); return; }
                 if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
                 {
@@ -115,6 +125,7 @@ namespace Phasebreak.Gameplay
             open = false;
             Time.timeScale = previousTimeScale;
             rebindingId = null;
+            HideConflict();
             if (root != null) root.gameObject.SetActive(false);
             if (search != null) search.text = string.Empty;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
@@ -126,6 +137,7 @@ namespace Phasebreak.Gameplay
         private void ShowMain()
         {
             rebindingId = null;
+            HideConflict();
             menuPanel.gameObject.SetActive(true);
             settingsPanel.gameObject.SetActive(false);
         }
@@ -212,6 +224,7 @@ namespace Phasebreak.Gameplay
             BuildRows();
             status = Label("Settings Status", settingsPanel, string.Empty, 17f, Accent,
                 new Vector2(.04f, .035f), new Vector2(.96f, .115f), TextAlignmentOptions.Left);
+            BuildConflictModal();
             settingsPanel.gameObject.SetActive(false);
         }
 
@@ -221,10 +234,12 @@ namespace Phasebreak.Gameplay
             {
                 Header(binding.Category);
                 RectTransform row = Row(binding.Category, binding.Label + " " + binding.Id);
-                Label("Action", row, binding.Label, 18f, Light, new Vector2(.02f, .08f), new Vector2(.67f, .92f), TextAlignmentOptions.Left);
+                Label("Action", row, binding.Label, 18f, Light, new Vector2(.02f, .08f), new Vector2(.60f, .92f), TextAlignmentOptions.Left);
                 string id = binding.Id;
                 TextMeshProUGUI key = Button("Key", row, PhasebreakSettings.Display(id),
-                    new Vector2(.72f, .1f), new Vector2(.985f, .9f), () => BeginRebind(id));
+                    new Vector2(.61f, .1f), new Vector2(.875f, .9f), () => BeginRebind(id));
+                Button("Clear Binding", row, "CLEAR", new Vector2(.885f, .1f), new Vector2(.985f, .9f),
+                    () => ClearBinding(id));
                 bindingLabels[id] = key;
             }
 
@@ -339,7 +354,7 @@ namespace Phasebreak.Gameplay
         private void BeginRebind(string id)
         {
             rebindingId = id;
-            status.text = "Press a key or mouse button for " + id + ". Escape cancels.";
+            status.text = "Hold Shift, Ctrl or Alt if desired, then press a key or mouse button. Escape cancels.";
         }
 
         private void CaptureBinding(Keyboard keyboard, Mouse mouse)
@@ -351,11 +366,7 @@ namespace Phasebreak.Gameplay
                 if (!key.wasPressedThisFrame || key.keyCode == Key.LeftShift || key.keyCode == Key.RightShift ||
                     key.keyCode == Key.LeftCtrl || key.keyCode == Key.RightCtrl ||
                     key.keyCode == Key.LeftAlt || key.keyCode == Key.RightAlt) continue;
-                string id = rebindingId;
-                string path = "<Keyboard>/" + key.name;
-                bool saved = PhasebreakSettings.TryRebind(id, path, out string message);
-                status.text = message;
-                if (saved) { rebindingId = null; RefreshBindingLabels(); }
+                CapturePrimary("<Keyboard>/" + key.name, keyboard);
                 return;
             }
             if (mouse == null) return;
@@ -365,9 +376,93 @@ namespace Phasebreak.Gameplay
                 mouse.backButton.wasPressedThisFrame ? "<Mouse>/backButton" :
                 mouse.forwardButton.wasPressedThisFrame ? "<Mouse>/forwardButton" : null;
             if (mousePath == null) return;
-            bool mouseSaved = PhasebreakSettings.TryRebind(rebindingId, mousePath, out string mouseMessage);
-            status.text = mouseMessage;
-            if (mouseSaved) { rebindingId = null; RefreshBindingLabels(); }
+            CapturePrimary(mousePath, keyboard);
+        }
+
+        private void CapturePrimary(string primaryPath, Keyboard keyboard)
+        {
+            bool shift = keyboard != null && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
+            bool ctrl = keyboard != null && (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed);
+            bool alt = keyboard != null && (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed);
+            int modifierCount = (shift ? 1 : 0) + (ctrl ? 1 : 0) + (alt ? 1 : 0);
+            if (modifierCount > 1)
+            { status.text = "Use at most one modifier: Shift, Ctrl or Alt."; return; }
+            PhasebreakSettings.BindingModifier modifier = shift ? PhasebreakSettings.BindingModifier.Shift :
+                ctrl ? PhasebreakSettings.BindingModifier.Ctrl : alt ? PhasebreakSettings.BindingModifier.Alt :
+                PhasebreakSettings.BindingModifier.None;
+            string id = rebindingId;
+            if (!PhasebreakSettings.TryPrepareRebind(id, primaryPath, modifier,
+                    out PhasebreakSettings.PendingBindingChange change, out string message))
+            {
+                status.text = message;
+                if (message == "Binding unchanged.") rebindingId = null;
+                return;
+            }
+            rebindingId = null;
+            if (change.HasConflicts) { ShowConflict(change); return; }
+            PhasebreakSettings.Apply(change, false, out message);
+            status.text = message;
+            RefreshBindingLabels();
+        }
+
+        private void ClearBinding(string id)
+        {
+            rebindingId = null;
+            PhasebreakSettings.Clear(id, out string message);
+            status.text = message;
+            RefreshBindingLabels();
+        }
+
+        private void BuildConflictModal()
+        {
+            conflictRoot = Rect("Binding Conflict Backdrop", root, new Color(.015f, .014f, .012f, .82f), true);
+            Stretch(conflictRoot, 0f);
+            RectTransform panel = Rect("Binding Conflict", conflictRoot, Back, true);
+            PhasebreakUiTheme.StyleSurface(panel.GetComponent<UnityEngine.UI.Image>(), Back);
+            panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(.5f, .5f);
+            panel.sizeDelta = new Vector2(650f, 380f);
+            conflictHeading = Label("Heading", panel, string.Empty, 25f, Accent,
+                new Vector2(.07f, .76f), new Vector2(.93f, .92f));
+            conflictBody = Label("Details", panel, string.Empty, 19f, Light,
+                new Vector2(.08f, .30f), new Vector2(.92f, .74f));
+            conflictBody.textWrappingMode = TextWrappingModes.Normal;
+            Button("Replace", panel, "REPLACE", new Vector2(.10f, .09f), new Vector2(.47f, .23f), ReplacePendingBinding);
+            Button("Cancel", panel, "CANCEL", new Vector2(.53f, .09f), new Vector2(.90f, .23f), CancelPendingBinding);
+            conflictRoot.gameObject.SetActive(false);
+        }
+
+        private void ShowConflict(PhasebreakSettings.PendingBindingChange change)
+        {
+            pendingBindingChange = change;
+            hasPendingBindingChange = true;
+            conflictHeading.text = change.ProposedDisplay.ToUpperInvariant() + " IS ALREADY BOUND";
+            conflictBody.text = change.ProposedDisplay + " is currently assigned to:\n" +
+                change.ExistingOwnersLabel + "\n\nBinding it to:\n" + change.DestinationLabel +
+                "\n\nwill leave the previous action unbound.";
+            conflictRoot.gameObject.SetActive(true);
+        }
+
+        private void ReplacePendingBinding()
+        {
+            if (!hasPendingBindingChange) return;
+            PhasebreakSettings.Apply(pendingBindingChange, true, out string message);
+            HideConflict();
+            status.text = message;
+            RefreshBindingLabels();
+        }
+
+        private void CancelPendingBinding()
+        {
+            HideConflict();
+            status.text = "Binding change cancelled.";
+            RefreshBindingLabels();
+        }
+
+        private void HideConflict()
+        {
+            hasPendingBindingChange = false;
+            pendingBindingChange = default;
+            if (conflictRoot != null) conflictRoot.gameObject.SetActive(false);
         }
 
         private void RefreshBindingLabels()

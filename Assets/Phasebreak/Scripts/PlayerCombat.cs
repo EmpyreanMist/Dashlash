@@ -1025,7 +1025,7 @@ namespace Phasebreak.Gameplay
             return icon != null ? icon : PhasebreakIconCatalog.Current?.fallbackAbility;
         }
         private string GetKey(int index) => index >= 0 && index < AbilityCountValue
-            ? PhasebreakSettings.Display($"ability.{index + 1}") : string.Empty;
+            ? PhasebreakSettings.DisplayCompact($"ability.{index + 1}") : string.Empty;
         private AbilityExecutionType GetExecutionType(int index) => Ability(index) != null
             ? Ability(index).executionType : index switch
             {
