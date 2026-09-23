@@ -14,6 +14,12 @@ namespace Phasebreak.Gameplay
         private Transform chest;
         private Transform rightUpperArm;
         private Transform rightLowerArm;
+        private Transform rightHand;
+        private EquipmentVisualController equipment;
+        private Transform flickerSlash;
+        private Vector3 savedSlashScale;
+        private Quaternion savedSlashRotation;
+        private readonly System.Collections.Generic.Dictionary<Renderer, MaterialPropertyBlock> slashBlocks = new();
         private Transform leftUpperArm;
         private Transform leftLowerArm;
         private Transform head;
@@ -23,12 +29,21 @@ namespace Phasebreak.Gameplay
         private Vector3 hitDirection;
         private bool abilityActive;
         private bool dead;
+        private readonly System.Collections.Generic.Dictionary<Renderer, bool> hiddenRenderers = new();
+        private readonly System.Collections.Generic.List<GameObject> afterimages = new();
+        private Material afterimageMaterial;
 
         private void Awake()
         {
             animator ??= GetComponent<Animator>();
             combat ??= GetComponentInParent<PlayerCombat>();
             health ??= GetComponentInParent<PlayerHealth>();
+            CacheBones();
+        }
+
+        private void CacheBones()
+        {
+            if (animator == null && combat != null) animator = combat.GetComponentInChildren<Animator>();
             if (animator == null || !animator.isHuman)
                 return;
             spine = animator.GetBoneTransform(HumanBodyBones.Spine);
@@ -36,6 +51,8 @@ namespace Phasebreak.Gameplay
                     animator.GetBoneTransform(HumanBodyBones.Chest);
             rightUpperArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
             rightLowerArm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            equipment = combat != null ? combat.GetComponentInChildren<EquipmentVisualController>() : GetComponent<EquipmentVisualController>();
             leftUpperArm = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
             leftLowerArm = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
             head = animator.GetBoneTransform(HumanBodyBones.Head);
@@ -47,6 +64,8 @@ namespace Phasebreak.Gameplay
             {
                 combat.AbilityStarted += HandleAbilityStarted;
                 combat.AbilityCompleted += HandleAbilityCompleted;
+                combat.FlickerDeparted += HandleFlickerDeparture;
+                combat.FlickerArrived += HandleFlickerArrival;
             }
             if (health != null)
             {
@@ -62,7 +81,10 @@ namespace Phasebreak.Gameplay
             {
                 combat.AbilityStarted -= HandleAbilityStarted;
                 combat.AbilityCompleted -= HandleAbilityCompleted;
+                combat.FlickerDeparted -= HandleFlickerDeparture;
+                combat.FlickerArrived -= HandleFlickerArrival;
             }
+            ClearFlickerVisuals();
             if (health != null)
             {
                 health.HitReceived -= HandleHit;
@@ -73,6 +95,26 @@ namespace Phasebreak.Gameplay
 
         private void HandleAbilityStarted(AbilityPresentationEvent value)
         {
+            // The runtime visual owner can assign the humanoid avatar after Awake.
+            if (spine == null) CacheBones();
+            if (value.Type == AbilityExecutionType.FlickerStrike && flickerSlash == null)
+            {
+                flickerSlash = combat.SlashVisual;
+                if (flickerSlash != null)
+                {
+                    savedSlashScale = flickerSlash.localScale;
+                    savedSlashRotation = flickerSlash.localRotation;
+                    foreach (Renderer renderer in flickerSlash.GetComponentsInChildren<Renderer>(true))
+                    {
+                        var saved = new MaterialPropertyBlock(); renderer.GetPropertyBlock(saved); slashBlocks[renderer] = saved;
+                        var tint = new MaterialPropertyBlock();
+                        tint.SetColor("_BaseColor", new Color(.38f, .7f, 1f));
+                        tint.SetColor("_Color", new Color(.38f, .7f, 1f));
+                        tint.SetColor("_EmissionColor", new Color(.16f, .35f, .6f));
+                        renderer.SetPropertyBlock(tint);
+                    }
+                }
+            }
             activeAbility = value;
             abilityStartedAt = Time.time;
             abilityActive = true;
@@ -80,8 +122,96 @@ namespace Phasebreak.Gameplay
 
         private void HandleAbilityCompleted(AbilityPresentationEvent value)
         {
+            if (value.Type == AbilityExecutionType.FlickerStrike) ClearFlickerVisuals();
             if (activeAbility.Index == value.Index)
                 abilityActive = false;
+        }
+
+        private void RestoreRenderers()
+        {
+            foreach (var pair in hiddenRenderers) if (pair.Key != null) pair.Key.enabled = pair.Value;
+            hiddenRenderers.Clear();
+        }
+
+        private void ClearFlickerVisuals()
+        {
+            if (flickerSlash != null)
+            {
+                flickerSlash.localScale = savedSlashScale;
+                flickerSlash.localRotation = savedSlashRotation;
+                foreach (var pair in slashBlocks) if (pair.Key != null) pair.Key.SetPropertyBlock(pair.Value);
+            }
+            slashBlocks.Clear();
+            flickerSlash = null;
+            RestoreRenderers();
+            StopAllCoroutines();
+            foreach (GameObject ghost in afterimages)
+                if (ghost != null)
+                {
+                    foreach (MeshFilter mesh in ghost.GetComponentsInChildren<MeshFilter>()) Destroy(mesh.sharedMesh);
+                    Destroy(ghost);
+                }
+            afterimages.Clear();
+        }
+
+        private void OnDestroy() { if (afterimageMaterial != null) Destroy(afterimageMaterial); }
+
+        private void HandleFlickerDeparture(AbilityPresentationEvent value)
+        {
+            RestoreRenderers();
+            if (afterimageMaterial == null)
+            {
+                afterimageMaterial = new Material(Shader.Find("Sprites/Default"));
+                afterimageMaterial.color = new Color(.32f, .65f, 1f, .22f);
+            }
+            GameObject ghost = new("Flicker departure silhouette");
+            afterimages.Add(ghost);
+            foreach (Renderer renderer in combat.GetComponentsInChildren<Renderer>())
+            {
+                if (renderer is not SkinnedMeshRenderer && renderer is not MeshRenderer) continue;
+                hiddenRenderers[renderer] = renderer.enabled;
+                if (renderer.enabled && renderer is SkinnedMeshRenderer skin)
+                {
+                    Mesh mesh = new();
+                    skin.BakeMesh(mesh);
+                    GameObject part = new("Afterimage");
+                    part.transform.SetParent(ghost.transform);
+                    part.transform.SetPositionAndRotation(skin.transform.position, skin.transform.rotation);
+                    part.transform.localScale = skin.transform.lossyScale;
+                    part.AddComponent<MeshFilter>().sharedMesh = mesh;
+                    var copy = part.AddComponent<MeshRenderer>();
+                    var materials = new Material[mesh.subMeshCount];
+                    System.Array.Fill(materials, afterimageMaterial);
+                    copy.sharedMaterials = materials;
+                    copy.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                renderer.enabled = false;
+            }
+            StartCoroutine(FadeAfterimage(ghost));
+        }
+
+        private System.Collections.IEnumerator FadeAfterimage(GameObject ghost)
+        {
+            float start = Time.time;
+            var block = new MaterialPropertyBlock();
+            while (ghost != null && Time.time - start < .18f)
+            {
+                block.SetColor("_Color", new Color(.32f, .65f, 1f, .22f * (1f - (Time.time - start) / .18f)));
+                foreach (Renderer renderer in ghost.GetComponentsInChildren<Renderer>()) renderer.SetPropertyBlock(block);
+                yield return null;
+            }
+            if (ghost != null)
+            {
+                foreach (MeshFilter mesh in ghost.GetComponentsInChildren<MeshFilter>()) Destroy(mesh.sharedMesh);
+                afterimages.Remove(ghost);
+                Destroy(ghost);
+            }
+        }
+
+        private void HandleFlickerArrival(AbilityPresentationEvent value)
+        {
+            RestoreRenderers();
+            HandleAbilityStarted(value);
         }
 
         private void HandleHit(Vector3 direction, int damage)
@@ -133,6 +263,9 @@ namespace Phasebreak.Gameplay
             float weight = Mathf.Sin(t * Mathf.PI);
             switch (activeAbility.Type)
             {
+                case AbilityExecutionType.FlickerStrike:
+                    ApplyFlickerPose(t, weight);
+                    break;
                 case AbilityExecutionType.Quickstep:
                     AddRotation(spine, 18f * weight, 0f, 0f);
                     AddRotation(chest, 12f * weight, 0f, 0f);
@@ -170,6 +303,36 @@ namespace Phasebreak.Gameplay
                 default:
                     ApplyMeleePose(activeAbility.Index, t, weight);
                     break;
+            }
+        }
+
+        private void ApplyFlickerPose(float t, float weight)
+        {
+            if (rightUpperArm == null || rightLowerArm == null || rightHand == null) return;
+            float side = activeAbility.Strike % 2 == 0 ? 1f : -1f;
+            float cut = Mathf.Lerp(1f, -1f, Mathf.SmoothStep(0f, 1f, t / .8f));
+            Transform root = combat.transform;
+            AddRotation(spine, (activeAbility.Finisher ? 20f : 8f) * weight, -side * cut * 20f * weight, 0f);
+            AddRotation(chest, 8f * weight, -side * cut * 35f * weight, 0f);
+            Vector3 elbow = rightUpperArm.position + root.forward * .28f + root.right * .22f + Vector3.up * .05f;
+            rightUpperArm.rotation = Quaternion.FromToRotation(rightLowerArm.position - rightUpperArm.position,
+                elbow - rightUpperArm.position) * rightUpperArm.rotation;
+            Vector3 hand = rightUpperArm.position + root.forward * .48f + root.right * (side * cut * .3f) +
+                Vector3.up * (activeAbility.Finisher ? cut * .35f : .08f);
+            rightLowerArm.rotation = Quaternion.FromToRotation(rightHand.position - rightLowerArm.position,
+                hand - rightLowerArm.position) * rightLowerArm.rotation;
+            Transform attachment = equipment != null ? equipment.RightHandAttachment : null;
+            if (attachment != null)
+            {
+                Vector3 bladeDirection = root.forward + root.right * (side * cut * .8f) +
+                    Vector3.up * (activeAbility.Finisher ? cut * .7f : side * cut * .2f);
+                rightHand.rotation = Quaternion.FromToRotation(attachment.up, bladeDirection) * rightHand.rotation;
+            }
+            if (flickerSlash != null)
+            {
+                float size = activeAbility.Finisher ? 1.1f : .85f;
+                flickerSlash.localScale = new Vector3(size, .22f, size);
+                flickerSlash.localRotation = Quaternion.Euler(0f, -side * cut * 30f, activeAbility.Finisher ? -20f : side * 12f);
             }
         }
 

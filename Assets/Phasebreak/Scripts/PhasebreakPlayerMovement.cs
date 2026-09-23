@@ -141,6 +141,7 @@ namespace Phasebreak.Gameplay
 
         public bool TryJump()
         {
+            if (isAbilityDriven) return false;
             bool canJump = controller.isGrounded || Time.time <= lastGroundedAt + coyoteTime;
             if (!canJump)
                 return false;
@@ -156,7 +157,7 @@ namespace Phasebreak.Gameplay
 
         public bool TryDash(float distance, float duration)
         {
-            if (isDashing)
+            if (isDashing || isAbilityDriven)
                 return false;
 
             bool grounded = controller.isGrounded;
@@ -195,6 +196,72 @@ namespace Phasebreak.Gameplay
         {
             isAbilityDriven = false;
             planarVelocity = Vector3.zero;
+            jumpBufferedUntil = 0f;
+        }
+
+        // Validate both ends and the target-to-arrival corridor. Teleports never bypass a wall.
+        public bool TryFindFlickerPosition(Targetable target, float angle, out Vector3 position)
+        {
+            position = transform.position;
+            if (controller == null || !controller.enabled || target == null) return false;
+            float scale = Mathf.Max(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.z));
+            float radius = controller.radius * scale;
+            float height = Mathf.Max(radius * 2f, controller.height * Mathf.Abs(transform.lossyScale.y));
+            Vector3 targetCenter = target.GetComponent<CharacterController>() is CharacterController targetCapsule
+                ? targetCapsule.bounds.center : target.transform.position;
+            Vector3 approach = targetCenter - controller.bounds.center;
+            foreach (RaycastHit hit in Physics.SphereCastAll(controller.bounds.center, .15f,
+                approach.normalized, approach.magnitude, ~0, QueryTriggerInteraction.Ignore))
+                if (!hit.collider.transform.IsChildOf(transform) && hit.collider.GetComponentInParent<Targetable>() != target) return false;
+            float bodyRadius = .35f;
+            foreach (Collider body in target.GetComponentsInChildren<Collider>())
+                if (body.enabled && !body.isTrigger)
+                    bodyRadius = Mathf.Max(bodyRadius, Vector2.Distance(
+                        new Vector2(body.bounds.center.x, body.bounds.center.z),
+                        new Vector2(target.transform.position.x, target.transform.position.z)) +
+                        Mathf.Max(body.bounds.extents.x, body.bounds.extents.z));
+            Vector3 direction = Quaternion.Euler(0f, angle, 0f) * target.transform.forward;
+            direction.y = 0f;
+            direction.Normalize();
+            Vector3 candidate = target.transform.position + direction * (bodyRadius + radius + .28f);
+            RaycastHit[] groundHits = Physics.RaycastAll(candidate + Vector3.up * 1.5f, Vector3.down,
+                3f, ~0, QueryTriggerInteraction.Ignore);
+            Array.Sort(groundHits, (a, b) => a.distance.CompareTo(b.distance));
+            bool found = false;
+            foreach (RaycastHit ground in groundHits)
+            {
+                if (ground.collider.transform.IsChildOf(transform) || ground.collider.GetComponentInParent<Targetable>() != null) continue;
+                if (Vector3.Angle(ground.normal, Vector3.up) > controller.slopeLimit) return false;
+                candidate.y = ground.point.y + height * .5f - transform.TransformVector(controller.center).y + .06f;
+                found = true;
+                break;
+            }
+            if (!found || Mathf.Abs(candidate.y - target.transform.position.y) > 1.25f) return false;
+            Vector3 center = candidate + transform.TransformVector(controller.center);
+            Vector3 bottom = center - Vector3.up * (height * .5f - radius);
+            Vector3 top = center + Vector3.up * (height * .5f - radius);
+            foreach (Collider overlap in Physics.OverlapCapsule(bottom, top, radius, ~0, QueryTriggerInteraction.Ignore))
+                if (!overlap.transform.IsChildOf(transform)) return false;
+            Vector3 origin = targetCenter;
+            Vector3 delta = center - origin;
+            foreach (RaycastHit hit in Physics.SphereCastAll(origin, radius, delta.normalized, delta.magnitude,
+                ~0, QueryTriggerInteraction.Ignore))
+                if (!hit.collider.transform.IsChildOf(transform) && hit.collider.GetComponentInParent<Targetable>() != target) return false;
+            position = candidate;
+            return true;
+        }
+
+        public bool TeleportAbility(Vector3 position, Vector3 facing)
+        {
+            if (!isAbilityDriven || controller == null || !controller.enabled) return false;
+            controller.enabled = false;
+            transform.position = position;
+            facing.y = 0f;
+            if (facing.sqrMagnitude > .001f) transform.rotation = Quaternion.LookRotation(facing);
+            ResetMotion();
+            controller.enabled = true;
+            Physics.SyncTransforms();
+            return true;
         }
 
         public bool CancelDashForAttack()
@@ -351,6 +418,7 @@ namespace Phasebreak.Gameplay
                 (strafeLeftAction.IsPressed() ? 1f : 0f);
             if ((debugFly || debugNoClip) && strafeLeftAction.IsPressed())
                 strafeInput = Mathf.Max(0f, strafeInput);
+            if (isAbilityDriven) return;
             bool mouseSteering = !blocked && followCamera != null && followCamera.IsRightMouseHeld;
             if (!mouseSteering && Mathf.Abs(input.x) > 0.001f)
                 transform.Rotate(0f, input.x * keyboardTurnSpeed * Time.deltaTime, 0f);
@@ -393,9 +461,6 @@ namespace Phasebreak.Gameplay
                 UpdateRotation(mouseSteering);
                 return;
             }
-
-            if (isAbilityDriven)
-                return;
 
             if (isDashing)
                 UpdateDash();

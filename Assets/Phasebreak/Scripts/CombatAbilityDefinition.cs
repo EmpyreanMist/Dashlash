@@ -10,7 +10,8 @@ namespace Phasebreak.Gameplay
         Charge,
         Guard,
         Area,
-        Quickstep
+        Quickstep,
+        FlickerStrike
     }
 
     public enum AbilityUnlockType { Baseline, CharacterLevel, Talent }
@@ -44,5 +45,11 @@ namespace Phasebreak.Gameplay
         [Min(0.01f)] public float movementDuration = 0.16f;
         [Min(0.1f)] public float stopDistance = 1.35f;
         public Sprite icon;
+        [Header("Flicker Strike")]
+        [Min(1)] public int flickerCount = 3;
+        [Min(0f)] public float flickerContinuingCost = 8f;
+        [Min(.08f)] public float flickerInterval = .12f;
+        [Min(.02f)] public float flickerTransit = .04f;
+        [Min(1f)] public float flickerFinisherMultiplier = 1.8f;
     }
 }

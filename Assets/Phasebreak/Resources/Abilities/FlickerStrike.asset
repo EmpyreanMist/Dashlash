@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0e7b0b302cee744e9e8d079d68049b4, type: 3}
+  m_Name: FlickerStrike
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.CombatAbilityDefinition
+  id: flicker-strike
+  displayName: Flicker Strike
+  description: Flicker around your target in a rapid series of rift strikes. Costs 15 Energy, then 8 for each additional strike (up to three).
+  key:
+  unlockType: 2
+  requiredLevel: 4
+  damage: 5
+  range: 9
+  cooldown: 7
+  resourceCost: 15
+  criticalBonus: 0
+  impulse: 0
+  windup: 0.04
+  recovery: 0.12
+  executionType: 7
+  specialEffect: 0
+  requiresTarget: 1
+  usesGlobalCooldown: 1
+  minimumRange: 0
+  maximumCharges: 1
+  movementDistance: 0
+  movementDuration: 0.16
+  stopDistance: 1.35
+  icon: {fileID: 2098823168588816812, guid: f0637f5792b950944968b6a2e618f647, type: 3}
+  flickerCount: 3
+  flickerContinuingCost: 8
+  flickerInterval: 0.12
+  flickerTransit: 0.04
+  flickerFinisherMultiplier: 1.8

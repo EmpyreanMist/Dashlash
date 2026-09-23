@@ -54,7 +54,7 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
-            if (weaponsDrawn && Time.time >= sheathAt)
+            if (weaponsDrawn && Time.time >= sheathAt && (combat == null || !combat.IsFlickering))
             {
                 weaponsDrawn = false;
                 visuals?.SetWeaponsDrawn(false);

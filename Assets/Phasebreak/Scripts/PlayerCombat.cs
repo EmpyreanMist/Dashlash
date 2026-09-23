@@ -44,15 +44,19 @@ namespace Phasebreak.Gameplay
         public readonly AbilityExecutionType Type;
         public readonly float Duration;
         public readonly bool Critical;
+        public readonly int Strike;
+        public readonly bool Finisher;
 
         public AbilityPresentationEvent(int index, string name, AbilityExecutionType type,
-            float duration, bool critical)
+            float duration, bool critical, int strike = 0, bool finisher = false)
         {
             Index = index;
             Name = name;
             Type = type;
             Duration = duration;
             Critical = critical;
+            Strike = strike;
+            Finisher = finisher;
         }
     }
 
@@ -122,6 +126,12 @@ namespace Phasebreak.Gameplay
         private float globalReadyAt;
         private float currentResource;
         private Coroutine attackRoutine;
+        private bool flickerActive;
+        private AbilityPresentationEvent flickerPresentation;
+        public bool IsFlickering => flickerActive;
+        internal Transform SlashVisual => slashVisual;
+        public event Action<AbilityPresentationEvent> FlickerDeparted;
+        public event Action<AbilityPresentationEvent> FlickerArrived;
         private InputAction autoAttackAction;
         private bool basicAttackActive;
         private float basicAttackReadyAt;
@@ -255,7 +265,7 @@ namespace Phasebreak.Gameplay
             if (markedTarget != null && (!markedTarget.IsAlive || Time.time >= markUntil)) ClearMark();
             float pressureRegeneration = talents != null && health != null && health.MaxHealth > 0 && health.CurrentHealth < health.MaxHealth * .5f
                 ? 1f + talents.GetEffect(TalentEffect.ResourceUnderPressure) : 1f;
-            currentResource = Mathf.MoveTowards(currentResource, maximumResource,
+            if (!flickerActive) currentResource = Mathf.MoveTowards(currentResource, maximumResource,
                 resourceRegeneration * pressureRegeneration * Time.deltaTime);
             UpdateCharges();
             if (GameplayInputFocus.GameplayInputBlocked || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
@@ -457,11 +467,25 @@ namespace Phasebreak.Gameplay
                 return true;
             }
 
-            Targetable target = ResolveTarget(index);
+            Targetable target = type == AbilityExecutionType.FlickerStrike
+                ? targeting?.CurrentTarget : ResolveTarget(index);
+            if (type == AbilityExecutionType.FlickerStrike && target != null &&
+                !IsTargetValid(target, 0f, GetRange(index))) target = null;
             if (target == null)
             {
                 Fail(type == AbilityExecutionType.Charge ? "No charge target in range" : "No valid target in range");
                 return false;
+            }
+
+            if (type == AbilityExecutionType.FlickerStrike)
+            {
+                if (movement == null || !movement.TryFindFlickerPosition(target, 180f, out _) &&
+                    !TryFlickerDestination(target, 0, out _)) return Reject(true, "No safe Flicker destination");
+                if (!movement.BeginAbilityMovement()) return Reject(true, "Movement ability is active");
+                ConsumeAbility(index);
+                talents?.NotifyAbilityUsed(false);
+                attackRoutine = StartCoroutine(PerformFlicker(index, target));
+                return true;
             }
 
             float talentDamage = talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityDamage, GetAbilityId(index)) + talents.RhythmDamageBonus : 0f;
@@ -588,6 +612,98 @@ namespace Phasebreak.Gameplay
                 return hit.collider.GetComponentInParent<Targetable>() == target;
             }
             return true;
+        }
+
+        private bool TryFlickerDestination(Targetable target, int strike, out Vector3 position)
+        {
+            position = transform.position;
+            float preferred = strike % 3 == 0 ? 180f : strike % 3 == 1 ? 35f : -125f;
+            float[] offsets = { 0f, 35f, -35f, 65f, -65f };
+            foreach (float offset in offsets)
+                if (movement.TryFindFlickerPosition(target, preferred + offset, out position) &&
+                    (strike == 0 || FlatDistance(position, transform.position) > .8f)) return true;
+            return false;
+        }
+
+        private IEnumerator PerformFlicker(int index, Targetable target)
+        {
+            CombatAbilityDefinition definition = Ability(index);
+            flickerActive = true;
+            flickerPresentation = Event(index, .6f, false);
+            try
+            {
+                // Establish coroutine ownership before callbacks can disable or kill the player.
+                yield return null;
+                AbilityStarted?.Invoke(flickerPresentation);
+                if (!flickerActive || !isActiveAndEnabled || target == null) yield break;
+                followCamera?.BeginFlicker(target.transform);
+                for (int strike = 0; strike < Mathf.Max(1, definition.flickerCount); strike++)
+                {
+                    if (!IsTargetValid(target, 0f, GetRange(index)) || health != null && !health.IsAlive ||
+                        !TryFlickerDestination(target, strike, out Vector3 destination)) break;
+                    float continuingCost = Mathf.Max(0f, definition.flickerContinuingCost);
+                    if (strike > 0 && currentResource < continuingCost) break;
+                    bool final = strike == Mathf.Max(1, definition.flickerCount) - 1;
+                    float transit = Mathf.Max(.02f, definition.flickerTransit);
+                    float interval = Mathf.Max(.04f, definition.flickerInterval - transit) +
+                        (final ? Mathf.Max(0f, definition.recovery) : 0f);
+                    float modifier = 1f + (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityDamage,
+                        GetAbilityId(index)) + talents.RhythmDamageBonus : 0f);
+                    float damage = CalculateWeaponDamage(definition.damage * modifier *
+                        (final ? definition.flickerFinisherMultiplier : 1f), target, GetCriticalBonus(index), out bool critical);
+                    var beat = new AbilityPresentationEvent(index, definition.displayName, AbilityExecutionType.FlickerStrike,
+                        interval, critical, strike, final);
+                    health?.GrantInvulnerability(transit + interval + .04f);
+                    FlickerDeparted?.Invoke(beat);
+                    if (!flickerActive || !isActiveAndEnabled) yield break;
+                    float until = Time.time + transit;
+                    while (Time.time < until && target != null && target.isActiveAndEnabled && target.IsAlive) yield return null;
+                    if (!IsTargetValid(target, 0f, GetRange(index)) || !TryFlickerDestination(target, strike, out destination)) break;
+                    if (!movement.TeleportAbility(destination, target.transform.position - destination)) break;
+                    if (strike > 0) currentResource = Mathf.Max(0f, currentResource - continuingCost);
+                    FlickerArrived?.Invoke(beat);
+                    if (!flickerActive || !isActiveAndEnabled) yield break;
+                    // Allow the weapon windup to read before contact; no movement occurs during this beat.
+                    until = Time.time + interval * .4f;
+                    while (Time.time < until && target != null && target.isActiveAndEnabled && target.IsAlive) yield return null;
+                    if (!IsTargetValid(target, 0f, GetRange(index)) || !IsFlickerInMeleeReach(target)) break;
+                    Vector3 facing = target.transform.position - transform.position;
+                    facing.y = 0f;
+                    if (facing.sqrMagnitude > .001f) transform.rotation = Quaternion.LookRotation(facing);
+                    SetSlashVisible(true);
+                    if (slashVisual != null) slashVisual.localScale = Vector3.one * (final ? 1.45f : .9f);
+                    ApplyHit(index, target, damage, critical, false, final);
+                    AbilityImpact?.Invoke(beat);
+                    if (target == null || !target.isActiveAndEnabled || !target.IsAlive)
+                    {
+                        // Finish this contact's visual beat, without another relocation or attack.
+                        yield return new WaitForSeconds(.06f);
+                        break;
+                    }
+                    until = Time.time + interval * .6f;
+                    while (Time.time < until && target != null && target.isActiveAndEnabled && target.IsAlive) yield return null;
+                    SetSlashVisible(false);
+                }
+            }
+            finally { EndFlicker(); attackRoutine = null; }
+        }
+
+        private void EndFlicker()
+        {
+            if (!flickerActive) return;
+            flickerActive = false;
+            movement?.EndAbilityMovement();
+            followCamera?.EndFlicker();
+            SetSlashVisible(false);
+            AbilityCompleted?.Invoke(flickerPresentation);
+        }
+
+        private bool IsFlickerInMeleeReach(Targetable target)
+        {
+            foreach (Collider body in target.GetComponentsInChildren<Collider>())
+                if (body.enabled && !body.isTrigger &&
+                    Vector3.Distance(transform.position, body.ClosestPoint(transform.position)) <= 1.65f) return true;
+            return false;
         }
 
         private IEnumerator PerformDash(int index)
@@ -775,7 +891,7 @@ namespace Phasebreak.Gameplay
             attackRoutine = null;
         }
 
-        private void ApplyHit(int index, Targetable target, float damage, bool critical, bool mobilityHit)
+        private void ApplyHit(int index, Targetable target, float damage, bool critical, bool mobilityHit, bool finisher = false)
         {
             ICombatTarget combatTarget = target.GetComponent<ICombatTarget>();
             if (combatTarget == null)
@@ -802,9 +918,9 @@ namespace Phasebreak.Gameplay
             if (special == AbilitySpecialEffect.ExecuteHeal && !target.IsAlive) health?.Heal(2);
             if (special == AbilitySpecialEffect.Cleave) PerformCleave(target, damage * .55f, critical, GetRange(index) + 1f);
 
-            if (critical && build != null && build.CritEnergyRestore > 0f)
+            if (!flickerActive && critical && build != null && build.CritEnergyRestore > 0f)
                 currentResource = Mathf.Min(maximumResource, currentResource + build.CritEnergyRestore);
-            if (critical) talents?.NotifyCriticalHit();
+            if (!flickerActive && critical) talents?.NotifyCriticalHit();
             if (index == 1 && build != null && build.CrushingBlowCleave)
                 PerformCleave(target, damage * 0.6f, critical, GetRange(index) + 1.2f);
             bool riftblade = build != null && build.Specialization == Specialization.Riftblade;
@@ -836,9 +952,9 @@ namespace Phasebreak.Gameplay
                 charges[index] = GetMaximumCharges(index);
                 nextChargeReadyAt[index] = 0f;
             }
-            followCamera?.AddImpulse(critical ? criticalCameraImpulse : normalCameraImpulse);
-            float hitStop = critical ? criticalHitStop : normalHitStop;
-            if (hitStop > 0f)
+            followCamera?.AddImpulse(flickerActive ? (finisher ? .16f : .06f) : critical ? criticalCameraImpulse : normalCameraImpulse);
+            float hitStop = flickerActive ? (finisher ? .025f : .012f) : critical ? criticalHitStop : normalHitStop;
+            if (hitStop > 0f && hitStopRoutine == null)
                 hitStopRoutine = StartCoroutine(HitStop(hitStop));
         }
 
@@ -853,6 +969,7 @@ namespace Phasebreak.Gameplay
 
         private void StopCombatRoutines()
         {
+            EndFlicker();
             SetAutoAttackArmed(false);
             basicAttackReadyAt = 0f;
             riftChainCount = 0;
