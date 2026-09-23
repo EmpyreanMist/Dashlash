@@ -24,6 +24,9 @@ namespace Phasebreak.Gameplay
         [SerializeField] private Vector3[] authoredOffsets;
         [SerializeField] private SpawnRole[] authoredRoles;
         public string ZoneId => zoneId;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public GameObject DebugEnemyPrefab => enemyPrefab;
+#endif
         public void ConfigureFormation(Vector3[] offsets) { authoredOffsets = offsets; count = offsets.Length; }
         public void ConfigureRoles(SpawnRole[] roles) { authoredRoles = roles; }
         private readonly List<MeleeEnemy> enemies = new List<MeleeEnemy>();

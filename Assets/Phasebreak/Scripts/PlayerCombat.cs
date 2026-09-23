@@ -146,6 +146,8 @@ namespace Phasebreak.Gameplay
         private float riftChainUntil;
         private float guardUntil;
         private float storedGuardDamage;
+        private bool debugForceNextCritical;
+        private bool debugForceCriticals;
         private Targetable markedTarget;
         private float markUntil;
         private GameObject markVisual;
@@ -172,6 +174,10 @@ namespace Phasebreak.Gameplay
         public float CriticalDamageMultiplier => criticalDamageMultiplier +
             (progression != null ? progression.CriticalDamageBonus : 0f) +
             (build != null ? build.CriticalDamageBonus : 0f);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool DebugForceNextCritical => debugForceNextCritical;
+        public bool DebugForceCriticals => debugForceCriticals;
+#endif
 
         public event Action<AbilityPresentationEvent> AbilityStarted;
         public event Action<AbilityPresentationEvent> AbilityImpact;
@@ -323,7 +329,8 @@ namespace Phasebreak.Gameplay
             float damage = baseDamage * (progression != null ? progression.PowerMultiplier : 1f) *
                 (build != null ? build.PowerMultiplier : 1f);
             if (build != null && target.GetComponent<RiftWardenBoss>() != null) damage *= build.BossDamageMultiplier;
-            critical = UnityEngine.Random.value < Mathf.Clamp01(CriticalChance + criticalBonus);
+            critical = debugForceCriticals || debugForceNextCritical ||
+                UnityEngine.Random.value < Mathf.Clamp01(CriticalChance + criticalBonus);
             return critical ? damage * CriticalDamageMultiplier : damage;
         }
 
@@ -511,6 +518,45 @@ namespace Phasebreak.Gameplay
             currentResource = maximumResource;
             FillCharges();
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void DebugResetAllCooldowns()
+        {
+            Array.Clear(nextChargeReadyAt, 0, nextChargeReadyAt.Length);
+            globalReadyAt = 0f;
+        }
+
+        public void DebugRefillAllCharges()
+        {
+            FillCharges();
+            Array.Clear(nextChargeReadyAt, 0, nextChargeReadyAt.Length);
+        }
+
+        public bool DebugResetAbilityCooldown(int index)
+        {
+            if (!IsValidIndex(index)) return false;
+            nextChargeReadyAt[index] = 0f;
+            return true;
+        }
+
+        public bool DebugRefillAbilityCharges(int index)
+        {
+            if (!IsValidIndex(index)) return false;
+            charges[index] = GetMaximumCharges(index);
+            nextChargeReadyAt[index] = 0f;
+            return true;
+        }
+
+        public void DebugClearGlobalCooldown() => globalReadyAt = 0f;
+        public void DebugForceNextHitCritical() => debugForceNextCritical = true;
+        public void DebugSetForceCriticals(bool enabled) => debugForceCriticals = enabled;
+
+        public static void DebugDeleteSavedAssignments()
+        {
+            for (int slot = 0; slot < AbilityCountValue; slot++)
+                PlayerPrefs.DeleteKey(AssignmentPrefix + slot);
+        }
+#endif
 
         public int[] CaptureMaximumCharges()
         {
@@ -914,6 +960,9 @@ namespace Phasebreak.Gameplay
             combatTarget.ReceiveHit(new CombatHit(target.transform.position + Vector3.up * 1.15f,
                 direction, damage, knockback * (index == 1 ? 1.5f : 1f), mobilityHit, critical,
                 GetAbilityName(index)));
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (debugForceNextCritical && critical) debugForceNextCritical = false;
+#endif
             if (special == AbilitySpecialEffect.Mark) ShowMark(target);
             if (special == AbilitySpecialEffect.ExecuteHeal && !target.IsAlive) health?.Heal(2);
             if (special == AbilitySpecialEffect.Cleave) PerformCleave(target, damage * .55f, critical, GetRange(index) + 1f);

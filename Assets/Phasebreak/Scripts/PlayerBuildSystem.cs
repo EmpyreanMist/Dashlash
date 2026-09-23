@@ -24,6 +24,7 @@ namespace Phasebreak.Gameplay
         private BuildEffect effects; private float critEnergy, lungeReduction, teleportRecovery; private int enemiesDefeated;
 
         public IReadOnlyList<PhasebreakItemDefinition> Inventory => inventory;
+        public IReadOnlyList<PhasebreakItemDefinition> ItemCatalog => itemCatalog;
         public Specialization Specialization { get; private set; }
         public int EnemiesDefeated => enemiesDefeated;
         public float PowerMultiplier => 1f + stats.power + (Specialization == Specialization.Berserker ? .12f : 0f) + (talents != null ? talents.GetEffect(TalentEffect.Power) + talents.DynamicPowerBonus : 0f);
@@ -88,6 +89,16 @@ namespace Phasebreak.Gameplay
             if (!byId.TryGetValue(id, out PhasebreakItemDefinition item)) return false;
             inventory.Add(item); Save(); LootAcquired?.Invoke(item); BuildChanged?.Invoke(); return true;
         }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool DebugGrantAndEquipById(string id)
+        {
+            if (!GrantRewardById(id)) return false;
+            PhasebreakItemDefinition item = inventory.LastOrDefault(candidate => candidate != null && candidate.id == id);
+            return item != null && Equip(item);
+        }
+
+        public static void DebugDeleteSavedState() => PlayerPrefs.DeleteKey(SaveKey);
+#endif
         public bool HasClaimedUniqueReward(string id) => !string.IsNullOrWhiteSpace(id) &&
             claimedRewards.Contains(id);
         public bool ClaimUniqueRewardById(string id)

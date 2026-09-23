@@ -148,7 +148,8 @@ namespace Phasebreak.Gameplay
             new("chat", "Chat", "Interface", "<Keyboard>/enter"),
             new("teleport", "Godmode cursor teleport", "Debug", "<Keyboard>/g"),
             new("arena.reset", "Reset combat arena", "Debug", "<Keyboard>/r"),
-            new("debug.hud", "Build snapshot", "Debug", "<Keyboard>/f8")
+            new("debug.hud", "Build snapshot", "Debug", "<Keyboard>/f8"),
+            new("developer.tools", "Developer Tools", "Debug", "<Keyboard>/f10")
         };
 
         private const string SettingsPrefix = "Phasebreak.Settings.v1.";
@@ -274,6 +275,14 @@ namespace Phasebreak.Gameplay
             foreach (Binding binding in Bindings) ApplyToActions(binding.Id);
             BindingsChanged?.Invoke();
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public static void DebugClearRuntimeCache()
+        {
+            Array.Clear(ChordCache, 0, ChordCache.Length);
+            Array.Clear(ChordLoaded, 0, ChordLoaded.Length);
+        }
+#endif
 
         internal static bool IsBindingActive(int bindingIndex)
         {

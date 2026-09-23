@@ -221,5 +221,9 @@ namespace Phasebreak.Gameplay
             criticalMomentumUntil = braceUntil = mobilityMomentumUntil = heavyImpactUntil = rhythmUntil = 0f;
             rhythmStacks = 0;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public static void DebugDeleteSavedState() => PlayerPrefs.DeleteKey(SaveKey);
+#endif
     }
 }
