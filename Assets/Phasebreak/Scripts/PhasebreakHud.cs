@@ -497,17 +497,18 @@ namespace Phasebreak.Gameplay
                 name.rectTransform.offsetMax = new Vector2(-3f, 0f);
                 name.gameObject.SetActive(false);
 
-                TextMeshProUGUI key = AddText("Key", slot, 13f, TextAlignmentOptions.Center);
+                // Modifier chords such as "A+M4" need more room than a single key.
+                TextMeshProUGUI key = AddText("Key", slot, 15f, TextAlignmentOptions.Left);
                 key.fontStyle = FontStyles.Bold;
                 key.rectTransform.anchorMin = key.rectTransform.anchorMax = new Vector2(0f, 1f);
                 key.rectTransform.pivot = new Vector2(0f, 1f);
-                key.rectTransform.anchoredPosition = new Vector2(5f, -5f);
-                key.rectTransform.sizeDelta = new Vector2(18f, 18f);
+                key.rectTransform.anchoredPosition = new Vector2(4f, -4f);
+                key.rectTransform.sizeDelta = new Vector2(38f, 22f);
                 key.fontStyle = FontStyles.Bold;
                 key.outlineWidth = .18f;
                 key.outlineColor = Color.black;
 
-                TextMeshProUGUI cost = AddText("Cost", slot, 10f, TextAlignmentOptions.BottomRight);
+                TextMeshProUGUI cost = AddText("Cost", slot, 12f, TextAlignmentOptions.BottomRight);
                 cost.rectTransform.anchorMin = Vector2.zero;
                 cost.rectTransform.anchorMax = Vector2.one;
                 cost.rectTransform.offsetMin = new Vector2(4f, 4f);
@@ -516,7 +517,7 @@ namespace Phasebreak.Gameplay
                 cost.outlineWidth = .18f;
                 cost.outlineColor = Color.black;
 
-                TextMeshProUGUI charges = AddText("Charges", slot, 12f, TextAlignmentOptions.TopRight);
+                TextMeshProUGUI charges = AddText("Charges", slot, 14f, TextAlignmentOptions.TopRight);
                 charges.rectTransform.anchorMin = Vector2.zero;
                 charges.rectTransform.anchorMax = Vector2.one;
                 charges.rectTransform.offsetMin = new Vector2(4f, 4f);
@@ -973,7 +974,8 @@ namespace Phasebreak.Gameplay
                     cost.text = charges.text = cooldownText.text = string.Empty;
                     cooldown.gameObject.SetActive(false);
                     cooldownText.gameObject.SetActive(false);
-                    panel.color = PhasebreakUiTheme.Panel;
+                    panel.color = new Color(PhasebreakUiTheme.Panel.r, PhasebreakUiTheme.Panel.g,
+                        PhasebreakUiTheme.Panel.b, .62f);
                     previousCharges = -1;
                     return;
                 }

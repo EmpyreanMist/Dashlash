@@ -179,7 +179,7 @@ namespace Phasebreak.Gameplay
             canvas = root.GetComponent<RectTransform>();
 
             miniPanel = Block("Zone Compass", canvas, Back);
-            Pin(miniPanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(310f, 224f));
+            Pin(miniPanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(360f, 240f));
             PhasebreakUiTheme.StyleSurface(miniPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             Label("Mini Title", miniPanel, mapDefinition != null ? mapDefinition.displayName.ToUpperInvariant() : "NORTHGATE FRONTIER", 11f, TextAlignmentOptions.Center,
                 new Vector2(.06f, .86f), new Vector2(.94f, .97f), Text);
@@ -212,7 +212,7 @@ namespace Phasebreak.Gameplay
             minimapPlayer = Diamond("Player Marker", minimap, new Color(.76f, .95f, 1f), 12f);
 
             trackerPanel = Block("Quest Tracker", canvas, Back);
-            Pin(trackerPanel, new Vector2(1f, 1f), new Vector2(-24f, -262f), new Vector2(310f, 108f));
+            Pin(trackerPanel, new Vector2(1f, 1f), new Vector2(-24f, -278f), new Vector2(360f, 130f));
             PhasebreakUiTheme.StyleSurface(trackerPanel.GetComponent<UnityEngine.UI.Image>(), Back);
             Stripe(trackerPanel, Cyan, new Vector2(0f, 0f), new Vector2(.012f, 1f));
             trackerHeading = Label("Tracker Heading", trackerPanel, string.Empty, 17f, TextAlignmentOptions.Left,

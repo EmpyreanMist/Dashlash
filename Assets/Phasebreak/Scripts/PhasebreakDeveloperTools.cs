@@ -1511,7 +1511,9 @@ namespace Phasebreak.Gameplay
             PhasebreakUiTheme.StyleButton(button);
             TextMeshProUGUI label = Label("Label", rect, text, 15f, PhasebreakUiTheme.Text, new Vector2(.03f, .05f), new Vector2(.97f, .95f), TextAlignmentOptions.Center, FontStyles.Bold);
             label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.overflowMode = TextOverflowModes.Ellipsis;
+            // The bundled font has no ellipsis glyph; truncate cleanly instead of
+            // emitting a TMP warning while keeping narrow controls readable.
+            label.overflowMode = TextOverflowModes.Truncate;
             button.onClick.AddListener(() => action?.Invoke());
             return button;
         }
@@ -1525,7 +1527,7 @@ namespace Phasebreak.Gameplay
             PhasebreakUiTheme.StyleButton(button);
             TextMeshProUGUI label = Label("Label", rect, text, 14f, PhasebreakUiTheme.Text, new Vector2(.03f, .04f), new Vector2(.97f, .96f), TextAlignmentOptions.Center, FontStyles.Bold);
             label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.overflowMode = TextOverflowModes.Ellipsis;
+            label.overflowMode = TextOverflowModes.Truncate;
             button.onClick.AddListener(() => action?.Invoke());
             return button;
         }
