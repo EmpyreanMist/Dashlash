@@ -66,6 +66,11 @@ namespace Phasebreak.Gameplay
         private PhasebreakChatHub chat;
 
         private int selectedAbility;
+        private TMP_InputField cooldownOverrideInput;
+        private TMP_InputField costOverrideInput;
+        private TMP_InputField flickerCountOverrideInput;
+        private TMP_InputField flickerContinuingCostOverrideInput;
+        private TMP_InputField flickerIntervalOverrideInput;
         private int selectedItem;
         private EnemyRole spawnRole = EnemyRole.Brute;
         private EnemyRank spawnRank = EnemyRank.Normal;
@@ -356,10 +361,40 @@ namespace Phasebreak.Gameplay
 
             Section(content, "ABILITY INSPECTOR");
             TextMeshProUGUI abilityName = Info(content, string.Empty, 38f);
-            TextMeshProUGUI abilityDetails = Info(content, string.Empty, 100f);
+            TextMeshProUGUI abilityDetails = Info(content, string.Empty, 172f);
             liveRefresh.Add(() => RefreshAbilityInspector(abilityName, abilityDetails));
             ButtonRow(content, new("PREVIOUS", () => StepAbility(-1)), new("NEXT", () => StepAbility(1)),
                 new("RESET SELECTED COOLDOWN", ResetSelectedCooldown), new("REFILL SELECTED CHARGES", RefillSelectedCharges));
+            cooldownOverrideInput = NumberAction(content, "COOLDOWN OVERRIDE SECONDS  •  BLANK = AUTHORED", string.Empty, "APPLY", ApplyCooldownOverride);
+            costOverrideInput = NumberAction(content, "ENERGY COST OVERRIDE  •  BLANK = AUTHORED", string.Empty, "APPLY", ApplyCostOverride);
+            ButtonRow(content, new ActionSpec("RESET SELECTED OVERRIDES", ResetSelectedOverrides));
+
+            TextMeshProUGUI flickerHeading = Section(content, "FLICKER STRIKE TEST OVERRIDES  •  DEVELOPMENT ONLY");
+            flickerCountOverrideInput = NumberAction(content, "MAX FLICKER STRIKES  1–50  •  BLANK = AUTHORED", string.Empty, "APPLY", ApplyFlickerCountOverride);
+            flickerContinuingCostOverrideInput = NumberAction(content, "CONTINUING ENERGY COST  •  BLANK = AUTHORED", string.Empty, "APPLY", ApplyFlickerContinuingCostOverride);
+            flickerIntervalOverrideInput = NumberAction(content, "FLICKER INTERVAL SECONDS  •  BLANK = AUTHORED", string.Empty, "APPLY", ApplyFlickerIntervalOverride);
+            RectTransform sustainRow = ToggleButton(content, "SUSTAIN UNTIL ENERGY EMPTY  •  DEBUG TEST OVERRIDE",
+                () => combat != null && combat.DebugSustainFlicker, () =>
+                {
+                    if (combat == null) return;
+                    combat.DebugSetSustainFlicker(!combat.DebugSustainFlicker);
+                    SetFeedback($"Sustained Flicker testing {(combat.DebugSustainFlicker ? "enabled" : "disabled")}.");
+                });
+            Transform[] flickerOnly =
+            {
+                flickerHeading.transform,
+                flickerCountOverrideInput.transform.parent,
+                flickerContinuingCostOverrideInput.transform.parent,
+                flickerIntervalOverrideInput.transform.parent,
+                sustainRow
+            };
+            liveRefresh.Add(() =>
+            {
+                bool show = IsSelectedFlicker();
+                foreach (Transform item in flickerOnly)
+                    if (item != null && item.gameObject.activeSelf != show) item.gameObject.SetActive(show);
+            });
+            RefreshTuningInputs();
 
             Section(content, "CRITICAL TESTING");
             ButtonRow(content, new ActionSpec("FORCE NEXT HIT CRITICAL", ForceNextCritical));
@@ -586,11 +621,12 @@ namespace Phasebreak.Gameplay
             foreach (KeyValuePair<string, GameObject> pair in tabPages) pair.Value.SetActive(pair.Key == name);
         }
 
-        private void Section(RectTransform parent, string text)
+        private TextMeshProUGUI Section(RectTransform parent, string text)
         {
             TextMeshProUGUI label = Label("Section " + text, parent, text, 18f, PhasebreakUiTheme.Accent,
                 Vector2.zero, Vector2.one, TextAlignmentOptions.Left, FontStyles.Bold);
             Layout(label.gameObject, 32f);
+            return label;
         }
 
         private TextMeshProUGUI Info(RectTransform parent, string text, float height = 36f)
@@ -609,19 +645,28 @@ namespace Phasebreak.Gameplay
             UnityEngine.UI.HorizontalLayoutGroup layout = row.gameObject.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
             layout.spacing = 7f;
             layout.childControlWidth = true;
-            layout.childForceExpandWidth = true;
+            layout.childForceExpandWidth = actions.Length > 1;
             layout.childControlHeight = true;
             layout.childForceExpandHeight = true;
-            foreach (ActionSpec spec in actions) ButtonInLayout(spec.Label, row, spec.Label, spec.Action);
+            layout.childAlignment = TextAnchor.MiddleLeft;
+            float singleWidth = actions.Length == 1 ? 420f : 0f;
+            foreach (ActionSpec spec in actions) ButtonInLayout(spec.Label, row, spec.Label, spec.Action, singleWidth);
         }
 
-        private void ToggleButton(RectTransform parent, string label, Func<bool> state, Action action)
+        private RectTransform ToggleButton(RectTransform parent, string label, Func<bool> state, Action action)
         {
             RectTransform row = Rect(label + " Row", parent, Color.clear, false);
             Layout(row.gameObject, 38f);
-            UnityEngine.UI.Button button = ButtonInLayout(label, row, string.Empty, action);
+            UnityEngine.UI.HorizontalLayoutGroup layout = row.gameObject.AddComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = false;
+            layout.childControlHeight = true;
+            layout.childForceExpandHeight = true;
+            layout.childAlignment = TextAnchor.MiddleLeft;
+            UnityEngine.UI.Button button = ButtonInLayout(label, row, string.Empty, action, 520f);
             TextMeshProUGUI text = button.GetComponentInChildren<TextMeshProUGUI>();
             liveRefresh.Add(() => text.text = $"{label}: {(state() ? "ON" : "OFF")}");
+            return row;
         }
 
         private void ChoiceRow(RectTransform parent, string label, Func<string> value, Action previous, Action next)
@@ -765,6 +810,7 @@ namespace Phasebreak.Gameplay
         {
             int count = Math.Max(1, combat?.CatalogCount ?? 1);
             selectedAbility = (selectedAbility + delta + count) % count;
+            RefreshTuningInputs();
             RefreshLiveViews();
         }
 
@@ -777,10 +823,145 @@ namespace Phasebreak.Gameplay
             if (definition == null) { heading.text = "MISSING ABILITY DEFINITION"; details.text = string.Empty; return; }
             string slots = string.Join(", ", Enumerable.Range(0, combat.AbilityCount)
                 .Where(slot => combat.GetAssignedAbilityIndex(slot) == selectedAbility).Select(slot => (slot + 1).ToString()));
+            string cooldownOverride = combat.DebugHasCooldownOverride(selectedAbility)
+                ? $"OVERRIDE {combat.DebugCooldownOverride(selectedAbility):0.##}s" : "AUTHORED";
+            string costOverride = combat.DebugHasCostOverride(selectedAbility)
+                ? $"OVERRIDE {combat.DebugCostOverride(selectedAbility):0.##}" : "AUTHORED";
             heading.text = $"{definition.displayName}    [{selectedAbility + 1}/{combat.CatalogCount}]";
             details.text = $"ID  {definition.id}\nUNLOCKED  {(combat.IsAbilityUnlocked(selectedAbility) ? "YES" : "NO")}  •  SOURCE  {combat.GetAbilitySourceText(selectedAbility)}\n" +
                 $"SLOTS  {(slots.Length == 0 ? "NONE" : slots)}  •  CHARGES  {state.Charges}/{state.MaximumCharges}  •  COOLDOWN  {state.CooldownRemaining:0.00}s\n" +
-                $"ENERGY  {state.ResourceCost:0.#}  •  EXECUTION  {definition.executionType}";
+                $"COOLDOWN  AUTHORED {definition.cooldown:0.##}s  •  EFFECTIVE {combat.DebugGetEffectiveCooldown(selectedAbility):0.##}s  •  {cooldownOverride}\n" +
+                $"ENERGY  AUTHORED {definition.resourceCost:0.##}  •  EFFECTIVE {combat.DebugGetEffectiveCost(selectedAbility):0.##}  •  {costOverride}  •  EXECUTION  {definition.executionType}";
+            if (definition.executionType == AbilityExecutionType.FlickerStrike)
+            {
+                string count = combat.DebugHasFlickerCountOverride ? combat.DebugFlickerCountOverride.ToString() : $"AUTHORED {definition.flickerCount}";
+                string continuing = combat.DebugHasFlickerContinuingCostOverride ? combat.DebugFlickerContinuingCostOverride.ToString("0.##") : $"AUTHORED {definition.flickerContinuingCost:0.##}";
+                string interval = combat.DebugHasFlickerIntervalOverride ? $"{combat.DebugFlickerIntervalOverride:0.###}s" : $"AUTHORED {definition.flickerInterval:0.###}s";
+                details.text += $"\nFLICKER  MAX {count}  •  CONTINUING {continuing}  •  INTERVAL {interval}  •  SUSTAIN {(combat.DebugSustainFlicker ? "ON" : "OFF")}" +
+                    $"\nLAST RUN  {combat.DebugLastFlickerStrikeCount} STRIKES  •  {combat.DebugLastFlickerStopReason}";
+            }
+        }
+
+        private bool IsSelectedFlicker() => combat != null && selectedAbility >= 0 && selectedAbility < combat.CatalogCount &&
+            combat.GetAbilityDefinition(selectedAbility)?.executionType == AbilityExecutionType.FlickerStrike;
+
+        private void RefreshTuningInputs()
+        {
+            if (combat == null) return;
+            cooldownOverrideInput?.SetTextWithoutNotify(combat.DebugHasCooldownOverride(selectedAbility)
+                ? combat.DebugCooldownOverride(selectedAbility).ToString("0.##", CultureInfo.InvariantCulture) : string.Empty);
+            costOverrideInput?.SetTextWithoutNotify(combat.DebugHasCostOverride(selectedAbility)
+                ? combat.DebugCostOverride(selectedAbility).ToString("0.##", CultureInfo.InvariantCulture) : string.Empty);
+            flickerCountOverrideInput?.SetTextWithoutNotify(combat.DebugHasFlickerCountOverride
+                ? combat.DebugFlickerCountOverride.ToString(CultureInfo.InvariantCulture) : string.Empty);
+            flickerContinuingCostOverrideInput?.SetTextWithoutNotify(combat.DebugHasFlickerContinuingCostOverride
+                ? combat.DebugFlickerContinuingCostOverride.ToString("0.##", CultureInfo.InvariantCulture) : string.Empty);
+            flickerIntervalOverrideInput?.SetTextWithoutNotify(combat.DebugHasFlickerIntervalOverride
+                ? combat.DebugFlickerIntervalOverride.ToString("0.###", CultureInfo.InvariantCulture) : string.Empty);
+        }
+
+        private void ApplyCooldownOverride(string text)
+        {
+            if (combat == null) return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                combat.DebugClearCooldownOverride(selectedAbility);
+                SetFeedback("Selected ability uses its authored cooldown.");
+                RefreshTuningInputs();
+                return;
+            }
+            if (TryFloat(text, 0f, 300f, out float value, out string note) && combat.DebugSetCooldownOverride(selectedAbility, value))
+            {
+                SetFeedback($"Cooldown override set to {value:0.##} seconds.");
+                AppendNote(note);
+                RefreshTuningInputs();
+            }
+        }
+
+        private void ApplyCostOverride(string text)
+        {
+            if (combat == null) return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                combat.DebugClearCostOverride(selectedAbility);
+                SetFeedback("Selected ability uses its authored Energy cost.");
+                RefreshTuningInputs();
+                return;
+            }
+            if (TryFloat(text, 0f, combat.MaximumResource, out float value, out string note) && combat.DebugSetCostOverride(selectedAbility, value))
+            {
+                SetFeedback($"Energy cost override set to {value:0.##}.");
+                AppendNote(note);
+                RefreshTuningInputs();
+            }
+        }
+
+        private void ApplyFlickerCountOverride(string text)
+        {
+            if (combat == null) return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                combat.DebugClearFlickerCountOverride();
+                SetFeedback("Flicker uses its authored strike count.");
+                RefreshTuningInputs();
+                return;
+            }
+            if (TryInt(text, 1, 50, out int value, out string note))
+            {
+                combat.DebugSetFlickerCountOverride(value);
+                SetFeedback($"Flicker strike limit set to {value}.");
+                AppendNote(note);
+                RefreshTuningInputs();
+            }
+        }
+
+        private void ApplyFlickerContinuingCostOverride(string text)
+        {
+            if (combat == null) return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                combat.DebugClearFlickerContinuingCostOverride();
+                SetFeedback("Flicker uses its authored continuing Energy cost.");
+                RefreshTuningInputs();
+                return;
+            }
+            if (TryFloat(text, 0f, combat.MaximumResource, out float value, out string note))
+            {
+                combat.DebugSetFlickerContinuingCostOverride(value);
+                SetFeedback($"Flicker continuing Energy cost set to {value:0.##}.");
+                AppendNote(note);
+                RefreshTuningInputs();
+            }
+        }
+
+        private void ApplyFlickerIntervalOverride(string text)
+        {
+            if (combat == null) return;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                combat.DebugClearFlickerIntervalOverride();
+                SetFeedback("Flicker uses its authored interval.");
+                RefreshTuningInputs();
+                return;
+            }
+            if (TryFloat(text, .04f, 5f, out float value, out string note))
+            {
+                combat.DebugSetFlickerIntervalOverride(value);
+                SetFeedback($"Flicker interval set to {value:0.###} seconds.");
+                AppendNote(note);
+                RefreshTuningInputs();
+            }
+        }
+
+        private void ResetSelectedOverrides()
+        {
+            if (combat == null || !combat.DebugResetAbilityTuningOverrides(selectedAbility))
+            {
+                SetFeedback("No ability selected.");
+                return;
+            }
+            RefreshTuningInputs();
+            SetFeedback("Selected ability tuning overrides reset to authored values.");
         }
 
         private void ResetSelectedCooldown()
@@ -805,11 +986,50 @@ namespace Phasebreak.Gameplay
 
         private void ApplyFlickerPreset(int energy)
         {
-            string result = chat != null ? chat.RunDeveloperCommand("/riftbuild apply") : "Developer command registry unavailable.";
-            combat?.SetDebugResource(energy);
+            if (combat == null || build == null || talents == null)
+            {
+                SetFeedback("Flicker preset failed: combat, build, or talent owner is unavailable.");
+                return;
+            }
             int index = FlickerIndex();
-            if (index >= 0) { combat.DebugResetAbilityCooldown(index); combat.DebugRefillAbilityCharges(index); }
-            SetFeedback($"Flicker test state applied; Energy {energy}. {result}");
+            if (index < 0)
+            {
+                SetFeedback("Flicker preset failed: Flicker Strike is missing from the authored combat catalog.");
+                return;
+            }
+            SpecializationChangeResult specialization = build.SetSpecialization(Specialization.Riftblade);
+            if (specialization is SpecializationChangeResult.AbilityInProgress or SpecializationChangeResult.Defeated)
+            {
+                SetFeedback($"Flicker preset failed: {specialization}.");
+                return;
+            }
+            if (specialization is not (SpecializationChangeResult.Changed or SpecializationChangeResult.AlreadyActive))
+            {
+                SetFeedback("Flicker preset failed: Riftblade specialization is unavailable.");
+                return;
+            }
+            if (!talents.DebugActivateAbilityGrant("flicker-strike") || !combat.IsAbilityUnlocked(index))
+            {
+                SetFeedback("Flicker preset failed: the development-only Flicker talent override could not be activated.");
+                return;
+            }
+            if (!combat.DebugResetAbilityCooldown(index) || !combat.DebugRefillAbilityCharges(index))
+            {
+                SetFeedback("Flicker preset failed: cooldown or charge state could not be reset.");
+                return;
+            }
+            combat.DebugClearGlobalCooldown();
+            combat.SetDebugResource(energy);
+            AbilityState state = combat.GetAbilityState(index);
+            if (build.Specialization != Specialization.Riftblade || !combat.IsAbilityUnlocked(index) ||
+                state.Charges < 1 || !Mathf.Approximately(combat.CurrentResource, energy))
+            {
+                SetFeedback("Flicker preset failed validation after setup.");
+                return;
+            }
+            selectedAbility = index;
+            RefreshTuningInputs();
+            SetFeedback($"Flicker test state ready: Riftblade active, Flicker unlocked, charge ready, cooldown reset, Energy {energy}.");
         }
 
         private void DeathTest()
@@ -1289,7 +1509,9 @@ namespace Phasebreak.Gameplay
             Anchors(rect, min, max);
             UnityEngine.UI.Button button = rect.gameObject.AddComponent<UnityEngine.UI.Button>();
             PhasebreakUiTheme.StyleButton(button);
-            Label("Label", rect, text, 15f, PhasebreakUiTheme.Text, new Vector2(.03f, .05f), new Vector2(.97f, .95f), TextAlignmentOptions.Center, FontStyles.Bold);
+            TextMeshProUGUI label = Label("Label", rect, text, 15f, PhasebreakUiTheme.Text, new Vector2(.03f, .05f), new Vector2(.97f, .95f), TextAlignmentOptions.Center, FontStyles.Bold);
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
             button.onClick.AddListener(() => action?.Invoke());
             return button;
         }
@@ -1301,7 +1523,9 @@ namespace Phasebreak.Gameplay
             if (preferredWidth > 0f) element.preferredWidth = preferredWidth; else element.flexibleWidth = 1f;
             UnityEngine.UI.Button button = rect.gameObject.AddComponent<UnityEngine.UI.Button>();
             PhasebreakUiTheme.StyleButton(button);
-            Label("Label", rect, text, 14f, PhasebreakUiTheme.Text, new Vector2(.03f, .04f), new Vector2(.97f, .96f), TextAlignmentOptions.Center, FontStyles.Bold);
+            TextMeshProUGUI label = Label("Label", rect, text, 14f, PhasebreakUiTheme.Text, new Vector2(.03f, .04f), new Vector2(.97f, .96f), TextAlignmentOptions.Center, FontStyles.Bold);
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
             button.onClick.AddListener(() => action?.Invoke());
             return button;
         }

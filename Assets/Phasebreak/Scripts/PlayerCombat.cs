@@ -148,6 +148,21 @@ namespace Phasebreak.Gameplay
         private float storedGuardDamage;
         private bool debugForceNextCritical;
         private bool debugForceCriticals;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private readonly bool[] debugCooldownOverrideActive = new bool[MaximumCatalogSize];
+        private readonly float[] debugCooldownOverrides = new float[MaximumCatalogSize];
+        private readonly bool[] debugCostOverrideActive = new bool[MaximumCatalogSize];
+        private readonly float[] debugCostOverrides = new float[MaximumCatalogSize];
+        private bool debugFlickerCountOverrideActive;
+        private int debugFlickerCountOverride;
+        private bool debugFlickerContinuingCostOverrideActive;
+        private float debugFlickerContinuingCostOverride;
+        private bool debugFlickerIntervalOverrideActive;
+        private float debugFlickerIntervalOverride;
+        private bool debugSustainFlicker;
+        public int DebugLastFlickerStrikeCount { get; private set; }
+        public string DebugLastFlickerStopReason { get; private set; } = "Not run";
+#endif
         private Targetable markedTarget;
         private float markUntil;
         private GameObject markVisual;
@@ -177,6 +192,19 @@ namespace Phasebreak.Gameplay
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         public bool DebugForceNextCritical => debugForceNextCritical;
         public bool DebugForceCriticals => debugForceCriticals;
+        public bool DebugSustainFlicker => debugSustainFlicker;
+        public bool DebugHasCooldownOverride(int index) => IsValidIndex(index) && debugCooldownOverrideActive[index];
+        public bool DebugHasCostOverride(int index) => IsValidIndex(index) && debugCostOverrideActive[index];
+        public float DebugCooldownOverride(int index) => DebugHasCooldownOverride(index) ? debugCooldownOverrides[index] : 0f;
+        public float DebugCostOverride(int index) => DebugHasCostOverride(index) ? debugCostOverrides[index] : 0f;
+        public bool DebugHasFlickerCountOverride => debugFlickerCountOverrideActive;
+        public int DebugFlickerCountOverride => debugFlickerCountOverride;
+        public bool DebugHasFlickerContinuingCostOverride => debugFlickerContinuingCostOverrideActive;
+        public float DebugFlickerContinuingCostOverride => debugFlickerContinuingCostOverride;
+        public bool DebugHasFlickerIntervalOverride => debugFlickerIntervalOverrideActive;
+        public float DebugFlickerIntervalOverride => debugFlickerIntervalOverride;
+        public float DebugGetEffectiveCooldown(int index) => IsValidIndex(index) ? GetCooldown(index) : 0f;
+        public float DebugGetEffectiveCost(int index) => IsValidIndex(index) ? GetCost(index) : 0f;
 #endif
 
         public event Action<AbilityPresentationEvent> AbilityStarted;
@@ -551,6 +579,79 @@ namespace Phasebreak.Gameplay
         public void DebugForceNextHitCritical() => debugForceNextCritical = true;
         public void DebugSetForceCriticals(bool enabled) => debugForceCriticals = enabled;
 
+        public bool DebugSetCooldownOverride(int index, float value)
+        {
+            if (!IsValidIndex(index)) return false;
+            debugCooldownOverrides[index] = Mathf.Clamp(value, 0f, 300f);
+            debugCooldownOverrideActive[index] = true;
+            return true;
+        }
+
+        public bool DebugSetCostOverride(int index, float value)
+        {
+            if (!IsValidIndex(index)) return false;
+            debugCostOverrides[index] = Mathf.Clamp(value, 0f, maximumResource);
+            debugCostOverrideActive[index] = true;
+            return true;
+        }
+
+        public bool DebugClearCooldownOverride(int index)
+        {
+            if (!IsValidIndex(index)) return false;
+            debugCooldownOverrideActive[index] = false;
+            return true;
+        }
+
+        public bool DebugClearCostOverride(int index)
+        {
+            if (!IsValidIndex(index)) return false;
+            debugCostOverrideActive[index] = false;
+            return true;
+        }
+
+        public bool DebugResetAbilityTuningOverrides(int index)
+        {
+            if (!IsValidIndex(index)) return false;
+            debugCooldownOverrideActive[index] = false;
+            debugCostOverrideActive[index] = false;
+            if (GetExecutionType(index) == AbilityExecutionType.FlickerStrike)
+            {
+                debugFlickerCountOverrideActive = false;
+                debugFlickerContinuingCostOverrideActive = false;
+                debugFlickerIntervalOverrideActive = false;
+                debugSustainFlicker = false;
+            }
+            return true;
+        }
+
+        public bool DebugSetFlickerCountOverride(int value)
+        {
+            debugFlickerCountOverride = Mathf.Clamp(value, 1, 50);
+            debugFlickerCountOverrideActive = true;
+            return true;
+        }
+
+        public void DebugClearFlickerCountOverride() => debugFlickerCountOverrideActive = false;
+
+        public bool DebugSetFlickerContinuingCostOverride(float value)
+        {
+            debugFlickerContinuingCostOverride = Mathf.Clamp(value, 0f, maximumResource);
+            debugFlickerContinuingCostOverrideActive = true;
+            return true;
+        }
+
+        public void DebugClearFlickerContinuingCostOverride() => debugFlickerContinuingCostOverrideActive = false;
+
+        public bool DebugSetFlickerIntervalOverride(float value)
+        {
+            debugFlickerIntervalOverride = Mathf.Clamp(value, .04f, 5f);
+            debugFlickerIntervalOverrideActive = true;
+            return true;
+        }
+
+        public void DebugClearFlickerIntervalOverride() => debugFlickerIntervalOverrideActive = false;
+        public void DebugSetSustainFlicker(bool enabled) => debugSustainFlicker = enabled;
+
         public static void DebugDeleteSavedAssignments()
         {
             for (int slot = 0; slot < AbilityCountValue; slot++)
@@ -674,6 +775,18 @@ namespace Phasebreak.Gameplay
         private IEnumerator PerformFlicker(int index, Targetable target)
         {
             CombatAbilityDefinition definition = Ability(index);
+            int strikeLimit = Mathf.Max(1, definition.flickerCount);
+            float continuingCost = Mathf.Max(0f, definition.flickerContinuingCost);
+            float configuredInterval = definition.flickerInterval;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (debugFlickerCountOverrideActive) strikeLimit = debugFlickerCountOverride;
+            if (debugFlickerContinuingCostOverrideActive) continuingCost = debugFlickerContinuingCostOverride;
+            if (debugFlickerIntervalOverrideActive) configuredInterval = debugFlickerIntervalOverride;
+            if (debugSustainFlicker && !debugFlickerCountOverrideActive) strikeLimit = 50;
+            strikeLimit = Mathf.Clamp(strikeLimit, 1, 50);
+            DebugLastFlickerStrikeCount = 0;
+            DebugLastFlickerStopReason = "Running";
+#endif
             flickerActive = true;
             flickerPresentation = Event(index, .6f, false);
             try
@@ -681,17 +794,44 @@ namespace Phasebreak.Gameplay
                 // Establish coroutine ownership before callbacks can disable or kill the player.
                 yield return null;
                 AbilityStarted?.Invoke(flickerPresentation);
-                if (!flickerActive || !isActiveAndEnabled || target == null) yield break;
-                followCamera?.BeginFlicker(target.transform);
-                for (int strike = 0; strike < Mathf.Max(1, definition.flickerCount); strike++)
+                if (!flickerActive || !isActiveAndEnabled || target == null)
                 {
-                    if (!IsTargetValid(target, 0f, GetRange(index)) || health != null && !health.IsAlive ||
-                        !TryFlickerDestination(target, strike, out Vector3 destination)) break;
-                    float continuingCost = Mathf.Max(0f, definition.flickerContinuingCost);
-                    if (strike > 0 && currentResource < continuingCost) break;
-                    bool final = strike == Mathf.Max(1, definition.flickerCount) - 1;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    DebugLastFlickerStopReason = "Combat interrupted";
+#endif
+                    yield break;
+                }
+                followCamera?.BeginFlicker(target.transform);
+                for (int strike = 0; strike < strikeLimit; strike++)
+                {
+                    if (!IsTargetValid(target, 0f, GetRange(index)) || health != null && !health.IsAlive)
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Target invalid, dead, or combat interrupted";
+#endif
+                        break;
+                    }
+                    if (!TryFlickerDestination(target, strike, out Vector3 destination))
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "No safe teleport placement";
+#endif
+                        break;
+                    }
+                    if (strike > 0 && currentResource < continuingCost)
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Energy depleted";
+#endif
+                        break;
+                    }
+                    float resourceAfterStrike = currentResource - (strike > 0 ? continuingCost : 0f);
+                    bool final = strike == strikeLimit - 1;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    if (debugSustainFlicker && resourceAfterStrike < continuingCost) final = true;
+#endif
                     float transit = Mathf.Max(.02f, definition.flickerTransit);
-                    float interval = Mathf.Max(.04f, definition.flickerInterval - transit) +
+                    float interval = Mathf.Max(.04f, configuredInterval - transit) +
                         (final ? Mathf.Max(0f, definition.recovery) : 0f);
                     float modifier = 1f + (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityDamage,
                         GetAbilityId(index)) + talents.RhythmDamageBonus : 0f);
@@ -701,14 +841,45 @@ namespace Phasebreak.Gameplay
                         interval, critical, strike, final);
                     health?.GrantInvulnerability(transit + interval + .04f);
                     FlickerDeparted?.Invoke(beat);
-                    if (!flickerActive || !isActiveAndEnabled) yield break;
+                    if (!flickerActive || !isActiveAndEnabled)
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Combat interrupted";
+#endif
+                        yield break;
+                    }
                     float until = Time.time + transit;
                     while (Time.time < until && target != null && target.isActiveAndEnabled && target.IsAlive) yield return null;
-                    if (!IsTargetValid(target, 0f, GetRange(index)) || !TryFlickerDestination(target, strike, out destination)) break;
-                    if (!movement.TeleportAbility(destination, target.transform.position - destination)) break;
+                    if (!IsTargetValid(target, 0f, GetRange(index)))
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Target invalid or dead";
+#endif
+                        break;
+                    }
+                    if (!TryFlickerDestination(target, strike, out destination))
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "No safe teleport placement";
+#endif
+                        break;
+                    }
+                    if (!movement.TeleportAbility(destination, target.transform.position - destination))
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Teleport interrupted";
+#endif
+                        break;
+                    }
                     if (strike > 0) currentResource = Mathf.Max(0f, currentResource - continuingCost);
                     FlickerArrived?.Invoke(beat);
-                    if (!flickerActive || !isActiveAndEnabled) yield break;
+                    if (!flickerActive || !isActiveAndEnabled)
+                    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Combat interrupted";
+#endif
+                        yield break;
+                    }
                     // Allow the weapon windup to read before contact; no movement occurs during this beat.
                     until = Time.time + interval * .4f;
                     while (Time.time < until && target != null && target.isActiveAndEnabled && target.IsAlive) yield return null;
@@ -719,9 +890,15 @@ namespace Phasebreak.Gameplay
                     SetSlashVisible(true);
                     if (slashVisual != null) slashVisual.localScale = Vector3.one * (final ? 1.45f : .9f);
                     ApplyHit(index, target, damage, critical, false, final);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    DebugLastFlickerStrikeCount++;
+#endif
                     AbilityImpact?.Invoke(beat);
                     if (target == null || !target.isActiveAndEnabled || !target.IsAlive)
                     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        DebugLastFlickerStopReason = "Target died";
+#endif
                         // Finish this contact's visual beat, without another relocation or attack.
                         yield return new WaitForSeconds(.06f);
                         break;
@@ -730,6 +907,9 @@ namespace Phasebreak.Gameplay
                     while (Time.time < until && target != null && target.isActiveAndEnabled && target.IsAlive) yield return null;
                     SetSlashVisible(false);
                 }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (DebugLastFlickerStopReason == "Running") DebugLastFlickerStopReason = "Strike limit reached";
+#endif
             }
             finally { EndFlicker(); attackRoutine = null; }
         }
@@ -1215,16 +1395,35 @@ namespace Phasebreak.Gameplay
             {
                 1 => crushingCooldown, 2 => lungeCooldown, 3 => 6f, 4 => 10f, _ => 0f
             };
-            if (GetExecutionType(index) == AbilityExecutionType.Quickstep) return value;
+            if (GetExecutionType(index) == AbilityExecutionType.Quickstep)
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (IsValidIndex(index) && debugCooldownOverrideActive[index]) value = debugCooldownOverrides[index];
+#endif
+                return value;
+            }
             if (index == 2 && build != null) value *= build.PhaseLungeCooldownMultiplier;
             else if (talents != null) value *= Mathf.Clamp01(1f - talents.GetAbilityEffect(TalentEffect.AbilityCooldown, GetAbilityId(index)));
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (IsValidIndex(index) && debugCooldownOverrideActive[index]) value = debugCooldownOverrides[index];
+#endif
             return value;
         }
         private float GetCost(int index)
         {
             float value = Ability(index) != null ? Ability(index).resourceCost : index switch { 1 => crushingCost, 2 => lungeCost, 4 => 15f, _ => 0f };
-            if (GetExecutionType(index) == AbilityExecutionType.Quickstep) return value;
-            return value * Mathf.Clamp01(1f - (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityCost, GetAbilityId(index)) : 0f));
+            if (GetExecutionType(index) == AbilityExecutionType.Quickstep)
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (IsValidIndex(index) && debugCostOverrideActive[index]) value = debugCostOverrides[index];
+#endif
+                return value;
+            }
+            value *= Mathf.Clamp01(1f - (talents != null ? talents.GetAbilityEffect(TalentEffect.AbilityCost, GetAbilityId(index)) : 0f));
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (IsValidIndex(index) && debugCostOverrideActive[index]) value = debugCostOverrides[index];
+#endif
+            return value;
         }
         private float GetCriticalBonus(int index) => Ability(index) != null ? Ability(index).criticalBonus : index switch
         {
