@@ -150,6 +150,13 @@ namespace Phasebreak.Gameplay
 
         private void HandleAbilityImpact(AbilityPresentationEvent value)
         {
+            if (value.Type == AbilityExecutionType.FlickerStrike)
+            {
+                var flickerMain = sparks.main;
+                flickerMain.startColor = new Color(.42f, .64f, 1f, .8f);
+                sparks.Emit(value.Finisher ? 12 : 5);
+                return;
+            }
             Color color = value.Name switch
             {
                 "Blood Rush" or "Reaper's Arc" => new Color(.86f, .18f, .12f),
