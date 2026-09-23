@@ -53,6 +53,10 @@ namespace Phasebreak.Gameplay
         private bool leftClickCandidate;
         private bool invertY;
         private float screenShakeAmount = 1f;
+        private Transform flickerTarget;
+        private float flickerBlend;
+        public void BeginFlicker(Transform focus) => flickerTarget = focus;
+        public void EndFlicker() => flickerTarget = null;
 
         public bool IsLeftMouseHeld => !GameplayInputFocus.GameplayInputBlocked && leftMouseAction != null && leftMouseAction.IsPressed();
         public bool IsRightMouseHeld => !GameplayInputFocus.GameplayInputBlocked && rightMouseAction != null && rightMouseAction.IsPressed();
@@ -178,7 +182,7 @@ namespace Phasebreak.Gameplay
                 distance = Mathf.Clamp(distance - scrollSteps * zoomSensitivity, minimumDistance, maximumDistance);
             }
 
-            if (IsRightMouseHeld && target != null)
+            if (IsRightMouseHeld && target != null && flickerTarget == null)
                 target.rotation = Quaternion.Euler(0f, yaw, 0f);
         }
 
@@ -188,7 +192,11 @@ namespace Phasebreak.Gameplay
                 return;
 
             Vector3 desiredPivot = target.position + lookOffset;
-            trackedPivot = Vector3.SmoothDamp(trackedPivot, desiredPivot, ref followVelocity, followSmoothTime);
+            flickerBlend = Mathf.MoveTowards(flickerBlend, flickerTarget != null ? 1f : 0f, Time.deltaTime * 5f);
+            if (flickerTarget != null) desiredPivot = Vector3.Lerp(desiredPivot,
+                flickerTarget.position + lookOffset, .85f);
+            trackedPivot = Vector3.SmoothDamp(trackedPivot, desiredPivot, ref followVelocity,
+                Mathf.Lerp(followSmoothTime, .2f, flickerBlend));
 
             Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
             float collisionDistance = FindCollisionDistance(trackedPivot, orbitRotation);
@@ -215,6 +223,8 @@ namespace Phasebreak.Gameplay
 
         private void OnDisable()
         {
+            EndFlicker();
+            flickerBlend = 0f;
             lookAction.Disable();
             leftMouseAction.Disable();
             rightMouseAction.Disable();
@@ -250,6 +260,7 @@ namespace Phasebreak.Gameplay
                     continue;
                 if (target != null && (hitCollider.transform == target || hitCollider.transform.IsChildOf(target)))
                     continue;
+                if (flickerTarget != null && hitCollider.transform.IsChildOf(flickerTarget)) continue;
 
                 nearestDistance = Mathf.Min(nearestDistance,
                     Mathf.Max(0.2f, collisionHits[i].distance - collisionPadding));
