@@ -226,7 +226,7 @@ namespace Phasebreak.Gameplay
             Text("Bag Header", bag, "FIELD INVENTORY", 12f, TextAlignmentOptions.Left, new Vector2(.03f, .91f), new Vector2(.47f, .985f), TextMuted);
             inventoryCount = Text("Capacity", bag, string.Empty, 12f, TextAlignmentOptions.Right, new Vector2(.46f, .91f), new Vector2(.97f, .985f), TextMuted);
             BuildInventoryFilters(bag);
-            inventoryGrid = CreateScrollGrid(bag, new Vector2(.025f, .12f), new Vector2(.975f, .82f), 7, new Vector2(54f, 54f), new Vector2(6f, 6f));
+            inventoryGrid = CreateScrollGrid(bag, new Vector2(.025f, .12f), new Vector2(.975f, .82f), 7, new Vector2(62f, 62f), new Vector2(7f, 7f));
             inventoryStatus = Text("Inventory Status", bag, "HOVER FOR DETAILS  •  RIGHT-CLICK TO EQUIP", 11f,
                 TextAlignmentOptions.Center, new Vector2(.03f, .02f), new Vector2(.97f, .1f), TextMuted);
         }
@@ -244,7 +244,7 @@ namespace Phasebreak.Gameplay
                 filterImages[filter] = image;
                 Button button = rect.gameObject.AddComponent<Button>();
                 PhasebreakUiTheme.StyleButton(button);
-                Text("Label", rect, filter.ToString().ToUpperInvariant(), 10.5f, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, TextPrimary);
+                Text("Label", rect, filter.ToString().ToUpperInvariant(), 12f, TextAlignmentOptions.Center, Vector2.zero, Vector2.one, TextPrimary);
                 button.onClick.AddListener(() => SetFilter(filter));
             }
         }
@@ -368,8 +368,8 @@ namespace Phasebreak.Gameplay
             content.sizeDelta = Vector2.zero;
             GridLayoutGroup grid = content.GetComponent<GridLayoutGroup>();
             grid.padding = new RectOffset(12, 12, 12, 12);
-            grid.spacing = new Vector2(9f, 9f);
-            grid.cellSize = new Vector2(106f, 116f);
+            grid.spacing = new Vector2(10f, 10f);
+            grid.cellSize = new Vector2(128f, 126f);
             grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             grid.constraintCount = 5;
             content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -389,9 +389,9 @@ namespace Phasebreak.Gameplay
                 PhasebreakUiTheme.StyleButton(button);
                 button.onClick.AddListener(() => { selectedAbility = captured; RefreshSpellbook(); });
                 Image icon = IconImage("Icon", tile, new Vector2(.17f, .36f), new Vector2(.83f, .96f));
-                TextMeshProUGUI label = Text("Name", tile, string.Empty, 11f, TextAlignmentOptions.Top,
+                TextMeshProUGUI label = Text("Name", tile, string.Empty, 13f, TextAlignmentOptions.Top,
                     new Vector2(.04f, .04f), new Vector2(.96f, .34f), TextPrimary);
-                TextMeshProUGUI status = Text("Status", tile, string.Empty, 9f, TextAlignmentOptions.Bottom,
+                TextMeshProUGUI status = Text("Status", tile, string.Empty, 10.5f, TextAlignmentOptions.Bottom,
                     new Vector2(.04f, .01f), new Vector2(.96f, .19f), TextMuted);
                 CanvasGroup fade = tile.gameObject.AddComponent<CanvasGroup>();
                 AbilityDragSource drag = tile.gameObject.AddComponent<AbilityDragSource>();
@@ -527,7 +527,8 @@ namespace Phasebreak.Gameplay
             RectTransform nav = Block("Gameplay Navigation", root, Window);
             nav.anchorMin = nav.anchorMax = new Vector2(1f, 0f);
             nav.pivot = new Vector2(1f, 0f);
-            nav.anchoredPosition = new Vector2(-22f, 20f);
+            // Keep utility navigation clear of the two-row action bar.
+            nav.anchoredPosition = new Vector2(-22f, 212f);
             nav.sizeDelta = new Vector2(406f, 70f);
             PhasebreakUiTheme.StyleSurface(nav.GetComponent<Image>(), Window);
             NavButton(nav, MenuMode.Inventory, EquipmentSlot.Core, 0, "Inventory", "inventory");
@@ -542,7 +543,7 @@ namespace Phasebreak.Gameplay
                 TextAlignmentOptions.Center, Vector2.zero, Vector2.zero, TextPrimary);
             navTooltip.rectTransform.anchorMin = navTooltip.rectTransform.anchorMax = new Vector2(1f, 0f);
             navTooltip.rectTransform.pivot = new Vector2(1f, 0f);
-            navTooltip.rectTransform.anchoredPosition = new Vector2(-22f, 0f);
+            navTooltip.rectTransform.anchoredPosition = new Vector2(-22f, 192f);
             navTooltip.rectTransform.sizeDelta = new Vector2(406f, 18f);
             navTooltip.gameObject.SetActive(false);
         }
@@ -559,7 +560,7 @@ namespace Phasebreak.Gameplay
             Image icon = IconImage("Icon", rect, new Vector2(.23f, .28f), new Vector2(.77f, .86f));
             icon.sprite = PhasebreakItemIconLibrary.Get(iconSlot);
             icon.color = TextPrimary;
-            Text("Label", rect, hint.ToUpperInvariant(), 9f, TextAlignmentOptions.Center,
+            Text("Label", rect, hint.ToUpperInvariant(), 11f, TextAlignmentOptions.Center,
                 new Vector2(.02f, .025f), new Vector2(.98f, .26f), TextMuted);
             ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
             relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]"; navTooltip.gameObject.SetActive(true); }, () => navTooltip.gameObject.SetActive(false), () => Toggle(target));
@@ -578,7 +579,7 @@ namespace Phasebreak.Gameplay
             Image background = rect.GetComponent<Image>();
             Text("Symbol", rect, symbol, 29f, TextAlignmentOptions.Center,
                 new Vector2(.12f, .28f), new Vector2(.88f, .88f), TextPrimary);
-            Text("Label", rect, label, 9f, TextAlignmentOptions.Center,
+            Text("Label", rect, label, 11f, TextAlignmentOptions.Center,
                 new Vector2(.02f, .025f), new Vector2(.98f, .26f), TextMuted);
             ItemSlotUI relay = rect.gameObject.AddComponent<ItemSlotUI>();
             relay.Configure(() => { navTooltip.text = $"{hint}  [{PhasebreakSettings.Display(bindingId)}]";

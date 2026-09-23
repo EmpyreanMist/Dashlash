@@ -184,6 +184,8 @@ namespace Phasebreak.Gameplay
             search.characterLimit = 80;
             RectTransform searchViewport = Rect("Search Text Area", searchRoot, Color.clear, false);
             Stretch(searchViewport, 14f);
+            // Reserve the right edge for CLEAR so long search text never paints over it.
+            searchViewport.offsetMax = new Vector2(-112f, -14f);
             searchViewport.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
             TextMeshProUGUI value = Label("Search Value", searchViewport, string.Empty, 23f, Light,
                 Vector2.zero, Vector2.one, TextAlignmentOptions.Left);
