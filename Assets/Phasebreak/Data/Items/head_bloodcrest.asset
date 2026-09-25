@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Bloodcrest Visor
   description: A narrow visor for a hunter who commits to each target.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 4158214496832635237, guid: 8bf2748dec28dc5419864c41555ac664, type: 3}
   slot: 2
   rarity: 2
   excludedFromRandomLoot: 1

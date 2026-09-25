@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Bloodwake Edge
   description: Its thin edge favors relentless openings over heavy impacts.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 2724540857238983707, guid: adcaf819c419f66409447062531330af, type: 3}
   slot: 0
   rarity: 2
   excludedFromRandomLoot: 0

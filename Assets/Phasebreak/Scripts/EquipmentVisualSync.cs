@@ -13,6 +13,7 @@ namespace Phasebreak.Gameplay
 
         private float sheathAt;
         private bool weaponsDrawn;
+        private readonly Dictionary<EquipmentVisualSlot, GameObject> displayedPrefabs = new();
 
         private static readonly IReadOnlyDictionary<EquipmentSlot, EquipmentVisualSlot> SlotMap =
             new Dictionary<EquipmentSlot, EquipmentVisualSlot>
@@ -68,10 +69,17 @@ namespace Phasebreak.Gameplay
             foreach (KeyValuePair<EquipmentSlot, EquipmentVisualSlot> pair in SlotMap)
             {
                 PhasebreakItemDefinition item = build.GetEquipped(pair.Key);
-                if (item != null && item.visualPrefab != null)
-                    visuals.SetVisual(pair.Value, item.visualPrefab);
-                else
-                    visuals.ClearVisual(pair.Value);
+                GameObject prefab = item != null ? item.visualPrefab : null;
+                if (displayedPrefabs.TryGetValue(pair.Value, out GameObject displayed) && displayed == prefab)
+                    continue;
+
+                if (prefab != null)
+                {
+                    if (visuals.SetVisual(pair.Value, prefab) == null)
+                        continue;
+                }
+                else visuals.ClearVisual(pair.Value);
+                displayedPrefabs[pair.Value] = prefab;
             }
             visuals.SetWeaponsDrawn(weaponsDrawn);
         }

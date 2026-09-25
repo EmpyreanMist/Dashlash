@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Trailwarden Helm
   description: An open-faced helm built for watch duty.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 3629454580311512809, guid: 38ca20584f1f7fa47839da7c787685b2, type: 3}
   slot: 2
   rarity: 1
   excludedFromRandomLoot: 0

@@ -63,7 +63,10 @@ namespace Phasebreak.Gameplay
         {
             if (destination == null || !equippedVisuals.TryGetValue(slot, out GameObject visual) || visual == null)
                 return;
-            visual.transform.SetParent(destination, false);
+            if (visual.transform.parent != destination)
+                visual.transform.SetParent(destination, false);
+            visual.GetComponent<EquipmentWeaponPlacement>()?.Apply(destination == rightHandAttachment ||
+                destination == leftHandAttachment);
         }
 
         public GameObject SetVisual(EquipmentVisualSlot slot, GameObject visualPrefab)
@@ -81,6 +84,18 @@ namespace Phasebreak.Gameplay
 
             GameObject instance = Instantiate(visualPrefab, anchor, false);
             instance.name = $"{slot} Visual";
+            EquipmentSkinnedMeshBinding skin = instance.GetComponent<EquipmentSkinnedMeshBinding>();
+            if (skin != null)
+            {
+                // A skinned torso is authored in whole-player space, not chest-bone space.
+                instance.transform.SetParent(transform, false);
+                if (!skin.Bind(animator))
+                {
+                    if (Application.isPlaying) Destroy(instance);
+                    else DestroyImmediate(instance);
+                    return null;
+                }
+            }
             equippedVisuals[slot] = instance;
             return instance;
         }
@@ -90,6 +105,7 @@ namespace Phasebreak.Gameplay
             if (!equippedVisuals.TryGetValue(slot, out GameObject visual) || visual == null)
                 return;
 
+            visual.SetActive(false);
             if (Application.isPlaying)
                 Destroy(visual);
             else

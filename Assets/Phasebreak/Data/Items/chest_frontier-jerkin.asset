@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Frontier Jerkin
   description: Leather reinforced for the first dangerous road beyond Northgate.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 6564532436412951882, guid: cd192962108954548918796297fde819, type: 3}
   slot: 4
   rarity: 0
   excludedFromRandomLoot: 0

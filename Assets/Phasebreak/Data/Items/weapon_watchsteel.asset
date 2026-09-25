@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Watchsteel Saber
   description: A narrow guard blade for precise counterstrokes.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 5806675403270317137, guid: 404d14411718b0b4985078b365a60c7b, type: 3}
   slot: 0
   rarity: 1
   excludedFromRandomLoot: 0
