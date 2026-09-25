@@ -53,7 +53,7 @@ namespace Phasebreak.Editor
             }, new[] { 42f, -19f, -51f, 95f, -8f });
             ArrangeHouses(world.Find("Eastwatch ridge"), new[]
             {
-                new Vector3(1380, 0, 1002), new Vector3(1413, 0, 1018), new Vector3(1400, 0, 973)
+                new Vector3(1375, 0, 1000), new Vector3(1413, 0, 1018), new Vector3(1400, 0, 973)
             }, new[] { 25f, -28f, 108f });
 
             Northgate(root);
@@ -61,6 +61,7 @@ namespace Phasebreak.Editor
             Eastwatch(root);
             Roadside(root);
             Woodlands(root);
+            StarterZonePlacement.Supports(world);
             PaintSettlementPaths();
             Atmosphere();
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -93,6 +94,7 @@ namespace Phasebreak.Editor
                 Transform oldVisual = child.Find("V0.2 kit house visual");
                 if (oldVisual != null) UnityEngine.Object.DestroyImmediate(oldVisual.gameObject);
                 foreach (Renderer renderer in child.GetComponentsInChildren<Renderer>()) renderer.enabled = true;
+                StarterZonePlacement.Cottage(child);
                 index++;
             }
             if (index != positions.Length) throw new InvalidOperationException("Expected settlement houses were not found: " + settlement.name);
@@ -296,16 +298,8 @@ namespace Phasebreak.Editor
             GameObject obj = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
             obj.name = name;
             obj.transform.SetParent(parent);
-            obj.transform.SetPositionAndRotation(Ground(x, z), Quaternion.Euler(0, yaw, 0));
+            StarterZonePlacement.KitProp(obj.transform, prefab.transform, x, z, yaw, width);
             Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) throw new InvalidOperationException("Kit prop has no renderer: " + file);
-            Bounds bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
-            float horizontal = Mathf.Max(bounds.size.x, bounds.size.z);
-            if (horizontal > .001f) obj.transform.localScale *= width / horizontal;
-            bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
-            obj.transform.position += Vector3.up * (Ground(x, z).y - bounds.min.y);
             foreach (Renderer renderer in renderers) renderer.sharedMaterial = material;
             obj.isStatic = true;
         }
