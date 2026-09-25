@@ -1,0 +1,14 @@
+Pack: KayKit-Dungeon-Remastered-1.0
+Author: Kay Lousberg (KayKit)
+Official source: https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0
+Source revision: b0ca9bd96a8072ab36a3a5464f00ed1e06a16d07
+License: CC0 1.0 Universal; see adjacent LICENSE.txt
+Retrieved: 2026-09-25
+Only selected free-tier FBX and required atlas textures are included. No paid EXTRA or SOURCE content.
+
+Curated models and purpose:
+- barrel_large, barrel_small_stack, crates_stacked: abandoned camp and roadside supply clutter.
+- chair, table_long_broken: abandoned camp furniture.
+- torch, torch_mounted: camp and shrine light fixtures; no light component is configured.
+- wall_broken, wall_cracked, wall_arched, pillar_decorated: ruin and shrine landmark pieces for #145/#146.
+The eleven selected FBXs share Textures/dungeon_texture.png. Source size is already suitable in Unity meters (barrels about 2 units high, walls 4 units high). Prefabs are visual-only and are not placed in a scene.

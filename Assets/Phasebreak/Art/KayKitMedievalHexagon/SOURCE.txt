@@ -1,0 +1,14 @@
+Pack: KayKit-Medieval-Hexagon-Pack-1.0
+Author: Kay Lousberg (KayKit)
+Official source: https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0
+Source revision: 84fa4e91af6a88989be7c99e0891cede11f2ca38
+License: CC0 1.0 Universal; see adjacent LICENSE.txt
+Retrieved: 2026-09-25
+Only selected free-tier FBX and required atlas textures are included. No paid EXTRA or SOURCE content.
+
+Curated models and purpose:
+- barrel, bucket_empty, crate_A_big, pallet, sack: road and camp supply clutter.
+- target, weaponrack: abandoned training camp props.
+- tent, wheelbarrow: roadside camp and transport props.
+- rock_single_A, tree_single_A, tree_single_A_cut: landmark nature pieces for #145/#146.
+These twelve FBXs share Textures/hexagons_medieval.png. Unity importer globalScale is 5 for this pack because the free-tier source models are small (for example, the tent is about 0.52 units high at source scale). The selected prefabs are visual-only and are not placed in a scene; hexagonal terrain tiles/buildings were not imported.
