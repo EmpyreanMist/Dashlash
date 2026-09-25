@@ -1,0 +1,31 @@
+/*
+Ambient Wilderness Zone Prefab (Editor-only metadata)
+{
+    "component": [
+        {
+            "type": "Transform",
+            "position": [1250.0, 0.0, 850.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0]
+        },
+        {
+            "type": "AmbientWildernessZone",
+            "minPopulation": 3,
+            "maxPopulation": 6,
+            "desiredPopulation": 4,
+            "respawnDelayMin": 150,
+            "respawnDelayMax": 250,
+            "activationDistance": 180,
+            "unloadDistance": 220,
+            "minRespawnDistanceFromPlayer": 50,
+            "allowedRoles": ["Bandit", "BeastHunter", "Outcast"],
+            "allowedSpecies": ["Human", "Orc", "Elf"],
+            "roleWeights": {
+                "Bandit": 0.5,
+                "BeastHunter": 0.3,
+                "Outcast": 0.2
+            }
+        }
+    ]
+}
+*/
