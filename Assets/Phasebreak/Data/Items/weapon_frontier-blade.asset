@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Frontier Blade
   description: A practical blade issued to new frontier fighters.
   icon: {fileID: 21300000, guid: ecdcbf502f2d7ce46a76b58fd0ffe229, type: 3}
-  visualPrefab: {fileID: 5811854747445385732, guid: ee4fd848423a3944b92d60996db1fc24, type: 3}
+  visualPrefab: {fileID: 2560311410461293432, guid: b05d1f79518a9c2438e5f8be64b636bf, type: 3}
   slot: 0
   rarity: 0
   excludedFromRandomLoot: 1

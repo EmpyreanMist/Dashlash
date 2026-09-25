@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Trail Cleaver
   description: A broad work blade that trades finesse for a little staying power.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 1650382602040791876, guid: 4a0b94aff641a444db69db68b4c5a448, type: 3}
   slot: 0
   rarity: 0
   excludedFromRandomLoot: 0

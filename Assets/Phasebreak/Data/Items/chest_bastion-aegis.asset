@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Bastion Aegis
   description: A Warden-grade shell that makes a final stand possible.
   icon: {fileID: 0}
-  visualPrefab: {fileID: 0}
+  visualPrefab: {fileID: 2892550779602082916, guid: 2fc414cda8a905c4eb184eb0d92021e5, type: 3}
   slot: 4
   rarity: 3
   excludedFromRandomLoot: 1
