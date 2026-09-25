@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c721cd2905c05b4c84272f37a2f4d7b, type: 3}
+  m_Name: legs_trailwarden-greaves
+  m_EditorClassIdentifier: Assembly-CSharp::Phasebreak.Gameplay.PhasebreakItemDefinition
+  id: legs.trailwarden-greaves
+  displayName: Trailwarden Greaves
+  description: Flexible plates carry a fighter over broken ground.
+  icon: {fileID: 0}
+  visualPrefab: {fileID: 0}
+  slot: 6
+  rarity: 1
+  excludedFromRandomLoot: 0
+  itemLevel: 3
+  tags: 32
+  itemSet: {fileID: 11400000, guid: 1eb57449ff1961949a4c48c02e481957, type: 2}
+  stats:
+    power: 0
+    maxHealth: 3
+    defense: 0.025
+    criticalChance: 0
+    criticalDamage: 0
+    attackSpeed: 0
+    movementSpeed: 0
+    bossDamage: 0
+  effects: 0
+  effectValue: 0
