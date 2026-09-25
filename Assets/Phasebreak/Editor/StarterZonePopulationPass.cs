@@ -184,14 +184,15 @@ namespace Phasebreak.Editor
 
         private static void Barrel(Transform parent, float x, float z)
         {
-            Block(parent, "Abandoned barrel", x, z, .9f, new Vector3(1.25f, 1.8f, 1.25f), 0, timber, PrimitiveType.Cylinder);
-            Block(parent, "Barrel rim", x, z, 1.65f, new Vector3(1.35f, .13f, 1.35f), 0, stone, PrimitiveType.Cylinder);
+            Block(parent, "Abandoned barrel", x, z, .9f, new Vector3(1.25f, .9f, 1.25f), 0, timber, PrimitiveType.Cylinder);
+            Block(parent, "Barrel rim", x, z, 1.65f, new Vector3(1.35f, .065f, 1.35f), 0, stone, PrimitiveType.Cylinder);
         }
 
         private static void Fence(Transform parent, float x, float z, float yaw)
         {
-            Block(parent, "Broken fence rail", x, z, 1.1f, new Vector3(8, .3f, .35f), yaw, timber);
+            GameObject rail = Block(parent, "Broken fence rail", x, z, 1.1f, new Vector3(8, .3f, .35f), yaw, timber);
             Block(parent, "Fence post", x - 3, z, 1.1f, new Vector3(.45f, 2.2f, .45f), yaw, timber);
+            StarterZonePlacement.BrokenFence(rail.transform);
         }
 
         private static void Cart(Transform parent, float x, float z, float yaw)
@@ -207,6 +208,7 @@ namespace Phasebreak.Editor
                 new Vector3(1.5f, .2f, 1.5f), 0, timber, PrimitiveType.Cylinder);
             wheel.transform.rotation = Quaternion.Euler(78, yaw + 28, 0);
             Block(cart, "Cart shaft", x + 3.7f, z + .3f, .72f, new Vector3(4, .28f, .28f), yaw - 8, timber);
+            StarterZonePlacement.Cart(cart, x, z, yaw);
         }
 
         private static void Campfire(Transform parent, float x, float z)

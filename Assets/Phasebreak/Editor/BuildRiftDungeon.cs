@@ -128,6 +128,7 @@ namespace Phasebreak.Editor
             Transform exit = CreatePortal("Exit Rift", root.transform, new Vector3(0f, 0.08f, 110f),
                 rift, false);
 
+            StarterZonePlacement.PlaceCrypt(root.transform);
             RiftDungeonController controller = root.AddComponent<RiftDungeonController>();
             CombatArenaReset reset = Object.FindAnyObjectByType<CombatArenaReset>();
             controller.Configure(player.transform, entrance, spawn, chest, exit,

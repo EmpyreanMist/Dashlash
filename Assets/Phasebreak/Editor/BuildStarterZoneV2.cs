@@ -114,12 +114,7 @@ namespace Phasebreak.Editor
                 if (camera != null) camera.SetTarget(player.transform);
             }
             GameObject crypt = GameObject.Find("Rift Crypt");
-            if (crypt != null)
-            {
-                Transform entrance = crypt.transform.Find("Rift Crypt Entrance");
-                crypt.transform.position = new Vector3(2500, 0, 1000);
-                if (entrance != null) entrance.position = Point(Rift.x, Rift.y, 1.2f);
-            }
+            StarterZonePlacement.PlaceCrypt(crypt?.transform);
             magic.instantGenerate = true;
             magic.Refresh(true);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -191,6 +186,7 @@ namespace Phasebreak.Editor
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
             AssetDatabase.SaveAssets();
+            StarterZonePlacement.RepairOpenScene(); // Re-seat after MapMagic has finished generating terrain.
             Debug.Log("STARTER_ZONE_V2_SURFACE_FINISHED");
         }
 
@@ -412,6 +408,7 @@ namespace Phasebreak.Editor
             Part(root, "Door", new Vector3(0, 1.55f, -3.82f), new Vector3(1.75f, 3.1f, .18f), Vector3.zero, wood);
             Part(root, "Window", new Vector3(-2.7f, 3.4f, -3.82f), new Vector3(1.35f, 1.2f, .16f), Vector3.zero, glass);
             Part(root, "Window", new Vector3(2.7f, 3.4f, -3.82f), new Vector3(1.35f, 1.2f, .16f), Vector3.zero, glass);
+            StarterZonePlacement.Cottage(root);
         }
 
         private static GameObject Part(Transform parent, string name, Vector3 localPosition, Vector3 localScale,
@@ -464,6 +461,7 @@ namespace Phasebreak.Editor
             Part(arch, "Left pier", new Vector3(-width * .5f, height * .5f, 0), new Vector3(2.2f, height, 2.4f), Vector3.zero, material);
             Part(arch, "Right pier", new Vector3(width * .5f, height * .5f, 0), new Vector3(2.2f, height, 2.4f), Vector3.zero, material);
             Part(arch, "Weathered lintel", new Vector3(0, height, 0), new Vector3(width + 4, 1.5f, 2.8f), Vector3.zero, material);
+            StarterZonePlacement.Supports(arch);
         }
 
         [MenuItem("Phasebreak/Polish Starter Zone V2 Forest Belts")]
@@ -757,6 +755,7 @@ namespace Phasebreak.Editor
                 Block(root, "Watch brace", Point(p.x + side * 6.4f, p.y - 5, 17), new Vector3(.5f, 4, .5f), 0, wood);
                 Block(root, "Watch brace", Point(p.x + side * 6.4f, p.y + 5, 17), new Vector3(.5f, 4, .5f), 0, wood);
             }
+            StarterZonePlacement.Tower(root);
         }
 
         private static GameObject Place(GameObject prefab, Transform parent, string name, Vector2 p, float yaw)
