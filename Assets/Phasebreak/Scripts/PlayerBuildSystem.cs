@@ -120,7 +120,14 @@ namespace Phasebreak.Gameplay
         public List<PhasebreakItemDefinition> GenerateCorpseLoot(bool guaranteed = false)
         {
             List<PhasebreakItemDefinition> drops = new(); enemiesDefeated++;
-            PhasebreakItemDefinition[] pool = itemCatalog?.Where(item => item != null && !item.excludedFromRandomLoot).ToArray();
+            int eligibleLevel = Mathf.Min(10, (progression != null ? progression.Level : 1) + 1);
+            PhasebreakItemDefinition[] pool = itemCatalog?.Where(item => item != null &&
+                    !item.excludedFromRandomLoot && item.itemLevel <= eligibleLevel)
+                .OrderBy(item => item.itemLevel).ThenBy(item => item.id, StringComparer.Ordinal)
+                .ToArray();
+            // Older scenes may have no low-level catalog entries; retain their existing drop behavior.
+            if (pool == null || pool.Length == 0)
+                pool = itemCatalog?.Where(item => item != null && !item.excludedFromRandomLoot).ToArray();
             if (pool == null || pool.Length == 0 ||
                 (!guaranteed && enemiesDefeated > 3 && UnityEngine.Random.value > dropChanceAfterFirstThree)) return drops;
             drops.Add(pool[(enemiesDefeated - 1) % pool.Length]);
