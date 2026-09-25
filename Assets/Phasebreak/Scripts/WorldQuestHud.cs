@@ -10,7 +10,7 @@ using UnityEngine.SceneManagement;
 namespace Phasebreak.Gameplay
 {
     [DefaultExecutionOrder(220), DisallowMultipleComponent]
-    public sealed class WorldQuestHud : MonoBehaviour
+    public sealed partial class WorldQuestHud : MonoBehaviour
     {
         private static WorldQuestHud instance;
         private readonly List<(RectTransform marker, Vector2 world)> miniLocations = new();
@@ -70,7 +70,7 @@ namespace Phasebreak.Gameplay
         public static void CloseWorldMenus()
         {
             WorldQuestHud hud = instance != null ? instance : FindAnyObjectByType<WorldQuestHud>();
-            if (hud != null && (hud.mapOpen || hud.journalOpen || hud.vendorOpen)) hud.CloseWindows();
+            if (hud != null && (hud.mapOpen || hud.journalOpen || hud.vendorOpen || hud.npcOpen)) hud.CloseWindows();
         }
 
         private static readonly Color Back = PhasebreakUiTheme.Window;
@@ -103,15 +103,16 @@ namespace Phasebreak.Gameplay
             instance = this;
             PhasebreakSettings.BindingsChanged += RefreshBindingHints;
             mapAction?.Enable(); journalAction?.Enable(); closeAction?.Enable();
-            if (journal != null) { journal.Changed += Refresh; journal.Message += ShowMessage; journal.QuartermasterRequested += OpenVendor; }
+            if (journal != null) { journal.Changed += Refresh; journal.Message += ShowMessage; journal.QuartermasterRequested += OpenVendor; journal.InteractionRequested += OpenNpc; }
         }
 
         private void OnDisable()
         {
+            if (canvas != null) CloseWindows();
             IsWorldMenuOpen = false;
             PhasebreakSettings.BindingsChanged -= RefreshBindingHints;
             mapAction?.Disable(); journalAction?.Disable(); closeAction?.Disable();
-            if (journal != null) { journal.Changed -= Refresh; journal.Message -= ShowMessage; journal.QuartermasterRequested -= OpenVendor; }
+            if (journal != null) { journal.Changed -= Refresh; journal.Message -= ShowMessage; journal.QuartermasterRequested -= OpenVendor; journal.InteractionRequested -= OpenNpc; }
         }
 
         private void OnDestroy()
@@ -123,11 +124,12 @@ namespace Phasebreak.Gameplay
 
         private void Update()
         {
+            UpdateNpcLifetime();
             if (!GameplayInputFocus.GameplayInputBlocked)
             {
                 if (mapAction.WasPressedThisFrame()) ToggleMap();
                 else if (journalAction.WasPressedThisFrame()) ToggleJournal();
-                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen || vendorOpen)) { CloseWindows(); GameplayInputFocus.ConsumeFrame(); }
+                else if (closeAction.WasPressedThisFrame() && (mapOpen || journalOpen || vendorOpen || npcOpen)) { CloseWindows(); GameplayInputFocus.ConsumeFrame(); }
             }
             bool modal = IsWorldMenuOpen || PhasebreakInventoryHud.IsMajorMenuOpen;
             if (trackerPanel != null) trackerPanel.gameObject.SetActive(!modal);
@@ -332,6 +334,7 @@ namespace Phasebreak.Gameplay
             journalDetails = Label("Quest Detail Text", journalDetailPanel, string.Empty, 20f, TextAlignmentOptions.TopLeft,
                 new Vector2(.045f, .04f), new Vector2(.955f, .96f), Text);
             journalWindow.gameObject.SetActive(false);
+            BuildNpcWindow();
         }
 
         private RectTransform Window(string name, string title, Vector2 min, Vector2 max)
@@ -510,6 +513,7 @@ namespace Phasebreak.Gameplay
 
         private void Refresh()
         {
+            if (npcOpen) RefreshNpcWindow();
             if (tracker == null || journalDetails == null) return;
             QuestDefinition active = journal?.ActiveQuest;
             QuestDefinition next = journal?.NextAvailableQuest;
@@ -606,8 +610,10 @@ namespace Phasebreak.Gameplay
             RefreshVendor();
         }
 
-        private void OpenVendor()
+        private void OpenVendor(QuestNpc npc)
         {
+            CloseNpcWindow();
+            interactionNpc = npc;
             PhasebreakInventoryHud.CloseMajorMenu();
             mapOpen = journalOpen = false;
             vendorOpen = true;
@@ -622,6 +628,7 @@ namespace Phasebreak.Gameplay
 
         private void ToggleMap()
         {
+            CloseNpcWindow();
             bool opening = !mapOpen;
             if (opening) PhasebreakInventoryHud.CloseMajorMenu();
             mapOpen = opening; journalOpen = vendorOpen = false;
@@ -632,6 +639,7 @@ namespace Phasebreak.Gameplay
 
         private void ToggleJournal()
         {
+            CloseNpcWindow();
             bool opening = !journalOpen;
             if (opening) PhasebreakInventoryHud.CloseMajorMenu();
             journalOpen = opening; mapOpen = vendorOpen = false;
@@ -642,6 +650,8 @@ namespace Phasebreak.Gameplay
 
         private void CloseWindows()
         {
+            CloseNpcWindow();
+            GameplayInputFocus.ConsumeFrame();
             mapOpen = journalOpen = vendorOpen = false;
             mapWindow.gameObject.SetActive(false); journalWindow.gameObject.SetActive(false);
             vendorWindow.gameObject.SetActive(false);
@@ -649,7 +659,7 @@ namespace Phasebreak.Gameplay
         }
         private void SetCursor()
         {
-            IsWorldMenuOpen = mapOpen || journalOpen || vendorOpen;
+            IsWorldMenuOpen = mapOpen || journalOpen || vendorOpen || npcOpen;
             if (IsWorldMenuOpen) { Cursor.visible = true; Cursor.lockState = CursorLockMode.None; }
             PhasebreakInventoryHud.RefreshNavigation();
         }

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Phasebreak.Gameplay
 {
@@ -44,7 +43,8 @@ namespace Phasebreak.Gameplay
         private PlayerProgression progression;
         private PlayerBuildSystem build;
         private RiftDungeonController dungeon;
-        private InputAction interact;
+        private PlayerHealth health;
+        public const float NpcInteractionDistance = 3.2f;
         private QuestNpc[] npcs;
         private float nextNpcRefresh;
         private string activeId;
@@ -63,7 +63,8 @@ namespace Phasebreak.Gameplay
         public IReadOnlyList<QuartermasterOffer> QuartermasterStock => Stock;
         public event Action Changed;
         public event Action<string> Message;
-        public event Action QuartermasterRequested;
+        public event Action<QuestNpc> QuartermasterRequested;
+        public event Action<QuestNpc> InteractionRequested;
 
         private void Awake()
         {
@@ -71,14 +72,13 @@ namespace Phasebreak.Gameplay
             progression = GetComponent<PlayerProgression>();
             build = GetComponent<PlayerBuildSystem>();
             dungeon = FindAnyObjectByType<RiftDungeonController>();
-            interact = PhasebreakSettings.Button("interact", "Talk to NPC");
+            health = GetComponent<PlayerHealth>();
             npcs = FindObjectsByType<QuestNpc>(FindObjectsSortMode.None);
             Load();
         }
 
         private void OnEnable()
         {
-            interact?.Enable();
             CombatEvents.EnemyDefeatedDetailed += OnEnemyDefeated;
             if (dungeon == null) dungeon = FindAnyObjectByType<RiftDungeonController>();
             if (dungeon != null) dungeon.StateChanged += OnDungeonStateChanged;
@@ -86,12 +86,9 @@ namespace Phasebreak.Gameplay
 
         private void OnDisable()
         {
-            interact?.Disable();
             CombatEvents.EnemyDefeatedDetailed -= OnEnemyDefeated;
             if (dungeon != null) dungeon.StateChanged -= OnDungeonStateChanged;
         }
-
-        private void OnDestroy() { PhasebreakSettings.Unregister(interact); interact?.Dispose(); }
 
         private void Update()
         {
@@ -100,27 +97,16 @@ namespace Phasebreak.Gameplay
                 nextNpcRefresh = Time.unscaledTime + 2f;
                 npcs = FindObjectsByType<QuestNpc>(FindObjectsSortMode.None);
             }
-            if (!GameplayInputFocus.GameplayInputBlocked && !WorldQuestHud.IsWorldMenuOpen && !PhasebreakInventoryHud.IsMajorMenuOpen &&
-                interact != null && interact.WasPressedThisFrame())
-            {
-                QuestNpc nearby = NearbyNpc();
-                if (nearby != null)
-                {
-                    Interact(nearby);
-                    if (string.Equals(nearby.Id, "quartermaster-orin", StringComparison.OrdinalIgnoreCase))
-                        QuartermasterRequested?.Invoke();
-                }
-            }
         }
 
         public QuestNpc NearbyNpc()
         {
             QuestNpc nearest = null;
-            float best = 10.24f;
+            float best = NpcInteractionDistance * NpcInteractionDistance;
             foreach (QuestNpc npc in npcs ?? Array.Empty<QuestNpc>())
             {
-                if (npc == null || !npc.gameObject.activeInHierarchy) continue;
-                Vector3 delta = npc.transform.position - transform.position; delta.y = 0f;
+                if (!CanInteractWith(npc)) continue;
+                Vector3 delta = npc.transform.position - transform.position;
                 float distance = delta.sqrMagnitude;
                 if (distance >= best) continue;
                 best = distance; nearest = npc;
@@ -134,42 +120,71 @@ namespace Phasebreak.Gameplay
             {
                 QuestNpc npc = NearbyNpc();
                 if (npc == null) return string.Empty;
-                return string.Equals(npc.Id, "quartermaster-orin", StringComparison.OrdinalIgnoreCase)
-                    ? $"[E] Talk and trade with {npc.DisplayName}"
-                    : $"[E] Speak with {npc.DisplayName}";
+                return $"Right-click {npc.DisplayName} to talk";
             }
         }
 
-        public bool Interact(QuestNpc npc)
+        public bool CanInteractWith(QuestNpc npc)
         {
-            if (npc == null) return false;
-            QuestDefinition active = ActiveQuest;
-            if (active != null)
-            {
-                if (ObjectiveReady && string.Equals(active.turnInNpcId, npc.Id, StringComparison.OrdinalIgnoreCase))
-                {
-                    CompleteActive();
-                    return true;
-                }
-                if (active.objectiveKind == QuestObjectiveKind.Speak &&
-                    string.Equals(active.targetId, npc.Id, StringComparison.OrdinalIgnoreCase))
-                {
-                    Advance(1);
-                    Message?.Invoke($"{npc.DisplayName}: {npc.Greeting}");
-                    return true;
-                }
-                Message?.Invoke($"{npc.DisplayName}: {npc.Greeting}");
-                return true;
-            }
+            if (npc == null || !npc.isActiveAndEnabled || health != null && !health.IsAlive) return false;
+            Targetable target = npc.GetComponent<Targetable>();
+            if (target == null || !target.isActiveAndEnabled || target.Faction != TargetFaction.Friendly) return false;
+            Vector3 delta = npc.transform.position - transform.position;
+            return delta.sqrMagnitude <= NpcInteractionDistance * NpcInteractionDistance;
+        }
 
-            QuestDefinition next = catalog?.quests?.FirstOrDefault(q => q != null && !completed.Contains(q.id) &&
+        public QuestDefinition GetOfferedQuest(QuestNpc npc) => npc == null || ActiveQuest != null ? null :
+            catalog?.quests?.FirstOrDefault(q => q != null && !completed.Contains(q.id) &&
                 string.Equals(q.giverNpcId, npc.Id, StringComparison.OrdinalIgnoreCase) &&
                 (string.IsNullOrWhiteSpace(q.prerequisiteQuestId) || completed.Contains(q.prerequisiteQuestId)));
-            if (next == null) { Message?.Invoke($"{npc.DisplayName}: {npc.Greeting}"); return false; }
+
+        public bool CanTurnInAt(QuestNpc npc) => npc != null && ObjectiveReady &&
+            string.Equals(ActiveQuest.turnInNpcId, npc.Id, StringComparison.OrdinalIgnoreCase);
+
+        public bool TryAcceptQuest(QuestNpc npc, string expectedQuestId)
+        {
+            if (!CanInteractWith(npc)) return false;
+            QuestDefinition next = GetOfferedQuest(npc);
+            if (next == null || next.id != expectedQuestId) return false;
             activeId = next.id;
             progress = next.objectiveKind == QuestObjectiveKind.Discover && discovered.Contains(next.targetId) ? next.requiredCount : 0;
             Save(); Changed?.Invoke();
             Message?.Invoke($"QUEST ACCEPTED  •  {next.title}\n{next.description}");
+            return true;
+        }
+
+        public bool CompleteQuestAt(QuestNpc npc, string expectedQuestId)
+        {
+            if (!CanInteractWith(npc) || !CanTurnInAt(npc) || ActiveQuest.id != expectedQuestId) return false;
+            CompleteActive();
+            return true;
+        }
+
+        public bool SpeakTo(QuestNpc npc)
+        {
+            if (!CanInteractWith(npc)) return false;
+            QuestDefinition active = ActiveQuest;
+            if (active != null && !ObjectiveReady && active.objectiveKind == QuestObjectiveKind.Speak &&
+                string.Equals(active.targetId, npc.Id, StringComparison.OrdinalIgnoreCase))
+                Advance(1);
+            return true;
+        }
+
+        public bool Interact(QuestNpc npc)
+        {
+            if (npc == null || GameplayInputFocus.GameplayInputBlocked ||
+                PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen) return false;
+            if (!CanInteractWith(npc))
+            {
+                Message?.Invoke("Too far away");
+                return false;
+            }
+            if (!CanTurnInAt(npc) && GetOfferedQuest(npc) == null) SpeakTo(npc);
+            if (!CanTurnInAt(npc) && GetOfferedQuest(npc) == null &&
+                string.Equals(npc.Id, "quartermaster-orin", StringComparison.OrdinalIgnoreCase))
+                QuartermasterRequested?.Invoke(npc);
+            else
+                InteractionRequested?.Invoke(npc);
             return true;
         }
 
@@ -236,11 +251,11 @@ namespace Phasebreak.Gameplay
         {
             QuestDefinition quest = ActiveQuest;
             if (quest == null || !ObjectiveReady) return;
-            completed.Add(quest.id);
+            if (!completed.Add(quest.id)) return;
+            activeId = null; progress = 0;
             marks += quest.marksReward;
             if (quest.experienceReward > 0) progression?.GrantExperience(quest.experienceReward);
             if (!string.IsNullOrWhiteSpace(quest.itemRewardId)) build?.GrantRewardById(quest.itemRewardId);
-            activeId = null; progress = 0;
             Save(); Changed?.Invoke();
             Message?.Invoke($"QUEST COMPLETE  •  {quest.title}\n+{quest.experienceReward} XP   +{quest.marksReward} Rift Marks");
         }

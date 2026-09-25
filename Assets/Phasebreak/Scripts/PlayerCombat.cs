@@ -730,6 +730,8 @@ namespace Phasebreak.Gameplay
             if (targeting == null)
                 return null;
             Targetable target = targeting.CurrentTarget;
+            // An explicitly selected friendly/neutral unit must not redirect an attack elsewhere.
+            if (target != null && !target.IsHostile) return null;
             if (target != null && IsTargetValid(target, GetMinimumRange(index), GetRange(index)))
                 return target;
             target = targeting.TrySelectNearestInFront(GetRange(index), autoTargetCone);
@@ -1119,6 +1121,7 @@ namespace Phasebreak.Gameplay
 
         private void ApplyHit(int index, Targetable target, float damage, bool critical, bool mobilityHit, bool finisher = false)
         {
+            if (target == null || !target.isActiveAndEnabled || !target.IsHostile || !target.IsAlive) return;
             ICombatTarget combatTarget = target.GetComponent<ICombatTarget>();
             if (combatTarget == null)
                 return;
