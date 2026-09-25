@@ -28,6 +28,7 @@ namespace Phasebreak.Gameplay
         private float hitWeight;
         private Vector3 hitDirection;
         private bool abilityActive;
+        public bool IsPresentingAbility => abilityActive;
         private bool dead;
         private readonly System.Collections.Generic.Dictionary<Renderer, bool> hiddenRenderers = new();
         private readonly System.Collections.Generic.List<GameObject> afterimages = new();
