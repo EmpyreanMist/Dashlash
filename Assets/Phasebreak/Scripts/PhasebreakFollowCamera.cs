@@ -48,9 +48,12 @@ namespace Phasebreak.Gameplay
         private float currentDistance;
         private float collisionDistanceVelocity;
         private float leftDragDistance;
+        private float rightDragDistance;
+        private float rightPressedAt;
         private bool pointerCaptured;
         private bool leftDragging;
         private bool leftClickCandidate;
+        private bool rightClickCandidate;
         private bool invertY;
         private float screenShakeAmount = 1f;
         private Transform flickerTarget;
@@ -64,6 +67,7 @@ namespace Phasebreak.Gameplay
         public bool LeftClickReleasedThisFrame { get; private set; }
         public Vector2 LeftClickPosition { get; private set; }
         public bool RightClickStartedThisFrame { get; private set; }
+        public bool RightClickReleasedThisFrame { get; private set; }
         public Vector2 RightClickPosition { get; private set; }
         public Vector3 PlanarForward => Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
         public Vector3 PlanarRight => Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
@@ -113,9 +117,11 @@ namespace Phasebreak.Gameplay
         {
             LeftClickReleasedThisFrame = false;
             RightClickStartedThisFrame = false;
+            RightClickReleasedThisFrame = false;
             if (GameplayInputFocus.GameplayInputBlocked || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
             {
                 leftClickCandidate = false;
+                rightClickCandidate = false;
                 leftDragging = false;
                 SetPointerCaptured(false);
                 return;
@@ -123,9 +129,11 @@ namespace Phasebreak.Gameplay
             bool framePointerInput = IsLeftMouseHeld || IsRightMouseHeld ||
                                      leftMouseAction.WasReleasedThisFrame() || rightMouseAction.WasReleasedThisFrame();
             if (HudFrameDragHandle.IsDraggingAny ||
-                (framePointerInput && HudFrameDragHandle.IsPointerOverFrame()))
+                (framePointerInput && !pointerCaptured && (HudFrameDragHandle.IsPointerOverFrame() ||
+                    GameplayInputFocus.IsPointerOverUi(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero))))
             {
                 leftClickCandidate = false;
+                rightClickCandidate = false;
                 leftDragging = false;
                 SetPointerCaptured(false);
                 return;
@@ -134,6 +142,9 @@ namespace Phasebreak.Gameplay
             {
                 RightClickStartedThisFrame = true;
                 RightClickPosition = Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
+                rightDragDistance = 0f;
+                rightPressedAt = Time.unscaledTime;
+                rightClickCandidate = true;
             }
             Vector2 lookDelta = lookAction.ReadValue<Vector2>();
 
@@ -145,7 +156,7 @@ namespace Phasebreak.Gameplay
                 leftClickCandidate = true;
             }
 
-            if (IsLeftMouseHeld)
+            if (IsLeftMouseHeld || leftMouseAction.WasReleasedThisFrame())
             {
                 leftDragDistance += lookDelta.magnitude;
                 if (leftDragDistance >= clickDragThreshold)
@@ -155,6 +166,19 @@ namespace Phasebreak.Gameplay
                 }
                 if (IsRightMouseHeld)
                     leftClickCandidate = false;
+            }
+
+            if (IsRightMouseHeld || rightMouseAction.WasReleasedThisFrame())
+            {
+                rightDragDistance += lookDelta.magnitude;
+                if (rightDragDistance >= clickDragThreshold || IsLeftMouseHeld)
+                    rightClickCandidate = false;
+            }
+
+            if (rightMouseAction.WasReleasedThisFrame())
+            {
+                RightClickReleasedThisFrame = rightClickCandidate && Time.unscaledTime - rightPressedAt <= .5f;
+                rightClickCandidate = false;
             }
 
             if (leftMouseAction.WasReleasedThisFrame())
@@ -223,6 +247,8 @@ namespace Phasebreak.Gameplay
 
         private void OnDisable()
         {
+            leftClickCandidate = rightClickCandidate = false;
+            LeftClickReleasedThisFrame = RightClickReleasedThisFrame = false;
             EndFlicker();
             flickerBlend = 0f;
             lookAction.Disable();
@@ -243,7 +269,10 @@ namespace Phasebreak.Gameplay
         private void OnApplicationFocus(bool hasFocus)
         {
             if (!hasFocus)
+            {
+                leftClickCandidate = rightClickCandidate = false;
                 SetPointerCaptured(false);
+            }
         }
 
         private float FindCollisionDistance(Vector3 pivot, Quaternion orbitRotation)

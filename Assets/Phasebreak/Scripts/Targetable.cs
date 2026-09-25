@@ -57,6 +57,11 @@ namespace Phasebreak.Gameplay
             displayName = newDisplayName;
             faction = newFaction;
             level = Mathf.Max(1, newLevel);
+            selectionColor = faction == TargetFaction.Friendly ? new Color(.43f, .78f, .59f) :
+                faction == TargetFaction.Neutral ? new Color(.85f, .75f, .48f) : new Color(1f, .58f, .12f);
+            if (selectionRing != null)
+                selectionRing.startColor = selectionRing.endColor = selectionColor;
+            if (selectionMaterial != null) selectionMaterial.color = selectionColor;
         }
 
         public void SetLevel(int newLevel) => level = Mathf.Max(1, newLevel);

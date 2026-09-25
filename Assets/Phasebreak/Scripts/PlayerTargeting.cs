@@ -65,7 +65,7 @@ namespace Phasebreak.Gameplay
             }
             if (CurrentTarget == null && !ReferenceEquals(CurrentTarget, null))
                 SetTarget(null);
-            if (CurrentTarget != null && (!CurrentTarget.IsAlive || !IsWithinRange(CurrentTarget)))
+            if (CurrentTarget != null && (!CurrentTarget.isActiveAndEnabled || !CurrentTarget.IsAlive || !IsWithinRange(CurrentTarget)))
                 SetTarget(null);
 
             if (GameplayInputFocus.GameplayInputBlocked || PhasebreakInventoryHud.IsMajorMenuOpen || WorldQuestHud.IsWorldMenuOpen)
@@ -84,6 +84,9 @@ namespace Phasebreak.Gameplay
             if (followCamera != null && followCamera.LeftClickReleasedThisFrame &&
                 !(GetComponent<PhasebreakPlayerMovement>()?.DebugTeleportClickConsumed ?? false))
                 SelectFromScreenPoint(followCamera.LeftClickPosition);
+
+            if (followCamera != null && followCamera.RightClickReleasedThisFrame)
+                InteractFromScreenPoint(followCamera.RightClickPosition);
         }
 
         public void SetTarget(Targetable newTarget)
@@ -91,7 +94,7 @@ namespace Phasebreak.Gameplay
             if (health != null && !health.IsAlive) newTarget = null;
             if (ReferenceEquals(newTarget, CurrentTarget))
                 return;
-            if (newTarget != null && (!newTarget.IsHostile || !newTarget.IsAlive || !IsWithinRange(newTarget)))
+            if (newTarget != null && (!newTarget.isActiveAndEnabled || newTarget.Faction == TargetFaction.Player || !newTarget.IsAlive || !IsWithinRange(newTarget)))
                 return;
 
             if (CurrentTarget != null) CurrentTarget.SetSelected(false);
@@ -133,8 +136,25 @@ namespace Phasebreak.Gameplay
 
         private void SelectFromScreenPoint(Vector2 screenPoint)
         {
+            if (GameplayInputFocus.IsPointerOverUi(screenPoint)) return;
+            SetTarget(ResolveTargetAtScreenPoint(screenPoint));
+        }
+
+        private void InteractFromScreenPoint(Vector2 screenPoint)
+        {
+            if (GameplayInputFocus.IsPointerOverUi(screenPoint)) return;
+            Targetable target = ResolveTargetAtScreenPoint(screenPoint);
+            if (target == null || target.Faction != TargetFaction.Friendly) return;
+            QuestNpc npc = target.GetComponent<QuestNpc>();
+            if (npc == null || !npc.isActiveAndEnabled) return;
+            SetTarget(target);
+            GetComponent<QuestJournal>()?.Interact(npc);
+        }
+
+        private Targetable ResolveTargetAtScreenPoint(Vector2 screenPoint)
+        {
             if (worldCamera == null)
-                return;
+                return null;
 
             Ray ray = worldCamera.ScreenPointToRay(screenPoint);
             RaycastHit[] hits = Physics.RaycastAll(ray, maximumTargetDistance, clickLayers,
@@ -143,13 +163,13 @@ namespace Phasebreak.Gameplay
             foreach (RaycastHit hit in hits)
             {
                 Targetable targetable = hit.collider.GetComponentInParent<Targetable>();
-                if (targetable == null || !targetable.IsHostile || !targetable.IsAlive)
+                if (targetable == null || !targetable.isActiveAndEnabled || targetable.Faction == TargetFaction.Player ||
+                    !targetable.IsAlive || !IsWithinRange(targetable))
                     continue;
-                SetTarget(targetable);
-                return;
+                return targetable;
             }
 
-            SetTarget(null);
+            return null;
         }
 
         private void SelectNextTarget(bool reverse)
