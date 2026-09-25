@@ -30,3 +30,8 @@ Suggested gear-family visuals (candidate mapping only; no item assets changed):
 - Bloodforged: axe_2handed, shield_badge.
 - Rift / Riftblade: sword_2handed.
 - Bastion: axe_1handed, shield_badge.
+
+Directional player locomotion derivatives (#151):
+- Assets/Phasebreak/Animations/Player contains Humanoid muscle-curve bakes of Running_A, Walking_Backwards, Running_Strafe_Left, Running_Strafe_Right, Jump_Start, Jump_Idle, and Jump_Land from this CC0 Knight.fbx. No additional pack or external animation source was imported.
+- Assets/Phasebreak/Editor/BuildDirectionalLocomotion.cs samples the Generic source using a temporary, explicitly mapped HumanPoseHandler avatar; the FBX import type and source GUID are unchanged. The temporary avatar is not shipped. The bakes expand short-legged source stride arcs, fit support-foot height to RegularMale, and phase-align backward steps in the existing controller. These derived clips share the adjacent CC0 license.
+- The existing Starter Assets Idle clip remains in its original licensed location. The small procedural breathing overlay belongs to PlayerVisualAnimator.
