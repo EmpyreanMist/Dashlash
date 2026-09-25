@@ -1,0 +1,32 @@
+Pack: KayKit-Character-Pack-Adventures-1.0
+Author: Kay Lousberg (KayKit)
+Official source: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+Source revision: 672074b73ba276876a19e8816ecdc5241817ab47
+License: CC0 1.0 Universal; see adjacent LICENSE.txt
+Retrieved: 2026-09-25
+Only selected free-tier FBX and required atlas textures are included. No paid EXTRA or SOURCE content.
+
+Curated models and purpose:
+- Characters/Knight.fbx and Characters/Barbarian.fbx: rigged sources for the ten armor candidate prefabs. Each FBX contains separately named body, head/hat or helmet, cape, arms, and legs; the prefabs show only the named part(s).
+- Weapons/sword_1handed.fbx, sword_2handed.fbx, dagger.fbx, axe_1handed.fbx, axe_2handed.fbx, shield_badge.fbx, shield_round.fbx, staff.fbx: eight hand or offhand visual candidates. Their prefabs scale the original models to human proportions and retain the source grip/pivot; the blade/shaft axes point up (+Y). Attachment rotation and final hand offsets remain for #144.
+- Textures/knight_texture.png, barbarian_texture.png, rogue_texture.png, mage_texture.png are the four source atlases needed by the selected character and weapon models.
+
+Armor candidate prefabs (source FBX skeleton retained, other renderers disabled):
+- ARM_Knight_Head: Head, rigid helmet; strongest Head candidate for #144.
+- ARM_Knight_Chest: Chest, skinned torso; strongest Chest candidate for #144.
+- ARM_Knight_Shoulders: Shoulders/back, rigid cape.
+- ARM_Knight_Hands: Hands/arms, paired skinned meshes.
+- ARM_Knight_LegsBoots: Legs and Boots together; paired skinned meshes, not separately swappable.
+- ARM_Barbarian_Head: Head, rigid hat.
+- ARM_Barbarian_Chest: Chest, skinned torso.
+- ARM_Barbarian_Shoulders: Shoulders/back, rigid cape.
+- ARM_Barbarian_Hands: Hands/arms, paired skinned meshes.
+- ARM_Barbarian_LegsBoots: Legs and Boots together; paired skinned meshes, not separately swappable.
+Knight generated a valid Humanoid avatar during inspection; Barbarian was not tested for Humanoid conversion. The animated imports remain Generic because Humanoid conversion emitted Unity assertions for empty animation curves. Rebinding any part to the current RegularMale player skeleton and animation retargeting are untested and belong to #144/#151/#152.
+
+Suggested gear-family visuals (candidate mapping only; no item assets changed):
+- Frontier: sword_1handed, shield_round.
+- Trailwarden / Warden: dagger, staff.
+- Bloodforged: axe_2handed, shield_badge.
+- Rift / Riftblade: sword_2handed.
+- Bastion: axe_1handed, shield_badge.

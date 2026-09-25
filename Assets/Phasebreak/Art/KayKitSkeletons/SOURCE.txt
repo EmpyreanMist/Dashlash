@@ -1,0 +1,14 @@
+Pack: KayKit-Character-Pack-Skeletons-1.0
+Author: Kay Lousberg (KayKit)
+Official source: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
+Source revision: 15b62b9bad122f72926c10fb14d622c73819fa54
+License: CC0 1.0 Universal; see adjacent LICENSE.txt
+Retrieved: 2026-09-25
+Only selected free-tier FBX and required atlas textures are included. No paid EXTRA or SOURCE content.
+
+Curated models and purpose:
+- Skeleton_Minion.fbx: Zombie candidate, basic low-threat undead patrol.
+- Skeleton_Warrior.fbx: Brute candidate, armored melee guard.
+- Skeleton_Rogue.fbx: Skirmisher candidate, mobile flanker.
+- Skeleton_Mage.fbx: Caster candidate, ranged ritual enemy.
+All four are separate rigged FBXs with 95 non-preview imported clips each, including Idle, Walking, Running, melee attacks, Spellcast, Hit, and Death. Import rig is Generic; each generated a valid Humanoid avatar in a temporary inspection, but Humanoid conversion caused Unity assertions on empty curves, so retargeting is not part of this library. The preview shows the characters facing toward -Z at zero rotation; align for the game at integration time. Preview bounds including equipment range from about 2.3 to 2.8 Unity units high. Prefabs have no AI or Animator Controller and are not placed in a scene.
